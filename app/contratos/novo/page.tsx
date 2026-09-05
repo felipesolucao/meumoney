@@ -6,7 +6,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { calcularContrato, formatarMoeda, Frequencia, TipoEmprestimo } from "@/lib/calculos";
+import { calcularContrato, formatarMoeda, Frequencia, TipoEmprestimo } from "../../../lib/calculos";
 
 type Cliente = { id: string; nome: string };
 

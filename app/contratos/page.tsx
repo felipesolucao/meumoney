@@ -5,8 +5,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { formatarMoeda, formatarData, statusDoContrato } from "@/lib/calculos";
-import Badge, { tomEStatusContrato } from "@/components/Badge";
+import { formatarMoeda, formatarData, statusDoContrato } from "../../lib/calculos";
+import Badge, { tomEStatusContrato } from "../../components/Badge";
 
 type Contrato = {
   id: string;
