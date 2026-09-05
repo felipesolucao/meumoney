@@ -6,9 +6,9 @@
 // ============================================================================
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { prisma } from "@/lib/prisma";
-import { formatarMoeda, iniciais, statusDoContrato } from "@/lib/calculos";
-import Badge, { tomEScore, tomEStatusContrato } from "@/components/Badge";
+import { prisma } from "../../../lib/prisma";
+import { formatarMoeda, iniciais, statusDoContrato } from "../../../lib/calculos";
+import Badge, { tomEScore, tomEStatusContrato } from "../../../components/Badge";
 
 export const dynamic = "force-dynamic";
 

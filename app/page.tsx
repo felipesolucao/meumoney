@@ -5,8 +5,8 @@
 // parcelas que vencem hoje, atalhos rápidos e a lista de contratos ativos.
 // ============================================================================
 import Link from "next/link";
-import { prisma } from "@/lib/prisma";
-import { formatarMoeda, iniciais, statusDoContrato } from "@/lib/calculos";
+import { prisma } from "../lib/prisma";
+import { formatarMoeda, iniciais, statusDoContrato } from "../lib/calculos";
 
 export const dynamic = "force-dynamic";
 

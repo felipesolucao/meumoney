@@ -1,8 +1,8 @@
 // ============================================================================
 // PÁGINA: Relatórios
 // ============================================================================
-import { prisma } from "@/lib/prisma";
-import { formatarMoeda } from "@/lib/calculos";
+import { prisma } from "../../lib/prisma";
+import { formatarMoeda } from "../../lib/calculos";
 
 export const dynamic = "force-dynamic";
 

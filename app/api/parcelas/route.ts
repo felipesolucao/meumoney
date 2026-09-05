@@ -5,7 +5,7 @@
 //   ?status=a_vencer|atrasado|pago  -> filtro por status
 // ============================================================================
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { prisma } from "../../../lib/prisma";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);

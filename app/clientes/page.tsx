@@ -2,9 +2,9 @@
 // PÁGINA: Clientes (lista)
 // ============================================================================
 import Link from "next/link";
-import { prisma } from "@/lib/prisma";
-import { iniciais } from "@/lib/calculos";
-import Badge, { tomEScore } from "@/components/Badge";
+import { prisma } from "../../lib/prisma";
+import { iniciais } from "../../lib/calculos";
+import Badge, { tomEScore } from "../../components/Badge";
 
 export const dynamic = "force-dynamic";
 

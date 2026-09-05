@@ -4,7 +4,7 @@
 // DELETE -> exclui o contrato (e parcelas, via cascade)
 // ============================================================================
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { prisma } from "../../../../lib/prisma";
 
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
   const contrato = await prisma.contrato.findUnique({

@@ -4,7 +4,7 @@
 // POST -> cria um novo cliente
 // ============================================================================
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { prisma } from "../../../lib/prisma";
 
 export async function GET() {
   const clientes = await prisma.cliente.findMany({

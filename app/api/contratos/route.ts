@@ -4,8 +4,8 @@
 // POST -> cria um novo contrato + gera automaticamente todas as parcelas
 // ============================================================================
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { calcularContrato, gerarCodigoContrato, TipoEmprestimo, Frequencia } from "@/lib/calculos";
+import { prisma } from "../../../lib/prisma";
+import { calcularContrato, gerarCodigoContrato, TipoEmprestimo, Frequencia } from "../../../lib/calculos";
 
 export async function GET() {
   const contratos = await prisma.contrato.findMany({

@@ -3,11 +3,11 @@
 // ============================================================================
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { prisma } from "@/lib/prisma";
-import { formatarMoeda, formatarData, statusDoContrato } from "@/lib/calculos";
-import Badge, { tomEStatusContrato } from "@/components/Badge";
-import ParcelasLista from "@/components/ParcelasLista";
-import ContratoAcoes from "@/components/ContratoAcoes";
+import { prisma } from "../../../lib/prisma";
+import { formatarMoeda, formatarData, statusDoContrato } from "../../../lib/calculos";
+import Badge, { tomEStatusContrato } from "../../../components/Badge";
+import ParcelasLista from "../../../components/ParcelasLista";
+import ContratoAcoes from "../../../components/ContratoAcoes";
 
 export const dynamic = "force-dynamic";
 

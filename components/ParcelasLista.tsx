@@ -9,8 +9,8 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { formatarMoeda, formatarData, statusDaParcela } from "@/lib/calculos";
-import Badge, { tomEStatusParcela } from "@/components/Badge";
+import { formatarMoeda, formatarData, statusDaParcela } from "../lib/calculos";
+import Badge, { tomEStatusParcela } from "./Badge";
 
 type Parcela = {
   id: string;

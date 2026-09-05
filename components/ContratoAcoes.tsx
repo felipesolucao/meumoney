@@ -5,7 +5,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { formatarMoeda, formatarData } from "@/lib/calculos";
+import { formatarMoeda, formatarData } from "../lib/calculos";
 
 export default function ContratoAcoes({
   contratoId,
