@@ -1,0 +1,13 @@
+# ============================================================================
+# NETLIFY CONFIG
+# ----------------------------------------------------------------------------
+# O plugin oficial @netlify/plugin-nextjs converte automaticamente as páginas
+# e as rotas de API (app/api/**) em funções serverless — não precisa
+# configurar Functions manualmente.
+# ============================================================================
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
