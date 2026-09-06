@@ -18,6 +18,7 @@ import { calcularResumoGeral } from "../lib/resumoGeral";
 import { tonCss } from "../lib/estiloCard";
 import CardSaldo from "../components/CardSaldo";
 import HeaderTopo from "../components/HeaderTopo";
+import ResumoMesInicio from "../components/ResumoMesInicio";
 import {
   IconWallet,
   IconTrendUp,
@@ -81,6 +82,13 @@ export default async function Inicio() {
             </p>
           </div>
         </Link>
+
+        {/* Resumo do mês — mesmo seletor de mês usado em "Transações", com
+            saldo do mês, a receber, saldo em contas e despesas do mês. */}
+        <div>
+          <p className="text-xs font-semibold tracking-wide text-muted mb-3">RESUMO DO MÊS</p>
+          <ResumoMesInicio />
+        </div>
 
         {/* Recebíveis e pendências — geral, juntando os dois módulos */}
         <div>

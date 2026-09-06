@@ -53,7 +53,7 @@ export default function PerfilFormulario({ nomeAtual }: { nomeAtual: string }) {
           value={nome}
           onChange={(e) => setNome(e.target.value)}
           placeholder="Seu nome completo"
-          className="w-full rounded-md border border-border px-4 py-3.5 outline-none focus:border-primary"
+          className="w-full rounded-md border border-border px-4 py-3.5 outline-none focus:border-primary bg-card text-foreground"
         />
       </div>
 

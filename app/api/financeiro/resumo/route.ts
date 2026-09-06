@@ -2,12 +2,13 @@
 // API: /api/financeiro/resumo
 // ----------------------------------------------------------------------------
 // GET ?ano=2026&mes=8 (mes 0-11, igual ao Date.getMonth()) -> resumo do mês:
-// receitas pagas, despesas pagas, balanço, total pendente a pagar/receber e
-// quantidade de lançamentos atrasados.
+// receitas pagas, despesas pagas, balanço, a receber/a pagar DO MÊS, total
+// de despesas do mês (pagas + pendentes), total pendente GERAL (todos os
+// meses) a pagar/receber, e quantidade de lançamentos atrasados.
 //
 // Existe para permitir que a tela principal do Financeiro (app/financeiro)
-// navegue entre meses no cliente (antes só existia no /historico) sem
-// precisar recarregar a página inteira a cada troca de mês.
+// e o resumo do mês na Início (components/ResumoMesInicio) naveguem entre
+// meses no cliente sem precisar recarregar a página inteira a cada troca.
 // ============================================================================
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "../../../../lib/prisma";
@@ -53,6 +54,19 @@ export async function GET(req: NextRequest) {
     .reduce((s, l) => s + Number(l.valor), 0);
   const balanco = receitasDoMes - despesasDoMes;
 
+  // "Do mês" aqui é diferente de totalAPagar/totalAReceber (que são o total
+  // pendente GERAL, olhando todos os meses) — filtra pelo mesmo array
+  // lancamentosDoMes, então só entra o que vence dentro do mês selecionado.
+  const aReceberDoMes = lancamentosDoMes
+    .filter((l) => l.tipo === "receita" && l.status === "pendente")
+    .reduce((s, l) => s + Number(l.valor), 0);
+  const aPagarDoMes = lancamentosDoMes
+    .filter((l) => l.tipo === "despesa" && l.status === "pendente")
+    .reduce((s, l) => s + Number(l.valor), 0);
+  // Total de despesas do mês = já pagas + ainda pendentes (tudo que vence
+  // no mês, independente do status já ter sido resolvido ou não).
+  const totalDespesasDoMes = despesasDoMes + aPagarDoMes;
+
   const totalAPagar = pendentesDespesa.reduce((s, l) => s + Number(l.valor), 0);
   const totalAReceber = pendentesReceita.reduce((s, l) => s + Number(l.valor), 0);
   const atrasadas = [...pendentesDespesa, ...pendentesReceita].filter(
@@ -63,6 +77,9 @@ export async function GET(req: NextRequest) {
     receitasDoMes,
     despesasDoMes,
     balanco,
+    aReceberDoMes,
+    aPagarDoMes,
+    totalDespesasDoMes,
     totalAPagar,
     totalAReceber,
     contasAPagar: pendentesDespesa.length,
