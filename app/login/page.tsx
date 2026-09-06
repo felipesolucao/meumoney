@@ -6,7 +6,10 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+<<<<<<< HEAD
 import Image from "next/image";
+=======
+>>>>>>> 470fa79c11777a570bd09534c81caf2c38e22bb8
 
 export default function LoginPage() {
   const router = useRouter();
@@ -37,7 +40,11 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex flex-col justify-center px-6">
       <div className="mb-8 text-center">
+<<<<<<< HEAD
         <Image src="/logo.png" alt="MeuMoney" width={96} height={96} className="mx-auto" priority />
+=======
+        <div className="avatar !w-16 !h-16 !text-2xl mx-auto">JX</div>
+>>>>>>> 470fa79c11777a570bd09534c81caf2c38e22bb8
         <h1 className="text-2xl font-bold mt-4">Entrar</h1>
         <p className="text-muted text-sm">Acesse sua conta financeira</p>
       </div>

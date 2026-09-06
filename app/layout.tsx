@@ -9,8 +9,13 @@ import "./globals.css";
 import BottomNav from "../components/BottomNav";
 
 export const metadata: Metadata = {
+<<<<<<< HEAD
   title: "MeuMoney — Sua vida financeira sob controle",
   description: "Controle financeiro pessoal e empresarial: contas a pagar, a receber e gestão de empréstimos",
+=======
+  title: "Jurex — Financeiro e Recebíveis",
+  description: "Gestão de contratos, clientes e parcelas de empréstimos",
+>>>>>>> 470fa79c11777a570bd09534c81caf2c38e22bb8
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

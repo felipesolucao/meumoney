@@ -10,7 +10,10 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+<<<<<<< HEAD
 import Image from "next/image";
+=======
+>>>>>>> 470fa79c11777a570bd09534c81caf2c38e22bb8
 
 export default function CadastroPage() {
   const router = useRouter();
@@ -46,7 +49,11 @@ export default function CadastroPage() {
   return (
     <div className="min-h-screen flex flex-col justify-center px-6 py-10">
       <div className="mb-8 text-center">
+<<<<<<< HEAD
         <Image src="/logo.png" alt="MeuMoney" width={96} height={96} className="mx-auto" priority />
+=======
+        <div className="avatar !w-16 !h-16 !text-2xl mx-auto">JX</div>
+>>>>>>> 470fa79c11777a570bd09534c81caf2c38e22bb8
         <h1 className="text-2xl font-bold mt-4">Criar conta</h1>
         <p className="text-muted text-sm">Leva menos de um minuto</p>
       </div>

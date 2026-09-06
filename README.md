@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 # MeuMoney — Sua vida financeira sob controle
+=======
+# Jurex — App Financeiro e de Recebíveis
+>>>>>>> 470fa79c11777a570bd09534c81caf2c38e22bb8
 
 Aplicativo em **Next.js 14 (App Router)** + **Prisma** + **PostgreSQL** para gestão
 de empréstimos: clientes, contratos (com juros diário/semanal/quinzenal/mensal
@@ -203,6 +207,7 @@ financeiro de ninguém (nomes de clientes, valores de contratos etc.).
 
 Como as tabelas que já existiam (`clientes`, `contratos`, `categorias`,
 `contas`, `lancamentos`, `lancamentos_recorrentes`) ganharam uma coluna
+<<<<<<< HEAD
 `usuarioId` **obrigatória**, ainda não existe uma migração gerada pra essa
 mudança — é o schema.prisma que já está atualizado, mas o SQL que cria a
 tabela `usuarios` e as colunas novas só é gerado quando você rodar:
@@ -220,6 +225,22 @@ receber o `npm run db:seed` de novo (que cria a conta de admin
 `admin@meumoney.online` / senha `123456` e a conta de teste `teste@meumoney.online` /
 senha `123456`, com alguns clientes e lançamentos de exemplo).
 **Troque a senha do admin depois com o script `scripts/criar-admin.js`.**
+=======
+`usuarioId` **obrigatória**, não dá pra rodar uma migração normal em cima de
+dados que já existem sem dono — o Prisma não sabe pra qual usuário atribuir
+os registros antigos. Se os dados atuais do seu banco são só de teste (como
+parece ser o caso), o caminho mais simples é resetar:
+
+```bash
+npx prisma migrate reset
+```
+
+Isso apaga todo o conteúdo do banco, aplica todas as migrações do zero
+(incluindo essa) e roda o `db:seed` de novo automaticamente — que já cria a
+conta de admin (`admin@jurex.com` / senha `123456`) e uma conta de teste
+(`teste@jurex.com` / senha `123456`) com alguns clientes e lançamentos de
+exemplo. **Troque a senha do admin depois com o script acima.**
+>>>>>>> 470fa79c11777a570bd09534c81caf2c38e22bb8
 
 Se você tiver dados reais no banco de produção que não pode perder, me avise
 antes de rodar isso — nesse caso o certo é escrever uma migração manual que
