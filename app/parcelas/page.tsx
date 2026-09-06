@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { formatarMoeda, formatarData, statusDaParcela } from "../../lib/calculos";
 import Badge, { tomEStatusParcela } from "../../components/Badge";
+import { IconChevronRight } from "../../components/Icons";
 
 type ParcelaComContrato = {
   id: string;
@@ -94,7 +95,7 @@ export default function Parcelas() {
         {aba === "por_data" && (
           <div className="card flex items-center gap-2">
             <input type="date" value={de} onChange={(e) => setDe(e.target.value)} className="flex-1 outline-none" />
-            <span className="text-muted">→</span>
+            <span className="text-muted"><IconChevronRight size={16} /></span>
             <input type="date" value={ate} onChange={(e) => setAte(e.target.value)} className="flex-1 outline-none" />
           </div>
         )}
@@ -132,9 +133,9 @@ export default function Parcelas() {
                 </div>
                 <Link
                   href={`/contratos/${p.contrato.id}`}
-                  className="w-9 h-9 rounded-full bg-surface flex items-center justify-center flex-shrink-0"
+                  className="w-9 h-9 rounded-full bg-surface flex items-center justify-center flex-shrink-0 text-muted"
                 >
-                  ›
+                  <IconChevronRight size={16} />
                 </Link>
               </div>
             );

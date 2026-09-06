@@ -12,7 +12,6 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import type {
   TipoLancamento,
   OrigemFinanceira,
@@ -20,6 +19,8 @@ import type {
   TipoFimRecorrencia,
 } from "../../../lib/financeiro";
 import { LABEL_PERIODICIDADE, LABEL_TIPO_FIM } from "../../../lib/financeiro";
+import BotaoVoltar from "../../../components/BotaoVoltar";
+import { IconWallet, IconReceipt, IconUser, IconBuilding, IconRepeat, IconPlus } from "../../../components/Icons";
 
 type Categoria = { id: string; nome: string; icone: string; tipo: TipoLancamento };
 type Conta = { id: string; nome: string; icone: string };
@@ -160,9 +161,7 @@ export default function NovoLancamentoPage() {
   return (
     <div>
       <div className="header-gradient flex items-center gap-3">
-        <Link href="/financeiro" className="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm">
-          ←
-        </Link>
+        <BotaoVoltar href="/financeiro" />
         <h1 className="text-2xl font-bold">Novo lançamento</h1>
       </div>
 
@@ -172,16 +171,16 @@ export default function NovoLancamentoPage() {
           <button
             type="button"
             onClick={() => setTipo("receita")}
-            className={tipo === "receita" ? "btn-primary !py-3.5" : "btn-outline !py-3.5"}
+            className={`flex items-center justify-center gap-2 ${tipo === "receita" ? "btn-primary !py-3.5" : "btn-outline !py-3.5"}`}
           >
-            💰 Receita
+            <IconWallet size={18} /> Receita
           </button>
           <button
             type="button"
             onClick={() => setTipo("despesa")}
-            className={tipo === "despesa" ? "btn-danger !py-3.5" : "btn-outline !py-3.5"}
+            className={`flex items-center justify-center gap-2 ${tipo === "despesa" ? "btn-danger !py-3.5" : "btn-outline !py-3.5"}`}
           >
-            🧾 Despesa
+            <IconReceipt size={18} /> Despesa
           </button>
         </div>
 
@@ -217,10 +216,10 @@ export default function NovoLancamentoPage() {
           <p className="text-xs font-semibold tracking-wide text-muted mb-2">ORIGEM</p>
           <div className="grid grid-cols-2 gap-2">
             <BotaoToggle ativo={origem === "pessoal"} onClick={() => setOrigem("pessoal")}>
-              👤 Pessoal
+              <span className="inline-flex items-center gap-2"><IconUser size={16} /> Pessoal</span>
             </BotaoToggle>
             <BotaoToggle ativo={origem === "empresarial"} onClick={() => setOrigem("empresarial")}>
-              🏢 Empresarial
+              <span className="inline-flex items-center gap-2"><IconBuilding size={16} /> Empresarial</span>
             </BotaoToggle>
           </div>
         </div>
@@ -265,8 +264,8 @@ export default function NovoLancamentoPage() {
                 </option>
               ))}
             </select>
-            <button type="button" onClick={criarCategoria} className="w-14 rounded-2xl border border-gray-200 text-xl">
-              +
+            <button type="button" onClick={criarCategoria} className="w-14 rounded-2xl border border-gray-200 flex items-center justify-center text-muted">
+              <IconPlus size={18} />
             </button>
           </div>
         </div>
@@ -287,8 +286,8 @@ export default function NovoLancamentoPage() {
                 </option>
               ))}
             </select>
-            <button type="button" onClick={criarConta} className="w-14 rounded-2xl border border-gray-200 text-xl">
-              +
+            <button type="button" onClick={criarConta} className="w-14 rounded-2xl border border-gray-200 flex items-center justify-center text-muted">
+              <IconPlus size={18} />
             </button>
           </div>
         </div>
@@ -307,7 +306,7 @@ export default function NovoLancamentoPage() {
               Lançamento único
             </BotaoToggle>
             <BotaoToggle ativo={recorrente} onClick={() => setRecorrente(true)}>
-              🔁 Recorrente
+              <span className="inline-flex items-center gap-2"><IconRepeat size={16} /> Recorrente</span>
             </BotaoToggle>
           </div>
         </div>

@@ -5,7 +5,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
+import BotaoVoltar from "../../../components/BotaoVoltar";
 
 export default function NovoCliente() {
   const router = useRouter();
@@ -41,9 +41,7 @@ export default function NovoCliente() {
   return (
     <div>
       <div className="header-gradient flex items-center gap-3">
-        <Link href="/clientes" className="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm">
-          ←
-        </Link>
+        <BotaoVoltar href="/clientes" />
         <h1 className="text-2xl font-bold">Novo cliente</h1>
       </div>
 

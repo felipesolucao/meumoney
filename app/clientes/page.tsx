@@ -5,6 +5,7 @@ import Link from "next/link";
 import { prisma } from "../../lib/prisma";
 import { iniciais } from "../../lib/calculos";
 import Badge, { tomEScore } from "../../components/Badge";
+import { IconBell } from "../../components/Icons";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +22,9 @@ export default async function Clientes() {
           <h1 className="text-2xl font-bold">Clientes</h1>
           <p className="text-muted text-sm">{clientes.length} cadastrado(s)</p>
         </div>
-        <div className="w-11 h-11 rounded-full bg-white flex items-center justify-center shadow-sm">🔔</div>
+        <div className="icon-btn text-ink">
+          <IconBell size={19} />
+        </div>
       </div>
 
       <div className="px-5 mt-5 space-y-3">

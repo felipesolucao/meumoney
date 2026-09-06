@@ -8,6 +8,8 @@
 import Link from "next/link";
 import { prisma } from "../../lib/prisma";
 import { formatarMoeda, statusEfetivoLancamento } from "../../lib/financeiro";
+import CardSaldo from "../../components/CardSaldo";
+import { IconPlus, IconReceipt, IconWallet, IconAlert } from "../../components/Icons";
 
 export const dynamic = "force-dynamic";
 
@@ -46,35 +48,32 @@ export default async function Financeiro() {
             <p className="text-muted text-sm">Controle financeiro</p>
             <h1 className="text-2xl font-bold capitalize">{nomeMes}</h1>
           </div>
-          <Link href="/financeiro/novo" className="w-11 h-11 rounded-full bg-white flex items-center justify-center shadow-sm text-xl">
-            +
+          <Link href="/financeiro/novo" className="icon-btn text-primary">
+            <IconPlus size={20} />
           </Link>
         </div>
 
-        {/* Balanço do mês */}
-        <div className="mt-5 rounded-card p-5" style={{ background: "linear-gradient(160deg,#eafaf0,#f6faf7)" }}>
-          <p className="text-xs font-semibold tracking-wide text-muted">BALANÇO DO MÊS</p>
-          <p className={`text-4xl font-extrabold mt-1 ${balanco >= 0 ? "text-primary" : "text-danger"}`}>
-            {formatarMoeda(balanco)}
-          </p>
-
-          <div className="grid grid-cols-2 gap-3 mt-4">
-            <div className="rounded-2xl border p-3" style={{ borderColor: "#cdeedb" }}>
-              <p className="text-primary text-xs font-semibold">RECEITAS</p>
-              <p className="font-bold mt-1">{formatarMoeda(receitasDoMes)}</p>
+        {/* Balanço do mês, com fundo decorativo e opção de ocultar valor */}
+        <div className="mt-5">
+          <CardSaldo label="BALANÇO DO MÊS" valor={formatarMoeda(balanco)} corValor={balanco >= 0 ? "#2FA85A" : "#E4544A"}>
+            <div className="grid grid-cols-2 gap-3 mt-4">
+              <div className="rounded-2xl border p-3 bg-white/60" style={{ borderColor: "#cdeedb" }}>
+                <p className="text-primary text-xs font-semibold">RECEITAS</p>
+                <p className="font-bold mt-1">{formatarMoeda(receitasDoMes)}</p>
+              </div>
+              <div className="rounded-2xl border p-3 bg-white/60" style={{ borderColor: "#f4c7c2" }}>
+                <p className="text-danger text-xs font-semibold">DESPESAS</p>
+                <p className="font-bold mt-1">{formatarMoeda(despesasDoMes)}</p>
+              </div>
             </div>
-            <div className="rounded-2xl border p-3" style={{ borderColor: "#f4c7c2" }}>
-              <p className="text-danger text-xs font-semibold">DESPESAS</p>
-              <p className="font-bold mt-1">{formatarMoeda(despesasDoMes)}</p>
-            </div>
-          </div>
+          </CardSaldo>
         </div>
       </div>
 
       <div className="px-5 mt-5 space-y-5">
         {/* Botão de novo lançamento em destaque */}
-        <Link href="/financeiro/novo" className="btn-primary">
-          + Novo lançamento
+        <Link href="/financeiro/novo" className="btn-primary flex items-center justify-center gap-2">
+          <IconPlus size={18} /> Novo lançamento
         </Link>
 
         {/* Pendências e alertas */}
@@ -93,8 +92,9 @@ export default async function Financeiro() {
             </Link>
           </div>
           {atrasadas > 0 && (
-            <div className="card mt-3" style={{ background: "#FBE4E2" }}>
-              <p className="text-sm font-semibold text-danger">⚠️ {atrasadas} lançamento(s) em atraso</p>
+            <div className="card mt-3 flex items-center gap-2" style={{ background: "#FBE4E2" }}>
+              <IconAlert size={18} className="text-danger" />
+              <p className="text-sm font-semibold text-danger">{atrasadas} lançamento(s) em atraso</p>
             </div>
           )}
         </div>
@@ -103,9 +103,9 @@ export default async function Financeiro() {
         <div>
           <p className="text-xs font-semibold tracking-wide text-muted mb-3">ACESSO RÁPIDO</p>
           <div className="grid grid-cols-3 gap-3 text-center">
-            <AtalhoRapido href="/financeiro/pagar" icone="🧾" label="A pagar" />
-            <AtalhoRapido href="/financeiro/receber" icone="💰" label="A receber" />
-            <AtalhoRapido href="/financeiro/novo" icone="➕" label="Novo" />
+            <AtalhoRapido href="/financeiro/pagar" icon={<IconReceipt size={22} />} label="A pagar" />
+            <AtalhoRapido href="/financeiro/receber" icon={<IconWallet size={22} />} label="A receber" />
+            <AtalhoRapido href="/financeiro/novo" icon={<IconPlus size={22} />} label="Novo" />
           </div>
         </div>
       </div>
@@ -113,12 +113,10 @@ export default async function Financeiro() {
   );
 }
 
-function AtalhoRapido({ href, icone, label }: { href: string; icone: string; label: string }) {
+function AtalhoRapido({ href, icon, label }: { href: string; icon: React.ReactNode; label: string }) {
   return (
     <Link href={href} className="flex flex-col items-center gap-2">
-      <div className="w-14 h-14 rounded-2xl bg-white shadow-card flex items-center justify-center text-xl">
-        {icone}
-      </div>
+      <div className="quick-tile text-primary">{icon}</div>
       <span className="text-xs font-medium">{label}</span>
     </Link>
   );

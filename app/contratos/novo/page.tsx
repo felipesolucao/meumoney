@@ -7,6 +7,7 @@ import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { calcularContrato, formatarMoeda, Frequencia, TipoEmprestimo } from "../../../lib/calculos";
+import BotaoVoltar from "../../../components/BotaoVoltar";
 
 type Cliente = { id: string; nome: string };
 
@@ -96,9 +97,7 @@ function NovoContrato() {
   return (
     <div>
       <div className="header-gradient flex items-center gap-3">
-        <Link href="/contratos" className="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm">
-          ←
-        </Link>
+        <BotaoVoltar href="/contratos" />
         <h1 className="text-2xl font-bold">Novo contrato</h1>
       </div>
 

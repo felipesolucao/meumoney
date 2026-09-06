@@ -4,9 +4,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import { formatarMoeda } from "../../../lib/financeiro";
 import LancamentosLista, { LancamentoItem } from "../../../components/LancamentosLista";
+import BotaoVoltar from "../../../components/BotaoVoltar";
 
 type Aba = "pendentes" | "atrasadas" | "pagas" | "todas";
 
@@ -38,9 +38,7 @@ export default function ContasAPagar() {
   return (
     <div>
       <div className="header-gradient flex items-center gap-3">
-        <Link href="/financeiro" className="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm">
-          ←
-        </Link>
+        <BotaoVoltar href="/financeiro" />
         <div>
           <h1 className="text-2xl font-bold">Contas a pagar</h1>
           <p className="text-muted text-sm">Histórico de despesas</p>

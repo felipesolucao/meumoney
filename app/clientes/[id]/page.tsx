@@ -9,6 +9,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "../../../lib/prisma";
 import { formatarMoeda, iniciais, statusDoContrato } from "../../../lib/calculos";
 import Badge, { tomEScore, tomEStatusContrato } from "../../../components/Badge";
+import BotaoVoltar from "../../../components/BotaoVoltar";
 
 export const dynamic = "force-dynamic";
 
@@ -30,9 +31,7 @@ export default async function DetalheCliente({ params }: { params: { id: string 
   return (
     <div>
       <div className="header-gradient flex items-center gap-3">
-        <Link href="/clientes" className="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm">
-          ←
-        </Link>
+        <BotaoVoltar href="/clientes" />
         <h1 className="text-xl font-bold truncate">{cliente.nome}</h1>
       </div>
 

@@ -8,6 +8,8 @@ import { formatarMoeda, formatarData, statusDoContrato } from "../../../lib/calc
 import Badge, { tomEStatusContrato } from "../../../components/Badge";
 import ParcelasLista from "../../../components/ParcelasLista";
 import ContratoAcoes from "../../../components/ContratoAcoes";
+import BotaoVoltar from "../../../components/BotaoVoltar";
+import { IconHome } from "../../../components/Icons";
 
 export const dynamic = "force-dynamic";
 
@@ -41,11 +43,9 @@ export default async function DetalheContrato({ params }: { params: { id: string
   return (
     <div>
       <div className="header-gradient flex items-center gap-3">
-        <Link href="/contratos" className="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm">
-          ←
-        </Link>
-        <Link href="/" className="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm">
-          🏠
+        <BotaoVoltar href="/contratos" />
+        <Link href="/" className="icon-btn text-ink">
+          <IconHome size={19} />
         </Link>
         <div>
           <h1 className="text-xl font-bold">{contrato.codigo}</h1>
