@@ -24,6 +24,7 @@ import { useMemo, useState } from "react";
 import { formatarMoeda, statusEfetivoLancamento } from "../lib/financeiro";
 import { agruparPorDia } from "../lib/calculos";
 import Badge, { tomEStatusLancamento } from "./Badge";
+import { useToast } from "./ToastProvider";
 import { IconWallet, IconReceipt, IconCheck, IconUndo, IconTrash, IconEdit } from "./Icons";
 
 export type LancamentoItem = {
@@ -42,6 +43,7 @@ export type LancamentoItem = {
 
 export default function LancamentosLista({ lancamentos }: { lancamentos: LancamentoItem[] }) {
   const router = useRouter();
+  const showToast = useToast();
   const [carregandoId, setCarregandoId] = useState<string | null>(null);
 
   const grupos = useMemo(
@@ -51,12 +53,23 @@ export default function LancamentosLista({ lancamentos }: { lancamentos: Lancame
 
   async function alternarStatus(item: LancamentoItem) {
     setCarregandoId(item.id);
-    await fetch(`/api/lancamentos/${item.id}`, {
+    const res = await fetch(`/api/lancamentos/${item.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ acao: item.status === "pago" ? "reabrir" : "pagar" }),
     });
     setCarregandoId(null);
+    if (res.ok) {
+      showToast(
+        item.status === "pago"
+          ? "Lançamento reaberto."
+          : item.tipo === "receita"
+          ? "Recebimento confirmado!"
+          : "Pagamento confirmado!"
+      );
+    } else {
+      showToast("Não foi possível atualizar o lançamento.", "erro");
+    }
     router.refresh();
   }
 
@@ -75,8 +88,13 @@ export default function LancamentosLista({ lancamentos }: { lancamentos: Lancame
     }
 
     setCarregandoId(item.id);
-    await fetch(`/api/lancamentos/${item.id}${excluirSerie ? "?serie=true" : ""}`, { method: "DELETE" });
+    const res = await fetch(`/api/lancamentos/${item.id}${excluirSerie ? "?serie=true" : ""}`, { method: "DELETE" });
     setCarregandoId(null);
+    if (res.ok) {
+      showToast("Lançamento excluído.");
+    } else {
+      showToast("Não foi possível excluir o lançamento.", "erro");
+    }
     router.refresh();
   }
 

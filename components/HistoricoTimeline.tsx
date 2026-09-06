@@ -13,6 +13,7 @@
 
 import { useState } from "react";
 import { formatarMoeda } from "../lib/calculos";
+import { useToast } from "./ToastProvider";
 import { IconDocument, IconUser, IconCash, IconUndo } from "./Icons";
 
 export type HistoricoItem = {
@@ -45,6 +46,7 @@ const AVISO_CASCATA = new Set(["CLIENTE_EXCLUIDO", "CONTRATO_EXCLUIDO", "LANCAME
 export default function HistoricoTimeline({ itens }: { itens: HistoricoItem[] }) {
   const [processandoId, setProcessandoId] = useState<string | null>(null);
   const [lista, setLista] = useState(itens);
+  const showToast = useToast();
 
   async function reverter(item: HistoricoItem) {
     const avisoExtra = AVISO_CASCATA.has(item.tipo)
@@ -61,9 +63,10 @@ export default function HistoricoTimeline({ itens }: { itens: HistoricoItem[] })
       setLista((atual) =>
         atual.map((h) => (h.id === item.id ? { ...h, revertidoEm: new Date().toISOString() } : h))
       );
+      showToast("Ação revertida com sucesso.");
     } else {
       const data = await res.json();
-      window.alert(data.error || "Não foi possível reverter esta ação.");
+      showToast(data.error || "Não foi possível reverter esta ação.", "erro");
     }
   }
 

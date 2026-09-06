@@ -13,6 +13,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import type { TipoLancamento } from "../../../../lib/financeiro";
 import BotaoVoltar from "../../../../components/BotaoVoltar";
+import { useToast } from "../../../../components/ToastProvider";
 import { IconTrash } from "../../../../components/Icons";
 
 type Categoria = { id: string; nome: string; icone: string; tipo: TipoLancamento };
@@ -33,6 +34,7 @@ type LancamentoDetalhe = {
 export default function EditarLancamentoPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
+  const showToast = useToast();
 
   const [carregando, setCarregando] = useState(true);
   const [salvando, setSalvando] = useState(false);
@@ -98,10 +100,12 @@ export default function EditarLancamentoPage() {
     setSalvando(false);
 
     if (res.ok) {
+      showToast("Lançamento atualizado com sucesso!");
       router.push(tipo === "receita" ? "/financeiro/receber" : "/financeiro/pagar");
     } else {
       const data = await res.json();
       setErro(data.error || "Não foi possível salvar as alterações.");
+      showToast(data.error || "Não foi possível salvar as alterações.", "erro");
     }
   }
 
@@ -111,7 +115,10 @@ export default function EditarLancamentoPage() {
     const res = await fetch(`/api/lancamentos/${params.id}`, { method: "DELETE" });
     setExcluindo(false);
     if (res.ok) {
+      showToast("Lançamento excluído.");
       router.push(tipo === "receita" ? "/financeiro/receber" : "/financeiro/pagar");
+    } else {
+      showToast("Não foi possível excluir o lançamento.", "erro");
     }
   }
 

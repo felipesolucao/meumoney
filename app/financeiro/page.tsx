@@ -1,81 +1,152 @@
 // ============================================================================
 // PÁGINA: Financeiro (painel de controle financeiro pessoal e empresarial)
 // ----------------------------------------------------------------------------
-// Mostra o balanço do mês (receitas x despesas), quanto está pendente para
-// pagar e para receber, e atalhos para o histórico e o cadastro de novos
-// lançamentos. Independente do módulo de Contratos/Parcelas de empréstimos.
+// Mostra o balanço do mês selecionado (receitas x despesas), quanto está
+// pendente para pagar e para receber, e atalhos para o histórico e o
+// cadastro de novos lançamentos. Independente do módulo de Contratos.
+//
+// Virou client component (antes era server component) para permitir navegar
+// entre meses sem recarregar a página — o resumo vem de /api/financeiro/resumo.
+// "Novo lançamento" sempre abre com a data pré-preenchida dentro do mês que
+// está sendo visualizado no momento (passada como query string), então dá
+// pra lançar algo em meses passados ou futuros sem precisar trocar a data
+// manualmente depois.
 // ============================================================================
+"use client";
+
 import Link from "next/link";
-import { prisma } from "../../lib/prisma";
-import { formatarMoeda, statusEfetivoLancamento } from "../../lib/financeiro";
-import { exigirSessao } from "../../lib/auth";
+import { useEffect, useState } from "react";
+import { formatarMoeda } from "../../lib/financeiro";
 import CardSaldo from "../../components/CardSaldo";
-import { IconPlus, IconReceipt, IconWallet, IconAlert, IconHistory } from "../../components/Icons";
+import MesSeletor from "../../components/MesSeletor";
+import { IconPlus, IconReceipt, IconWallet, IconAlert, IconHistory, IconCalendar } from "../../components/Icons";
 
-export const dynamic = "force-dynamic";
+type Resumo = {
+  receitasDoMes: number;
+  despesasDoMes: number;
+  balanco: number;
+  totalAPagar: number;
+  totalAReceber: number;
+  contasAPagar: number;
+  contasAReceber: number;
+  atrasadas: number;
+};
 
-export default async function Financeiro() {
-  const sessao = await exigirSessao();
+function isoHoje(offsetDias = 0) {
+  const d = new Date();
+  d.setDate(d.getDate() + offsetDias);
+  return d.toISOString().slice(0, 10);
+}
 
+export default function Financeiro() {
   const hoje = new Date();
-  const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
-  const fimMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0, 23, 59, 59);
+  const [ano, setAno] = useState(hoje.getFullYear());
+  const [mes, setMes] = useState(hoje.getMonth());
 
-  const [lancamentosDoMes, pendentesDespesa, pendentesReceita] = await Promise.all([
-    prisma.lancamento.findMany({ where: { usuarioId: sessao.id, dataVencimento: { gte: inicioMes, lte: fimMes } } }),
-    prisma.lancamento.findMany({ where: { usuarioId: sessao.id, tipo: "despesa", status: "pendente" } }),
-    prisma.lancamento.findMany({ where: { usuarioId: sessao.id, tipo: "receita", status: "pendente" } }),
-  ]);
+  // Período personalizado (selecionado no calendário) — quando ativo,
+  // substitui a navegação por mês e passa a filtrar por um intervalo
+  // exato de datas, útil para analisar uma quinzena, um trimestre etc.
+  const [periodoPersonalizado, setPeriodoPersonalizado] = useState(false);
+  const [dataDe, setDataDe] = useState(isoHoje(-30));
+  const [dataAte, setDataAte] = useState(isoHoje());
 
-  const receitasDoMes = lancamentosDoMes
-    .filter((l) => l.tipo === "receita" && l.status === "pago")
-    .reduce((s, l) => s + Number(l.valor), 0);
-  const despesasDoMes = lancamentosDoMes
-    .filter((l) => l.tipo === "despesa" && l.status === "pago")
-    .reduce((s, l) => s + Number(l.valor), 0);
-  const balanco = receitasDoMes - despesasDoMes;
+  const [resumo, setResumo] = useState<Resumo | null>(null);
+  const [carregando, setCarregando] = useState(true);
 
-  const totalAPagar = pendentesDespesa.reduce((s, l) => s + Number(l.valor), 0);
-  const totalAReceber = pendentesReceita.reduce((s, l) => s + Number(l.valor), 0);
-  const atrasadas = [...pendentesDespesa, ...pendentesReceita].filter(
-    (l) => statusEfetivoLancamento(l.status, l.dataVencimento) === "atrasado"
-  ).length;
+  useEffect(() => {
+    setCarregando(true);
+    const url = periodoPersonalizado
+      ? `/api/financeiro/resumo?de=${dataDe}&ate=${dataAte}`
+      : `/api/financeiro/resumo?ano=${ano}&mes=${mes}`;
 
-  const nomeMes = hoje.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+    fetch(url)
+      .then((r) => r.json())
+      .then((data: Resumo) => {
+        setResumo(data);
+        setCarregando(false);
+      });
+  }, [ano, mes, periodoPersonalizado, dataDe, dataAte]);
+
+  // Data usada para pré-preencher "Novo lançamento": dia 1 do mês em
+  // visualização, exceto quando o mês em questão é o atual — nesse caso usa
+  // hoje mesmo, que é o padrão mais útil.
+  const ehMesAtual = ano === hoje.getFullYear() && mes === hoje.getMonth();
+  const dataSugerida = ehMesAtual
+    ? hoje.toISOString().slice(0, 10)
+    : `${ano}-${String(mes + 1).padStart(2, "0")}-01`;
 
   return (
     <div>
       <div className="header-gradient">
-        <div className="flex items-center justify-between">
-          <div>
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
             <p className="text-muted text-sm">Controle financeiro</p>
-            <h1 className="text-2xl font-bold capitalize">{nomeMes}</h1>
+            <h1 className="text-xl font-bold truncate">Seu resumo do mês</h1>
           </div>
-          <Link href="/financeiro/novo" className="icon-btn text-primary">
-            <IconPlus size={20} />
-          </Link>
-        </div>
-
-        <div className="flex justify-end mt-2">
+          {/* Botão de novo lançamento — tamanho fixo 40x40 (mesmo padrão dos
+              outros ícones de topo do app, ver .icon-btn no globals.css) */}
           <Link
-            href="/historico?entidade=Lancamento&voltar=/financeiro"
-            className="text-sm font-semibold text-primary flex items-center gap-1.5"
+            href={`/financeiro/novo?data=${dataSugerida}`}
+            aria-label="Novo lançamento"
+            className="icon-btn text-primary flex-shrink-0"
           >
-            <IconHistory size={15} /> Ver histórico
+            <IconPlus size={18} />
           </Link>
         </div>
 
-        {/* Balanço do mês, com fundo decorativo e opção de ocultar valor */}
-        <div className="mt-5">
-          <CardSaldo label="BALANÇO DO MÊS" valor={formatarMoeda(balanco)} corValor={balanco >= 0 ? "#2FA85A" : "#E4544A"}>
+        {/* Navegação de mês ou período personalizado — agora vive aqui, na
+            própria tela do Financeiro (antes só existia em /historico) */}
+        <div className="card mt-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-semibold tracking-wide text-muted">
+              {periodoPersonalizado ? "PERÍODO PERSONALIZADO" : "MÊS"}
+            </p>
+            <button
+              type="button"
+              onClick={() => setPeriodoPersonalizado((v) => !v)}
+              className="text-xs font-semibold text-primary flex items-center gap-1"
+            >
+              <IconCalendar size={13} />
+              {periodoPersonalizado ? "Ver por mês" : "Período personalizado"}
+            </button>
+          </div>
+
+          {periodoPersonalizado ? (
+            <div className="flex items-center gap-2">
+              <input
+                type="date"
+                value={dataDe}
+                onChange={(e) => setDataDe(e.target.value)}
+                className="flex-1 rounded-2xl border border-gray-200 px-3 py-2.5 text-sm outline-none focus:border-primary"
+              />
+              <span className="text-muted text-sm">até</span>
+              <input
+                type="date"
+                value={dataAte}
+                onChange={(e) => setDataAte(e.target.value)}
+                className="flex-1 rounded-2xl border border-gray-200 px-3 py-2.5 text-sm outline-none focus:border-primary"
+              />
+            </div>
+          ) : (
+            <MesSeletor ano={ano} mes={mes} onMudar={(a, m) => { setAno(a); setMes(m); }} />
+          )}
+        </div>
+
+        {/* Balanço do mês ou período selecionado */}
+        <div className="mt-4">
+          <CardSaldo
+            label={periodoPersonalizado ? "BALANÇO DO PERÍODO" : "BALANÇO DO MÊS"}
+            valor={carregando ? "R$ —" : formatarMoeda(resumo?.balanco ?? 0)}
+            corValor={(resumo?.balanco ?? 0) >= 0 ? "#2FA85A" : "#E4544A"}
+          >
             <div className="grid grid-cols-2 gap-3 mt-4">
               <div className="rounded-2xl border p-3 bg-white/60" style={{ borderColor: "#cdeedb" }}>
                 <p className="text-primary text-xs font-semibold">RECEITAS</p>
-                <p className="font-bold mt-1">{formatarMoeda(receitasDoMes)}</p>
+                <p className="font-bold mt-1">{carregando ? "—" : formatarMoeda(resumo?.receitasDoMes ?? 0)}</p>
               </div>
               <div className="rounded-2xl border p-3 bg-white/60" style={{ borderColor: "#f4c7c2" }}>
                 <p className="text-danger text-xs font-semibold">DESPESAS</p>
-                <p className="font-bold mt-1">{formatarMoeda(despesasDoMes)}</p>
+                <p className="font-bold mt-1">{carregando ? "—" : formatarMoeda(resumo?.despesasDoMes ?? 0)}</p>
               </div>
             </div>
           </CardSaldo>
@@ -83,30 +154,39 @@ export default async function Financeiro() {
       </div>
 
       <div className="px-5 mt-5 space-y-5">
-        {/* Botão de novo lançamento em destaque */}
-        <Link href="/financeiro/novo" className="btn-primary flex items-center justify-center gap-2">
+        {/* Botão de novo lançamento em destaque (largura total, ação principal) */}
+        <Link href={`/financeiro/novo?data=${dataSugerida}`} className="btn-primary flex items-center justify-center gap-2">
           <IconPlus size={18} /> Novo lançamento
         </Link>
 
-        {/* Pendências e alertas */}
+        <Link
+          href="/historico?entidade=Lancamento&voltar=/financeiro"
+          className="text-sm font-semibold text-primary flex items-center gap-1.5 justify-end"
+        >
+          <IconHistory size={15} /> Ver histórico de ações
+        </Link>
+
+        {/* Pendências e alertas — sempre olhando o total geral, não só o mês
+            em visualização, já que uma conta atrasada de outro mês continua
+            relevante independente de qual mês está sendo navegado agora. */}
         <div>
-          <p className="text-xs font-semibold tracking-wide text-muted mb-3">PENDÊNCIAS E ALERTAS</p>
+          <p className="text-xs font-semibold tracking-wide text-muted mb-3">PENDÊNCIAS E ALERTAS (GERAL)</p>
           <div className="grid grid-cols-2 gap-3">
             <Link href="/financeiro/pagar" className="card block">
               <p className="text-xs font-semibold text-danger">A PAGAR</p>
-              <p className="font-bold mt-1">{formatarMoeda(totalAPagar)}</p>
-              <p className="text-xs text-muted mt-1">{pendentesDespesa.length} conta(s)</p>
+              <p className="font-bold mt-1">{carregando ? "—" : formatarMoeda(resumo?.totalAPagar ?? 0)}</p>
+              <p className="text-xs text-muted mt-1">{resumo?.contasAPagar ?? 0} conta(s)</p>
             </Link>
             <Link href="/financeiro/receber" className="card block">
               <p className="text-xs font-semibold text-primary">A RECEBER</p>
-              <p className="font-bold mt-1">{formatarMoeda(totalAReceber)}</p>
-              <p className="text-xs text-muted mt-1">{pendentesReceita.length} conta(s)</p>
+              <p className="font-bold mt-1">{carregando ? "—" : formatarMoeda(resumo?.totalAReceber ?? 0)}</p>
+              <p className="text-xs text-muted mt-1">{resumo?.contasAReceber ?? 0} conta(s)</p>
             </Link>
           </div>
-          {atrasadas > 0 && (
+          {(resumo?.atrasadas ?? 0) > 0 && (
             <div className="card mt-3 flex items-center gap-2" style={{ background: "#FBE4E2" }}>
               <IconAlert size={18} className="text-danger" />
-              <p className="text-sm font-semibold text-danger">{atrasadas} lançamento(s) em atraso</p>
+              <p className="text-sm font-semibold text-danger">{resumo?.atrasadas} lançamento(s) em atraso</p>
             </div>
           )}
         </div>
@@ -117,7 +197,7 @@ export default async function Financeiro() {
           <div className="grid grid-cols-3 gap-3 text-center">
             <AtalhoRapido href="/financeiro/pagar" icon={<IconReceipt size={22} />} label="A pagar" />
             <AtalhoRapido href="/financeiro/receber" icon={<IconWallet size={22} />} label="A receber" />
-            <AtalhoRapido href="/financeiro/novo" icon={<IconPlus size={22} />} label="Novo" />
+            <AtalhoRapido href={`/financeiro/novo?data=${dataSugerida}`} icon={<IconPlus size={22} />} label="Novo" />
           </div>
         </div>
       </div>

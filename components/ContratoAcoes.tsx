@@ -7,6 +7,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { formatarMoeda, formatarData } from "../lib/calculos";
+import { useToast } from "./ToastProvider";
 import { IconSend, IconTrash, IconHistory } from "./Icons";
 
 export default function ContratoAcoes({
@@ -27,6 +28,7 @@ export default function ContratoAcoes({
   primeiraParcelaData: string;
 }) {
   const router = useRouter();
+  const showToast = useToast();
   const [excluindo, setExcluindo] = useState(false);
 
   function enviarWhatsApp() {
@@ -43,7 +45,12 @@ export default function ContratoAcoes({
     setExcluindo(true);
     const res = await fetch(`/api/contratos/${contratoId}`, { method: "DELETE" });
     setExcluindo(false);
-    if (res.ok) router.push("/contratos");
+    if (res.ok) {
+      showToast("Contrato excluído.");
+      router.push("/contratos");
+    } else {
+      showToast("Não foi possível excluir o contrato.", "erro");
+    }
   }
 
   return (

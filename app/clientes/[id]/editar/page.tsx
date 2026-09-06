@@ -11,6 +11,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import BotaoVoltar from "../../../../components/BotaoVoltar";
+import { useToast } from "../../../../components/ToastProvider";
 import { IconTrash } from "../../../../components/Icons";
 
 type ClienteDetalhe = {
@@ -40,6 +41,7 @@ const CAMPO_VAZIO = "";
 export default function EditarClientePage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
+  const showToast = useToast();
 
   const [carregando, setCarregando] = useState(true);
   const [salvando, setSalvando] = useState(false);
@@ -91,10 +93,12 @@ export default function EditarClientePage() {
     });
     setSalvando(false);
     if (res.ok) {
+      showToast("Cliente atualizado com sucesso!");
       router.push(`/clientes/${params.id}`);
     } else {
       const data = await res.json();
       setErro(data.error || "Não foi possível salvar as alterações.");
+      showToast(data.error || "Não foi possível salvar as alterações.", "erro");
     }
   }
 
@@ -103,7 +107,12 @@ export default function EditarClientePage() {
     setExcluindo(true);
     const res = await fetch(`/api/clientes/${params.id}`, { method: "DELETE" });
     setExcluindo(false);
-    if (res.ok) router.push("/clientes");
+    if (res.ok) {
+      showToast("Cliente excluído.");
+      router.push("/clientes");
+    } else {
+      showToast("Não foi possível excluir o cliente.", "erro");
+    }
   }
 
   if (carregando) {

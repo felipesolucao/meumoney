@@ -11,7 +11,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import type {
   TipoLancamento,
   OrigemFinanceira,
@@ -20,7 +20,12 @@ import type {
 } from "../../../lib/financeiro";
 import { LABEL_PERIODICIDADE, LABEL_TIPO_FIM } from "../../../lib/financeiro";
 import BotaoVoltar from "../../../components/BotaoVoltar";
+import { useToast } from "../../../components/ToastProvider";
 import { IconWallet, IconReceipt, IconUser, IconBuilding, IconRepeat, IconPlus } from "../../../components/Icons";
+
+// useSearchParams() exige que a página não seja pré-renderizada estaticamente
+// no build (mesmo ajuste feito em app/historico/page.tsx).
+export const dynamic = "force-dynamic";
 
 type Categoria = { id: string; nome: string; icone: string; tipo: TipoLancamento };
 type Conta = { id: string; nome: string; icone: string };
@@ -33,14 +38,22 @@ function isoHoje(offsetDias = 0) {
 
 export default function NovoLancamentoPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const showToast = useToast();
+  // Quando a tela é aberta a partir de um mês específico (ver app/financeiro),
+  // a data já chega pronta via "?data=aaaa-mm-dd" — inclusive para meses
+  // passados ou futuros, sem precisar trocar manualmente depois de abrir.
+  const dataInicial = searchParams.get("data") || isoHoje();
 
   // --- Campos principais ----------------------------------------------------
   const [tipo, setTipo] = useState<TipoLancamento>("receita");
   const [origem, setOrigem] = useState<OrigemFinanceira>("pessoal");
   const [valor, setValor] = useState("");
   const [descricao, setDescricao] = useState("");
-  const [dataAtalho, setDataAtalho] = useState<"hoje" | "ontem" | "outros">("hoje");
-  const [dataVencimento, setDataVencimento] = useState(isoHoje());
+  const [dataAtalho, setDataAtalho] = useState<"hoje" | "ontem" | "outros">(
+    dataInicial === isoHoje() ? "hoje" : "outros"
+  );
+  const [dataVencimento, setDataVencimento] = useState(dataInicial);
   const [pago, setPago] = useState(true);
   const [observacoes, setObservacoes] = useState("");
 
@@ -151,10 +164,12 @@ export default function NovoLancamentoPage() {
     setSalvando(false);
 
     if (res.ok) {
+      showToast(tipo === "receita" ? "Receita adicionada com sucesso!" : "Despesa adicionada com sucesso!");
       router.push(tipo === "receita" ? "/financeiro/receber" : "/financeiro/pagar");
     } else {
       const data = await res.json();
       setErro(data.error || "Não foi possível salvar o lançamento.");
+      showToast(data.error || "Não foi possível salvar o lançamento.", "erro");
     }
   }
 

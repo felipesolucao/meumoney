@@ -6,9 +6,11 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import BotaoVoltar from "../../../components/BotaoVoltar";
+import { useToast } from "../../../components/ToastProvider";
 
 export default function NovoCliente() {
   const router = useRouter();
+  const showToast = useToast();
   const [nome, setNome] = useState("");
   const [telefone, setTelefone] = useState("");
   const [cpf, setCpf] = useState("");
@@ -31,10 +33,12 @@ export default function NovoCliente() {
     setSalvando(false);
     if (res.ok) {
       const cliente = await res.json();
+      showToast("Cliente cadastrado com sucesso!");
       router.push(`/clientes/${cliente.id}`);
     } else {
       const data = await res.json();
       setErro(data.error || "Não foi possível salvar o cliente.");
+      showToast(data.error || "Não foi possível salvar o cliente.", "erro");
     }
   }
 

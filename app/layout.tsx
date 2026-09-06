@@ -7,6 +7,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import BottomNav from "../components/BottomNav";
+import ToastProvider from "../components/ToastProvider";
 
 export const metadata: Metadata = {
   title: "MeuMoney — Sua vida financeira sob controle",
@@ -17,8 +18,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="pt-BR">
       <body className="font-sans">
-        <div className="app-shell">{children}</div>
-        <BottomNav />
+        <ToastProvider>
+          <div className="app-shell">{children}</div>
+          <BottomNav />
+        </ToastProvider>
       </body>
     </html>
   );

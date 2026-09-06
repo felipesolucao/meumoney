@@ -15,6 +15,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { formatarMoeda, formatarData, statusDaParcela } from "../lib/calculos";
 import Badge, { tomEStatusParcela } from "./Badge";
+import { useToast } from "./ToastProvider";
 import { IconChat, IconRefresh, IconCash, IconEdit } from "./Icons";
 
 type Parcela = {
@@ -37,16 +38,18 @@ export default function ParcelasLista({
   codigoContrato: string;
 }) {
   const router = useRouter();
+  const showToast = useToast();
   const [carregandoId, setCarregandoId] = useState<string | null>(null);
 
   async function pagar(id: string) {
     setCarregandoId(id);
-    await fetch(`/api/parcelas/${id}`, {
+    const res = await fetch(`/api/parcelas/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ acao: "pagar" }),
     });
     setCarregandoId(null);
+    showToast(res.ok ? "Parcela paga!" : "Não foi possível marcar a parcela como paga.", res.ok ? "sucesso" : "erro");
     router.refresh();
   }
 
@@ -57,12 +60,13 @@ export default function ParcelasLista({
     if (!isoData) return window.alert("Data inválida. Use o formato dd/mm/aaaa.");
 
     setCarregandoId(id);
-    await fetch(`/api/parcelas/${id}`, {
+    const res = await fetch(`/api/parcelas/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ acao: "renegociar", novoVencimento: isoData }),
     });
     setCarregandoId(null);
+    showToast(res.ok ? "Parcela renegociada." : "Não foi possível renegociar a parcela.", res.ok ? "sucesso" : "erro");
     router.refresh();
   }
 
@@ -80,12 +84,13 @@ export default function ParcelasLista({
     if (!isoData) return window.alert("Data inválida. Use o formato dd/mm/aaaa.");
 
     setCarregandoId(p.id);
-    await fetch(`/api/parcelas/${p.id}`, {
+    const res = await fetch(`/api/parcelas/${p.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ acao: "editar", valor: novoValor, novoVencimento: isoData }),
     });
     setCarregandoId(null);
+    showToast(res.ok ? "Parcela atualizada." : "Não foi possível atualizar a parcela.", res.ok ? "sucesso" : "erro");
     router.refresh();
   }
 
