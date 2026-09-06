@@ -282,6 +282,13 @@ model Conta {
   id                    String                 @id @default(cuid())
   nome                  String
   icone                 String                 @default("🏦")
+  // Saldo de partida da conta (ex: o que já tinha na Nubank antes de começar
+  // a usar o app). O saldo "real" mostrado nas telas é sempre calculado como
+  // saldoInicial + receitas pagas dessa conta - despesas pagas dessa conta —
+  // nunca gravamos o saldo atual direto, pra ele nunca ficar dessincronizado
+  // dos lançamentos. Editar esse campo (ver /financeiro/contas) é o jeito de
+  // "ajustar o saldo" quando ele não bate com o banco de verdade.
+  saldoInicial          Decimal                @default(0) @db.Decimal(12, 2)
   criadoEm              DateTime               @default(now())
 
   usuarioId             String

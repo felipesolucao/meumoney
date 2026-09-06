@@ -16,6 +16,7 @@ import {
   IconChart,
   IconUsers,
   IconTag,
+  IconBuilding,
 } from "../../components/Icons";
 
 const ITENS = [
@@ -23,6 +24,8 @@ const ITENS = [
   { href: "/financeiro/pagar", icon: IconReceipt, label: "Contas a pagar", desc: "Histórico de despesas" },
   { href: "/financeiro/receber", icon: IconWallet, label: "Contas a receber", desc: "Histórico de receitas" },
   { href: "/financeiro/categorias", icon: IconTag, label: "Categorias", desc: "Emoji, nome e histórico por categoria" },
+  { href: "/financeiro/contas", icon: IconBuilding, label: "Contas bancárias", desc: "Saldo por conta e edição de saldo" },
+  { href: "/financeiro/relatorios", icon: IconChart, label: "Relatório por categoria", desc: "Gráfico e percentual de gasto/receita" },
   { href: "/parcelas", icon: IconCalendar, label: "Parcelas", desc: "Ver todas as parcelas por período" },
   { href: "/clientes/novo", icon: IconUser, label: "Novo cliente", desc: "Cadastrar um novo cliente" },
   { href: "/contratos/novo", icon: IconDocument, label: "Novo contrato", desc: "Criar um novo empréstimo" },

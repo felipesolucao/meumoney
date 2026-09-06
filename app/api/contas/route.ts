@@ -20,12 +20,19 @@ export async function POST(req: NextRequest) {
   if (!sessao) return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
 
   const body = await req.json();
-  const { nome, icone } = body as { nome: string; icone?: string };
+  const { nome, icone, saldoInicial } = body as { nome: string; icone?: string; saldoInicial?: number };
 
   if (!nome) {
     return NextResponse.json({ error: "Informe o nome da conta." }, { status: 400 });
   }
 
-  const conta = await prisma.conta.create({ data: { nome, icone: icone || undefined, usuarioId: sessao.id } });
+  const conta = await prisma.conta.create({
+    data: {
+      nome,
+      icone: icone || undefined,
+      saldoInicial: saldoInicial != null ? Number(saldoInicial) : undefined,
+      usuarioId: sessao.id,
+    },
+  });
   return NextResponse.json(conta, { status: 201 });
 }

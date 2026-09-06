@@ -4,11 +4,21 @@
 // Por padrão mostra o mês atual (seletor de mês no topo, como no app de
 // referência). A aba "Atrasadas" e "Todas" ignoram o filtro de mês, porque
 // nesses casos faz mais sentido ver tudo, independente do período.
+//
+// Aceita ?aba=pendentes|atrasadas|pagas|todas na URL, para permitir que
+// outras telas (ex: o bloco "DESPESAS" do card de balanço em /financeiro)
+// já abram direto na aba certa, em vez de sempre cair em "Pendentes".
+//
+// useSearchParams() exige um <Suspense> ao redor quando a página é
+// pré-renderizada no build (mesmo motivo de app/historico/page.tsx), por
+// isso a lógica fica num componente filho e a exportação padrão só monta
+// o Suspense em volta dele.
 // ============================================================================
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { formatarMoeda } from "../../../lib/financeiro";
 import LancamentosLista, { LancamentoItem } from "../../../components/LancamentosLista";
 import BotaoVoltar from "../../../components/BotaoVoltar";
@@ -16,13 +26,17 @@ import MesSeletor from "../../../components/MesSeletor";
 import { IconHistory } from "../../../components/Icons";
 
 type Aba = "pendentes" | "atrasadas" | "pagas" | "todas";
+const ABAS_VALIDAS: Aba[] = ["pendentes", "atrasadas", "pagas", "todas"];
 
 function pad(n: number) {
   return String(n).padStart(2, "0");
 }
 
-export default function ContasAPagar() {
-  const [aba, setAba] = useState<Aba>("pendentes");
+function ContasAPagarConteudo() {
+  const params = useSearchParams();
+  const abaInicial = ABAS_VALIDAS.includes(params.get("aba") as Aba) ? (params.get("aba") as Aba) : "pendentes";
+
+  const [aba, setAba] = useState<Aba>(abaInicial);
   const hoje = new Date();
   const [ano, setAno] = useState(hoje.getFullYear());
   const [mes, setMes] = useState(hoje.getMonth());
@@ -115,5 +129,22 @@ export default function ContasAPagar() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function ContasAPagar() {
+  return (
+    <Suspense
+      fallback={
+        <div>
+          <div className="header-gradient">
+            <h1 className="text-2xl font-bold">Contas a pagar</h1>
+          </div>
+          <p className="text-center text-muted text-sm py-10">Carregando...</p>
+        </div>
+      }
+    >
+      <ContasAPagarConteudo />
+    </Suspense>
   );
 }

@@ -19,7 +19,18 @@ import { useEffect, useState } from "react";
 import { formatarMoeda } from "../../lib/financeiro";
 import CardSaldo from "../../components/CardSaldo";
 import MesSeletor from "../../components/MesSeletor";
-import { IconPlus, IconReceipt, IconWallet, IconAlert, IconHistory, IconCalendar } from "../../components/Icons";
+import { tonCss } from "../../lib/estiloCard";
+import {
+  IconPlus,
+  IconReceipt,
+  IconWallet,
+  IconAlert,
+  IconHistory,
+  IconCalendar,
+  IconBuilding,
+  IconChart,
+  IconTag,
+} from "../../components/Icons";
 
 type Resumo = {
   receitasDoMes: number;
@@ -140,14 +151,25 @@ export default function Financeiro() {
             corValor={(resumo?.balanco ?? 0) >= 0 ? "var(--color-success)" : "var(--color-error)"}
           >
             <div className="grid grid-cols-2 gap-3 mt-4">
-              <div className="rounded-md border p-3" style={{ background: "var(--color-surface-inset)", borderColor: "var(--color-primary-border)" }}>
+              {/* Aponta pra aba "Recebidas"/"Pagas" (não "Pendentes") porque o
+                  valor aqui é sempre o que já está PAGO no mês, então é isso
+                  que a lista deve mostrar ao clicar. */}
+              <Link
+                href="/financeiro/receber?aba=recebidas"
+                className="rounded-md border p-3 block"
+                style={{ background: "var(--color-surface-inset)", borderColor: "var(--color-primary-border)" }}
+              >
                 <p className="text-primary text-xs font-semibold">RECEITAS</p>
                 <p className="font-bold mt-1">{carregando ? "—" : formatarMoeda(resumo?.receitasDoMes ?? 0)}</p>
-              </div>
-              <div className="rounded-md border p-3" style={{ background: "var(--color-surface-inset)", borderColor: "var(--color-border-error)" }}>
+              </Link>
+              <Link
+                href="/financeiro/pagar?aba=pagas"
+                className="rounded-md border p-3 block"
+                style={{ background: "var(--color-surface-inset)", borderColor: "var(--color-border-error)" }}
+              >
                 <p className="text-error text-xs font-semibold">DESPESAS</p>
                 <p className="font-bold mt-1">{carregando ? "—" : formatarMoeda(resumo?.despesasDoMes ?? 0)}</p>
-              </div>
+              </Link>
             </div>
           </CardSaldo>
         </div>
@@ -191,6 +213,29 @@ export default function Financeiro() {
           )}
         </div>
 
+        {/* Relatórios — saldo por conta bancária e gasto/receita por categoria.
+            Cada um tem sua própria tela com um hero card dedicado (ver
+            /financeiro/contas e /financeiro/relatorios). */}
+        <div>
+          <p className="text-xs font-semibold tracking-wide text-muted mb-3">RELATÓRIOS</p>
+          <div className="grid grid-cols-2 gap-3">
+            <Link href="/financeiro/contas" className="card stat-card" style={tonCss("var(--color-primary)", "var(--color-primary-subtle)")}>
+              <div className="stat-icon">
+                <IconBuilding size={18} />
+              </div>
+              <p className="text-[11px] font-semibold tracking-wide text-muted">CONTAS</p>
+              <p className="font-extrabold mt-1">Saldo por conta</p>
+            </Link>
+            <Link href="/financeiro/relatorios" className="card stat-card" style={tonCss("var(--color-accent)", "var(--color-accent-subtle)")}>
+              <div className="stat-icon">
+                <IconChart size={18} />
+              </div>
+              <p className="text-[11px] font-semibold tracking-wide text-muted">CATEGORIAS</p>
+              <p className="font-extrabold mt-1">Gasto por categoria</p>
+            </Link>
+          </div>
+        </div>
+
         {/* Acesso rápido */}
         <div>
           <p className="text-xs font-semibold tracking-wide text-muted mb-3">ACESSO RÁPIDO</p>
@@ -198,6 +243,9 @@ export default function Financeiro() {
             <AtalhoRapido href="/financeiro/pagar" icon={<IconReceipt size={22} />} label="A pagar" />
             <AtalhoRapido href="/financeiro/receber" icon={<IconWallet size={22} />} label="A receber" />
             <AtalhoRapido href={`/financeiro/novo?data=${dataSugerida}`} icon={<IconPlus size={22} />} label="Novo" />
+            <AtalhoRapido href="/financeiro/contas" icon={<IconBuilding size={22} />} label="Contas" />
+            <AtalhoRapido href="/financeiro/relatorios" icon={<IconChart size={22} />} label="Relatórios" />
+            <AtalhoRapido href="/financeiro/categorias" icon={<IconTag size={22} />} label="Categorias" />
           </div>
         </div>
       </div>

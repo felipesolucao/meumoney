@@ -5,6 +5,7 @@
 //         ?tipo=receita|despesa   ?origem=pessoal|empresarial
 //         ?status=pendente|pago|atrasado    ?de=YYYY-MM-DD&ate=YYYY-MM-DD
 //         ?categoriaId=...       (usado pela tela de detalhe de categoria)
+//         ?contaId=...           (usado por telas que detalham uma conta)
 //
 // POST -> cria um lançamento. Se "recorrente" vier true, cria a regra em
 //         LancamentoRecorrente e gera todas as ocorrências (parceladas ou
@@ -28,11 +29,13 @@ export async function GET(req: NextRequest) {
   const de = params.get("de");
   const ate = params.get("ate");
   const categoriaId = params.get("categoriaId");
+  const contaId = params.get("contaId");
 
   const where: Record<string, unknown> = { usuarioId: sessao.id };
   if (tipo) where.tipo = tipo;
   if (origem) where.origem = origem;
   if (categoriaId) where.categoriaId = categoriaId;
+  if (contaId) where.contaId = contaId;
   if (de || ate) {
     where.dataVencimento = {
       ...(de ? { gte: new Date(`${de}T00:00:00`) } : {}),
