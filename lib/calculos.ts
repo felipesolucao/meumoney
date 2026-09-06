@@ -141,8 +141,11 @@ export function statusDoContrato(
 // ----------------------------------------------------------------------------
 // Formatação — moeda brasileira e datas dd/mm/yyyy
 // ----------------------------------------------------------------------------
-export function formatarMoeda(valor: number | string): string {
-  const n = typeof valor === "string" ? parseFloat(valor) : valor;
+// Aceita number, string OU o tipo Decimal do Prisma (que vem direto do banco
+// para campos monetários) — assim funciona igual em qualquer tela, sem
+// precisar converter manualmente antes de cada chamada.
+export function formatarMoeda(valor: number | string | { toString(): string }): string {
+  const n = typeof valor === "number" ? valor : parseFloat(valor.toString());
   return n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
