@@ -35,7 +35,7 @@ const ITENS = [
 
 // Altura fixa da barra, pedida explicitamente — os ícones e o texto abaixo
 // encolhem um pouco (ver tamanhos no map abaixo) para caber confortavelmente.
-const ALTURA_BARRA = 45;
+const ALTURA_BARRA = 60;
 
 export default function BottomNav() {
   const pathname = usePathname();
