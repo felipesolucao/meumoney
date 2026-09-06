@@ -21,6 +21,8 @@ import MesSeletor from "../../components/MesSeletor";
 import HistoricoTimeline, { HistoricoItem } from "../../components/HistoricoTimeline";
 import BotaoVoltar from "../../components/BotaoVoltar";
 
+export const dynamic = "force-dynamic";
+
 function pad(n: number) {
   return String(n).padStart(2, "0");
 }
