@@ -1,7 +1,7 @@
 <<<<<<< HEAD
 # MeuMoney — Sua vida financeira sob controle
 =======
-# Jurex — App Financeiro e de Recebíveis
+# App Financeiro e de Recebíveis
 >>>>>>> 470fa79c11777a570bd09534c81caf2c38e22bb8
 
 Aplicativo em **Next.js 14 (App Router)** + **Prisma** + **PostgreSQL** para gestão
