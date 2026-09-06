@@ -56,7 +56,7 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex flex-col justify-center px-6">
       <div className="mb-8 text-center">
-        <Image src="/logo.png" alt="MeuMoney" width={96} height={96} className="mx-auto" priority />
+        <Image src="/logo.png" alt="MeuMoney" width={96} height={96} className="mx-auto" priority unoptimized />
         <h1 className="text-2xl font-bold mt-4">Entrar</h1>
         <p className="text-muted text-sm">Acesse sua conta financeira</p>
       </div>

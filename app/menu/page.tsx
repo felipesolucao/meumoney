@@ -32,7 +32,7 @@ export default async function Menu() {
   return (
     <div>
       <div className="header-gradient flex items-center gap-3">
-        <Image src="/logo.png" alt="MeuMoney" width={48} height={48} />
+        <Image src="/logo.png" alt="MeuMoney" width={48} height={48} unoptimized />
         <div>
           <h1 className="text-2xl font-bold">MeuMoney</h1>
           <p className="text-muted text-sm">{sessao.email}</p>

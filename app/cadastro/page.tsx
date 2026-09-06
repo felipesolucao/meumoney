@@ -63,7 +63,7 @@ export default function CadastroPage() {
   return (
     <div className="min-h-screen flex flex-col justify-center px-6 py-10">
       <div className="mb-8 text-center">
-        <Image src="/logo.png" alt="MeuMoney" width={96} height={96} className="mx-auto" priority />
+        <Image src="/logo.png" alt="MeuMoney" width={96} height={96} className="mx-auto" priority unoptimized />
         <h1 className="text-2xl font-bold mt-4">Criar conta</h1>
         <p className="text-muted text-sm">Leva menos de um minuto</p>
       </div>
