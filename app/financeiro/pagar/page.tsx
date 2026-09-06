@@ -114,8 +114,9 @@ function ContasAPagarConteudo() {
           ).map((opt) => (
             <button
               key={opt.valor}
+              type="button"
               onClick={() => setAba(opt.valor)}
-              className={aba === opt.valor ? "btn-primary !min-h-0 !py-2 !px-4 !w-auto text-sm" : "btn-outline !min-h-0 !py-2 !px-4 !w-auto text-sm whitespace-nowrap"}
+              className={`chip-toggle ${aba === opt.valor ? "chip-toggle-ativo-perigo" : ""}`}
             >
               {opt.label}
             </button>

@@ -9,6 +9,8 @@
 //     de todas as carteiras/contas bancárias, somado)
 //   - Despesas pagas no mês
 //   - Total de despesas no mês (pagas + ainda pendentes)
+//   - Recebíveis − despesas do mês (total pendente a receber, de todos os
+//     meses, menos o total de despesas do mês selecionado)
 //
 // Client component porque o mês navega sem recarregar a página — os dados
 // vêm de duas APIs já existentes: /api/financeiro/resumo (mês) e
@@ -29,6 +31,7 @@ type ResumoMes = {
   aReceberDoMes: number;
   despesasDoMes: number;
   totalDespesasDoMes: number;
+  totalAReceber: number;
 };
 
 export default function ResumoMesInicio() {
@@ -105,6 +108,22 @@ export default function ResumoMesInicio() {
           <p className="text-[11px] font-semibold tracking-wide text-muted">TOTAL DE DESPESAS NO MÊS</p>
           <p className="font-extrabold mt-1">{carregando ? "—" : formatarMoeda(resumo?.totalDespesasDoMes ?? 0)}</p>
         </Link>
+      </div>
+
+      {/* Saldo projetado: tudo que ainda está pendente pra receber (todos os
+          meses, não só o selecionado) menos o total de despesas do mês
+          selecionado — uma ideia de "sobra" se tudo que falta receber
+          entrasse e as despesas do mês fossem todas pagas. */}
+      <div className="mt-4">
+        <CardSaldo
+          label="RECEBÍVEIS − DESPESAS DO MÊS"
+          valor={carregando ? "R$ —" : formatarMoeda((resumo?.totalAReceber ?? 0) - (resumo?.totalDespesasDoMes ?? 0))}
+          corValor={
+            (resumo?.totalAReceber ?? 0) - (resumo?.totalDespesasDoMes ?? 0) >= 0
+              ? "var(--color-success)"
+              : "var(--color-error)"
+          }
+        />
       </div>
     </div>
   );

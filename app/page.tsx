@@ -16,9 +16,9 @@ import { exigirSessao } from "../lib/auth";
 import { formatarMoeda } from "../lib/calculos";
 import { calcularResumoGeral } from "../lib/resumoGeral";
 import { tonCss } from "../lib/estiloCard";
-import CardSaldo from "../components/CardSaldo";
 import HeaderTopo from "../components/HeaderTopo";
 import ResumoMesInicio from "../components/ResumoMesInicio";
+import DespesasPorCategoriaInicio from "../components/DespesasPorCategoriaInicio";
 import {
   IconWallet,
   IconTrendUp,
@@ -46,26 +46,6 @@ export default async function Inicio() {
     <div>
       <div className="header-gradient">
         <HeaderTopo nome={sessao.nome} />
-
-        {/* Saldo financeiro — receitas pagas menos despesas pagas, no geral */}
-        <div className="mt-5">
-          <CardSaldo
-            label="SALDO FINANCEIRO"
-            valor={formatarMoeda(resumo.saldoFinanceiro)}
-            corValor={resumo.saldoFinanceiro >= 0 ? "var(--color-success)" : "var(--color-error)"}
-          >
-            <div className="grid grid-cols-2 gap-3 mt-4">
-              <div className="rounded-md border p-3" style={{ background: "var(--color-surface-inset)", borderColor: "var(--color-primary-border)" }}>
-                <p className="text-primary text-xs font-semibold">RECEITAS</p>
-                <p className="font-bold mt-1">{formatarMoeda(resumo.totalReceitas)}</p>
-              </div>
-              <div className="rounded-md border p-3" style={{ background: "var(--color-surface-inset)", borderColor: "var(--color-border-error)" }}>
-                <p className="text-error text-xs font-semibold">DESPESAS</p>
-                <p className="font-bold mt-1">{formatarMoeda(resumo.totalDespesas)}</p>
-              </div>
-            </div>
-          </CardSaldo>
-        </div>
       </div>
 
       <div className="px-5 mt-5 space-y-5">
@@ -84,11 +64,16 @@ export default async function Inicio() {
         </Link>
 
         {/* Resumo do mês — mesmo seletor de mês usado em "Transações", com
-            saldo do mês, a receber, saldo em contas e despesas do mês. */}
+            saldo do mês, a receber, saldo em contas, despesas do mês e o
+            saldo projetado (recebíveis - despesas do mês). */}
         <div>
           <p className="text-xs font-semibold tracking-wide text-muted mb-3">RESUMO DO MÊS</p>
           <ResumoMesInicio />
         </div>
+
+        {/* Despesas por categoria — versão compacta do relatório completo,
+            que continua em /financeiro/relatorios. */}
+        <DespesasPorCategoriaInicio />
 
         {/* Recebíveis e pendências — geral, juntando os dois módulos */}
         <div>

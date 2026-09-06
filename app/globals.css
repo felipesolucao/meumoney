@@ -353,8 +353,24 @@ h6 {
   background: currentColor;
 }
 
+/* Remove o "flash" cinza/azul nativo do iOS/Android ao tocar em botões e
+   links — sem isso, um toque rápido pode deixar um retângulo destacado
+   "grudado" na tela por um instante, dando a impressão de que mais de um
+   botão está selecionado ao mesmo tempo (bug relatado nos filtros de
+   Pendentes/Atrasadas/Recebidas). O feedback de toque de verdade agora vem
+   só do :active de cada botão (escurece + encolhe), nunca do highlight do
+   navegador. */
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
 /* Botões — altura mínima de 52px (padding 18px + line-height do texto),
-   confortável para toque em mobile. Todos usam a mesma "pill" (border-radius). */
+   confortável para toque em mobile. Todos usam a mesma "pill" (border-radius).
+   O :active usa a cor "-hover" de cada token (já existe uma versão mais
+   escura de primary/error para os dois temas, ver :root e [data-theme=dark]
+   no topo deste arquivo) — sem isso, apertar o botão só encolhia (scale),
+   sem nenhuma mudança de cor perceptível. */
 .btn-primary {
   background: var(--gradient-primary);
   color: white;
@@ -366,10 +382,16 @@ h6 {
   width: 100%;
   display: block;
   box-shadow: var(--shadow-primary);
-  transition: transform 0.05s ease;
+  transition: transform 0.05s ease, background-color 0.1s ease;
 }
 .btn-primary:active {
   transform: scale(0.98);
+  background: var(--color-primary-hover);
+}
+@media (hover: hover) {
+  .btn-primary:hover {
+    background: var(--color-primary-hover);
+  }
 }
 
 .btn-outline {
@@ -383,10 +405,16 @@ h6 {
   width: 100%;
   display: block;
   background: var(--color-card);
-  transition: transform 0.05s ease;
+  transition: transform 0.05s ease, background-color 0.1s ease;
 }
 .btn-outline:active {
   transform: scale(0.98);
+  background: var(--color-muted-surface);
+}
+@media (hover: hover) {
+  .btn-outline:hover {
+    background: var(--color-muted-surface);
+  }
 }
 
 /* Variante destrutiva (excluir) — usada em vários formulários que já
@@ -402,6 +430,16 @@ h6 {
   width: 100%;
   display: block;
   box-shadow: var(--shadow-error);
+  transition: transform 0.05s ease, background-color 0.1s ease;
+}
+.btn-danger:active {
+  transform: scale(0.98);
+  background: var(--color-error-hover);
+}
+@media (hover: hover) {
+  .btn-danger:hover {
+    background: var(--color-error-hover);
+  }
 }
 
 /* Botão pequeno (ícone + texto curto), usado em ações secundárias dentro de
@@ -418,6 +456,69 @@ h6 {
   font-weight: 600;
   font-size: 14px;
   white-space: nowrap;
+}
+
+/* ============================================================================
+   SELETOR "CHIP" — grupo de botões pequenos e refinados (Empréstimo/Despesa/
+   Receita em "Nova transação", Pendentes/Atrasadas/Recebidas em "Contas a
+   receber/pagar"). Mais compacto que .btn-primary/.btn-outline (altura 40px
+   em vez de 52px) — pensado para caber 3-4 lado a lado sem ficar apertado.
+   Cada botão SÓ pode estar em um dos dois estados (ativo OU inativo) — o
+   componente que usa isso decide qual classe aplicar via o estado do React,
+   nunca os dois ao mesmo tempo, então não há como "todos ficarem marcados".
+   ========================================================================= */
+.chip-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: var(--radius-pill);
+  padding: 10px 16px;
+  min-height: 40px;
+  font-weight: 600;
+  font-size: 13px;
+  white-space: nowrap;
+  border: 1.5px solid var(--color-border-strong);
+  color: var(--color-foreground);
+  background: var(--color-card);
+  transition: background-color 0.1s ease, border-color 0.1s ease, color 0.1s ease, transform 0.05s ease;
+}
+.chip-toggle:active {
+  transform: scale(0.96);
+  background: var(--color-muted-surface);
+}
+@media (hover: hover) {
+  .chip-toggle:hover {
+    border-color: var(--color-primary);
+  }
+}
+
+.chip-toggle-ativo {
+  border-color: transparent;
+  color: white;
+  background: var(--color-primary);
+}
+.chip-toggle-ativo:active {
+  background: var(--color-primary-hover);
+}
+@media (hover: hover) {
+  .chip-toggle-ativo:hover {
+    background: var(--color-primary-hover);
+  }
+}
+
+.chip-toggle-ativo-perigo {
+  border-color: transparent;
+  color: white;
+  background: var(--color-error);
+}
+.chip-toggle-ativo-perigo:active {
+  background: var(--color-error-hover);
+}
+@media (hover: hover) {
+  .chip-toggle-ativo-perigo:hover {
+    background: var(--color-error-hover);
+  }
 }
 
 /* Sheet (bottom sheet) que desliza de baixo pra cima — usado no seletor de

@@ -208,31 +208,35 @@ function NovoLancamentoConteudo() {
       <div className="px-5 mt-6 space-y-4 pb-4">
         {/* ============================================================ */}
         {/* Linha 1: tipo da transação — Empréstimo / Despesa / Receita   */}
+        {/* Botões "chip" (menores e mais refinados que btn-primary/      */}
+        {/* btn-outline padrão) — mesmo estilo usado nos filtros de       */}
+        {/* Contas a receber/pagar, com efeito de toque/hover mais escuro */}
+        {/* nos dois temas (ver .chip-toggle no globals.css).             */}
         {/* ============================================================ */}
         <div className="grid grid-cols-3 gap-2">
           <button
             type="button"
             onClick={() => escolherTipoTransacao("emprestimo")}
-            className="flex flex-col items-center justify-center gap-1 btn-outline !py-3"
+            className="chip-toggle flex-col !gap-1 !py-2.5"
           >
-            <IconDocument size={18} />
-            <span className="text-xs">Empréstimo</span>
+            <IconDocument size={17} />
+            <span>Empréstimo</span>
           </button>
           <button
             type="button"
             onClick={() => escolherTipoTransacao("despesa")}
-            className={`flex flex-col items-center justify-center gap-1 !py-3 ${tipo === "despesa" ? "btn-danger" : "btn-outline"}`}
+            className={`chip-toggle flex-col !gap-1 !py-2.5 ${tipo === "despesa" ? "chip-toggle-ativo-perigo" : ""}`}
           >
-            <IconReceipt size={18} />
-            <span className="text-xs">Despesa</span>
+            <IconReceipt size={17} />
+            <span>Despesa</span>
           </button>
           <button
             type="button"
             onClick={() => escolherTipoTransacao("receita")}
-            className={`flex flex-col items-center justify-center gap-1 !py-3 ${tipo === "receita" ? "btn-primary" : "btn-outline"}`}
+            className={`chip-toggle flex-col !gap-1 !py-2.5 ${tipo === "receita" ? "chip-toggle-ativo" : ""}`}
           >
-            <IconWallet size={18} />
-            <span className="text-xs">Receita</span>
+            <IconWallet size={17} />
+            <span>Receita</span>
           </button>
         </div>
 
@@ -486,7 +490,7 @@ function NovoLancamentoConteudo() {
 
 function BotaoToggle({ ativo, onClick, children }: { ativo: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
-    <button type="button" onClick={onClick} className={ativo ? "btn-primary !py-3.5" : "btn-outline !py-3.5"}>
+    <button type="button" onClick={onClick} className={`chip-toggle w-full ${ativo ? "chip-toggle-ativo" : ""}`}>
       {children}
     </button>
   );
