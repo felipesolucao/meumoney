@@ -6,6 +6,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { formatarMoeda, formatarData } from "../lib/calculos";
+import { IconSend, IconTrash, IconRefresh } from "./Icons";
 
 export default function ContratoAcoes({
   contratoId,
@@ -47,14 +48,22 @@ export default function ContratoAcoes({
   return (
     <div className="space-y-3">
       <button onClick={enviarWhatsApp} className="btn-primary flex items-center justify-center gap-2">
-        ✈️ Enviar contrato via WhatsApp
+        <IconSend size={18} /> Enviar contrato via WhatsApp
       </button>
       <div className="grid grid-cols-2 gap-3">
-        <button onClick={excluir} disabled={excluindo} className="btn-outline text-danger" style={{ borderColor: "#f4c7c2" }}>
-          🗑 {excluindo ? "Excluindo..." : "Excluir"}
+        <button
+          onClick={excluir}
+          disabled={excluindo}
+          className="btn-outline text-danger flex items-center justify-center gap-2"
+          style={{ borderColor: "#f4c7c2" }}
+        >
+          <IconTrash size={16} /> {excluindo ? "Excluindo..." : "Excluir"}
         </button>
-        <button onClick={() => router.push(`/contratos/${contratoId}`)} className="btn-outline">
-          🔄 Atualizar
+        <button
+          onClick={() => router.push(`/contratos/${contratoId}`)}
+          className="btn-outline flex items-center justify-center gap-2"
+        >
+          <IconRefresh size={16} /> Atualizar
         </button>
       </div>
     </div>

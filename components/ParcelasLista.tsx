@@ -11,6 +11,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { formatarMoeda, formatarData, statusDaParcela } from "../lib/calculos";
 import Badge, { tomEStatusParcela } from "./Badge";
+import { IconChat, IconRefresh, IconCash } from "./Icons";
 
 type Parcela = {
   id: string;
@@ -102,26 +103,26 @@ export default function ParcelasLista({
                 <button
                   onClick={() => cobrar(p)}
                   disabled={desabilitado}
-                  className="rounded-pill text-sm font-semibold py-2.5"
+                  className="rounded-pill text-sm font-semibold py-2.5 flex items-center justify-center gap-1.5"
                   style={{ background: "#E3F5E9", color: "#2FA85A" }}
                 >
-                  💬 Cobrar
+                  <IconChat size={15} /> Cobrar
                 </button>
                 <button
                   onClick={() => renegociar(p.id, p.vencimento)}
                   disabled={desabilitado}
-                  className="rounded-pill text-sm font-semibold py-2.5"
+                  className="rounded-pill text-sm font-semibold py-2.5 flex items-center justify-center gap-1.5"
                   style={{ background: "#FDECC8", color: "#C98A1D" }}
                 >
-                  🔄 Renegociar
+                  <IconRefresh size={15} /> Renegociar
                 </button>
                 <button
                   onClick={() => pagar(p.id)}
                   disabled={desabilitado}
-                  className="rounded-pill text-sm font-semibold py-2.5 text-white"
+                  className="rounded-pill text-sm font-semibold py-2.5 text-white flex items-center justify-center gap-1.5"
                   style={{ background: "linear-gradient(180deg,#45bd70,#268a4c)" }}
                 >
-                  💵 Pagar
+                  <IconCash size={15} /> Pagar
                 </button>
               </div>
             )}

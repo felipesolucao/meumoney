@@ -16,6 +16,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { formatarMoeda, formatarData, statusEfetivoLancamento } from "../lib/financeiro";
 import Badge, { tomEStatusLancamento } from "./Badge";
+import { IconWallet, IconReceipt, IconCheck, IconUndo, IconTrash } from "./Icons";
 
 export type LancamentoItem = {
   id: string;
@@ -82,7 +83,11 @@ export default function LancamentosLista({ lancamentos }: { lancamentos: Lancame
           <div key={item.id} className="card space-y-3">
             <div className="flex items-start gap-3">
               <div className="w-12 h-12 rounded-2xl bg-surface flex items-center justify-center text-xl flex-shrink-0">
-                {item.categoria?.icone || (item.tipo === "receita" ? "💰" : "🧾")}
+                {item.categoria?.icone || (
+                  <span className="text-primary">
+                    {item.tipo === "receita" ? <IconWallet size={20} /> : <IconReceipt size={20} />}
+                  </span>
+                )}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2">
@@ -107,17 +112,27 @@ export default function LancamentosLista({ lancamentos }: { lancamentos: Lancame
               <button
                 onClick={() => alternarStatus(item)}
                 disabled={ocupado}
-                className={item.status === "pago" ? "btn-outline !py-2.5 text-sm" : "btn-primary !py-2.5 text-sm"}
+                className={`flex items-center justify-center gap-1.5 ${
+                  item.status === "pago" ? "btn-outline !py-2.5 text-sm" : "btn-primary !py-2.5 text-sm"
+                }`}
               >
-                {item.status === "pago" ? "↩ Reabrir" : item.tipo === "receita" ? "✓ Recebido" : "✓ Pago"}
+                {item.status === "pago" ? (
+                  <>
+                    <IconUndo size={16} /> Reabrir
+                  </>
+                ) : (
+                  <>
+                    <IconCheck size={16} /> {item.tipo === "receita" ? "Recebido" : "Pago"}
+                  </>
+                )}
               </button>
               <button
                 onClick={() => excluir(item)}
                 disabled={ocupado}
-                className="btn-outline !py-2.5 text-sm text-danger"
+                className="btn-outline !py-2.5 text-sm text-danger flex items-center justify-center gap-1.5"
                 style={{ borderColor: "#f4c7c2" }}
               >
-                🗑 Excluir
+                <IconTrash size={16} /> Excluir
               </button>
             </div>
           </div>
