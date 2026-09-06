@@ -1,19 +1,23 @@
 // ============================================================================
 // API: /api/parcelas
-// GET -> lista parcelas de todos os contratos, com filtros opcionais:
+// GET -> lista parcelas de todos os contratos DO USUÁRIO LOGADO, com filtros:
 //   ?de=YYYY-MM-DD&ate=YYYY-MM-DD   -> intervalo de vencimento
 //   ?status=a_vencer|atrasado|pago  -> filtro por status
 // ============================================================================
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "../../../lib/prisma";
+import { obterSessao } from "../../../lib/auth";
 
 export async function GET(req: NextRequest) {
+  const sessao = await obterSessao();
+  if (!sessao) return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
+
   const { searchParams } = new URL(req.url);
   const de = searchParams.get("de");
   const ate = searchParams.get("ate");
   const status = searchParams.get("status");
 
-  const where: any = {};
+  const where: any = { contrato: { usuarioId: sessao.id } };
   if (de || ate) {
     where.vencimento = {};
     if (de) where.vencimento.gte = new Date(de);

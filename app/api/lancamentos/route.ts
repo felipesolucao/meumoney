@@ -11,10 +11,14 @@
 // ============================================================================
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "../../../lib/prisma";
+import { obterSessao } from "../../../lib/auth";
 import { gerarOcorrencias, statusEfetivoLancamento } from "../../../lib/financeiro";
 import type { TipoLancamento, OrigemFinanceira, PeriodicidadeLancamento, TipoFimRecorrencia } from "../../../lib/financeiro";
 
 export async function GET(req: NextRequest) {
+  const sessao = await obterSessao();
+  if (!sessao) return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
+
   const params = req.nextUrl.searchParams;
   const tipo = params.get("tipo");
   const origem = params.get("origem");
@@ -22,7 +26,7 @@ export async function GET(req: NextRequest) {
   const de = params.get("de");
   const ate = params.get("ate");
 
-  const where: Record<string, unknown> = {};
+  const where: Record<string, unknown> = { usuarioId: sessao.id };
   if (tipo) where.tipo = tipo;
   if (origem) where.origem = origem;
   if (de || ate) {
@@ -50,6 +54,9 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const sessao = await obterSessao();
+  if (!sessao) return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
+
   const body = await req.json();
   const {
     descricao,
@@ -96,6 +103,7 @@ export async function POST(req: NextRequest) {
     categoriaId: categoriaId || undefined,
     contaId: contaId || undefined,
     observacoes: observacoes || undefined,
+    usuarioId: sessao.id,
   };
 
   // --- Lançamento avulso (sem recorrência) ----------------------------------
@@ -156,6 +164,7 @@ export async function POST(req: NextRequest) {
       dataVencimento: o.dataVencimento,
       recorrenteId: regra.id,
       numeroParcela: o.numeroParcela,
+      usuarioId: sessao.id,
     })),
   });
 

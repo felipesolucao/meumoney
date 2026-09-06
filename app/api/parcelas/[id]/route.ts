@@ -7,12 +7,19 @@
 // ============================================================================
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "../../../../lib/prisma";
+import { obterSessao } from "../../../../lib/auth";
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+  const sessao = await obterSessao();
+  if (!sessao) return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
+
   const body = await req.json();
   const { acao, novoVencimento } = body as { acao: "pagar" | "renegociar"; novoVencimento?: string };
 
-  const parcelaAtual = await prisma.parcela.findUnique({ where: { id: params.id } });
+  // A parcela só pode ser alterada se o contrato dela pertencer ao usuário logado.
+  const parcelaAtual = await prisma.parcela.findFirst({
+    where: { id: params.id, contrato: { usuarioId: sessao.id } },
+  });
   if (!parcelaAtual) {
     return NextResponse.json({ error: "Parcela não encontrada." }, { status: 404 });
   }

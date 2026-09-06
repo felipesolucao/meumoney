@@ -4,13 +4,17 @@
 import Link from "next/link";
 import { prisma } from "../../lib/prisma";
 import { iniciais } from "../../lib/calculos";
+import { exigirSessao } from "../../lib/auth";
 import Badge, { tomEScore } from "../../components/Badge";
 import { IconBell } from "../../components/Icons";
 
 export const dynamic = "force-dynamic";
 
 export default async function Clientes() {
+  const sessao = await exigirSessao();
+
   const clientes = await prisma.cliente.findMany({
+    where: { usuarioId: sessao.id },
     orderBy: { criadoEm: "desc" },
     include: { _count: { select: { contratos: true } } },
   });

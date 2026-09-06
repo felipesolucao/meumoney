@@ -20,6 +20,13 @@ const ITENS = [
 export default function BottomNav() {
   const pathname = usePathname();
 
+  // Telas de autenticação e o painel de admin não usam o menu flutuante —
+  // login/cadastro porque ainda não há sessão, e admin porque é uma área
+  // separada do financeiro pessoal do usuário.
+  if (pathname === "/login" || pathname === "/cadastro" || pathname.startsWith("/admin")) {
+    return null;
+  }
+
   return (
     <nav className="fixed bottom-0 left-0 right-0 flex justify-center pointer-events-none">
       <div className="app-shell !min-h-0 !p-0 relative w-full">

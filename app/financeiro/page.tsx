@@ -8,20 +8,23 @@
 import Link from "next/link";
 import { prisma } from "../../lib/prisma";
 import { formatarMoeda, statusEfetivoLancamento } from "../../lib/financeiro";
+import { exigirSessao } from "../../lib/auth";
 import CardSaldo from "../../components/CardSaldo";
 import { IconPlus, IconReceipt, IconWallet, IconAlert } from "../../components/Icons";
 
 export const dynamic = "force-dynamic";
 
 export default async function Financeiro() {
+  const sessao = await exigirSessao();
+
   const hoje = new Date();
   const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
   const fimMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0, 23, 59, 59);
 
   const [lancamentosDoMes, pendentesDespesa, pendentesReceita] = await Promise.all([
-    prisma.lancamento.findMany({ where: { dataVencimento: { gte: inicioMes, lte: fimMes } } }),
-    prisma.lancamento.findMany({ where: { tipo: "despesa", status: "pendente" } }),
-    prisma.lancamento.findMany({ where: { tipo: "receita", status: "pendente" } }),
+    prisma.lancamento.findMany({ where: { usuarioId: sessao.id, dataVencimento: { gte: inicioMes, lte: fimMes } } }),
+    prisma.lancamento.findMany({ where: { usuarioId: sessao.id, tipo: "despesa", status: "pendente" } }),
+    prisma.lancamento.findMany({ where: { usuarioId: sessao.id, tipo: "receita", status: "pendente" } }),
   ]);
 
   const receitasDoMes = lancamentosDoMes

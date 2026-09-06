@@ -7,13 +7,17 @@
 import Link from "next/link";
 import { prisma } from "../lib/prisma";
 import { formatarMoeda, iniciais, statusDoContrato } from "../lib/calculos";
+import { exigirSessao } from "../lib/auth";
 import CardSaldo from "../components/CardSaldo";
 import { IconBell, IconWallet, IconDocument, IconReceipt, IconChart } from "../components/Icons";
 
 export const dynamic = "force-dynamic";
 
 export default async function Inicio() {
+  const sessao = await exigirSessao();
+
   const contratos = await prisma.contrato.findMany({
+    where: { usuarioId: sessao.id },
     include: { cliente: true, parcelas: true },
     orderBy: { criadoEm: "desc" },
   });

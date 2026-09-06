@@ -1,14 +1,19 @@
 // ============================================================================
 // API: /api/contratos
-// GET  -> lista todos os contratos, com cliente e parcelas
+// GET  -> lista os contratos DO USUÁRIO LOGADO, com cliente e parcelas
 // POST -> cria um novo contrato + gera automaticamente todas as parcelas
 // ============================================================================
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "../../../lib/prisma";
+import { obterSessao } from "../../../lib/auth";
 import { calcularContrato, gerarCodigoContrato, TipoEmprestimo, Frequencia } from "../../../lib/calculos";
 
 export async function GET() {
+  const sessao = await obterSessao();
+  if (!sessao) return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
+
   const contratos = await prisma.contrato.findMany({
+    where: { usuarioId: sessao.id },
     orderBy: { criadoEm: "desc" },
     include: { cliente: true, parcelas: { orderBy: { numero: "asc" } } },
   });
@@ -16,6 +21,9 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const sessao = await obterSessao();
+  if (!sessao) return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
+
   const body = await req.json();
   const {
     clienteId,
@@ -42,7 +50,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Preencha todos os campos obrigatórios." }, { status: 400 });
   }
 
-  const cliente = await prisma.cliente.findUnique({ where: { id: clienteId } });
+  // O cliente precisa existir E pertencer ao usuário logado.
+  const cliente = await prisma.cliente.findFirst({ where: { id: clienteId, usuarioId: sessao.id } });
   if (!cliente) {
     return NextResponse.json({ error: "Cliente não encontrado." }, { status: 404 });
   }
@@ -67,6 +76,7 @@ export async function POST(req: NextRequest) {
     data: {
       codigo,
       clienteId,
+      usuarioId: sessao.id,
       valorEmprestado: Number(valorEmprestado),
       tipoEmprestimo,
       jurosAoMes: Number(jurosAoMes) || 0,

@@ -2,6 +2,8 @@
 // PÁGINA: Menu
 // ============================================================================
 import Link from "next/link";
+import { exigirSessao } from "../../lib/auth";
+import BotaoSair from "../../components/BotaoSair";
 import {
   IconPlus,
   IconReceipt,
@@ -10,6 +12,7 @@ import {
   IconUser,
   IconDocument,
   IconChart,
+  IconUsers,
 } from "../../components/Icons";
 
 const ITENS = [
@@ -22,15 +25,29 @@ const ITENS = [
   { href: "/relatorios", icon: IconChart, label: "Relatórios", desc: "Visão geral da carteira" },
 ];
 
-export default function Menu() {
+export default async function Menu() {
+  const sessao = await exigirSessao();
+
   return (
     <div>
       <div className="header-gradient">
         <h1 className="text-2xl font-bold">Menu</h1>
-        <p className="text-muted text-sm">Acesso rápido e suporte</p>
+        <p className="text-muted text-sm">{sessao.email}</p>
       </div>
 
       <div className="px-5 mt-5 space-y-3">
+        {sessao.papel === "admin" && (
+          <Link href="/admin" className="card flex items-center gap-3 block" style={{ background: "#eafaf0" }}>
+            <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center text-primary flex-shrink-0">
+              <IconUsers size={20} />
+            </div>
+            <div>
+              <p className="font-bold">Painel de administrador</p>
+              <p className="text-sm text-muted">Usuários cadastrados na plataforma</p>
+            </div>
+          </Link>
+        )}
+
         {ITENS.map((item) => {
           const Icon = item.icon;
           return (
@@ -52,6 +69,8 @@ export default function Menu() {
             Dúvidas ou problemas com o app? Entre em contato com o administrador do sistema.
           </p>
         </div>
+
+        <BotaoSair />
       </div>
     </div>
   );

@@ -19,6 +19,43 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ============================================================================
+// MÓDULO: LOGIN E CONTAS DE USUÁRIO
+// ----------------------------------------------------------------------------
+// Cada Usuario só enxerga os próprios clientes/contratos/lançamentos —
+// exceto o "admin", que não vê os dados financeiros dos outros, só a lista
+// de quem se cadastrou na plataforma (ver app/admin).
+// ============================================================================
+
+// ----------------------------------------------------------------------------
+// ENUM: Papel do usuário — admin (dono da plataforma) ou usuario (cliente comum)
+// ----------------------------------------------------------------------------
+enum PapelUsuario {
+  admin
+  usuario
+}
+
+// ----------------------------------------------------------------------------
+// MODEL: Usuario — quem faz login no app.
+// ----------------------------------------------------------------------------
+model Usuario {
+  id        String       @id @default(cuid())
+  email     String       @unique
+  senha     String       // hash bcrypt — nunca guardamos a senha em texto puro
+  telefone  String       // WhatsApp, exigido no cadastro
+  papel     PapelUsuario @default(usuario)
+  criadoEm  DateTime     @default(now())
+
+  clientes               Cliente[]
+  contratos              Contrato[]
+  categorias             Categoria[]
+  contas                 Conta[]
+  lancamentos            Lancamento[]
+  lancamentosRecorrentes LancamentoRecorrente[]
+
+  @@map("usuarios")
+}
+
 // ----------------------------------------------------------------------------
 // ENUM: Score de crédito do cliente (calculado ou definido manualmente)
 // ----------------------------------------------------------------------------
@@ -76,6 +113,9 @@ model Cliente {
   criadoEm  DateTime     @default(now())
   contratos Contrato[]
 
+  usuarioId String
+  usuario   Usuario      @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
   @@map("clientes")
 }
 
@@ -103,6 +143,9 @@ model Contrato {
   criadoEm             DateTime       @default(now())
 
   parcelas             Parcela[]
+
+  usuarioId            String
+  usuario              Usuario        @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 
   @@map("contratos")
 }
@@ -194,6 +237,9 @@ model Categoria {
   cor                   String                 @default("#2FA85A")
   criadoEm              DateTime               @default(now())
 
+  usuarioId             String
+  usuario               Usuario                @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
   lancamentos           Lancamento[]
   lancamentosRecorrentes LancamentoRecorrente[]
 
@@ -209,6 +255,9 @@ model Conta {
   nome                  String
   icone                 String                 @default("🏦")
   criadoEm              DateTime               @default(now())
+
+  usuarioId             String
+  usuario               Usuario                @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 
   lancamentos           Lancamento[]
   lancamentosRecorrentes LancamentoRecorrente[]
@@ -246,6 +295,9 @@ model LancamentoRecorrente {
   observacoes     String?
   criadoEm        DateTime                @default(now())
 
+  usuarioId       String
+  usuario         Usuario                 @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
   lancamentos     Lancamento[]
 
   @@map("lancamentos_recorrentes")
@@ -281,6 +333,9 @@ model Lancamento {
 
   observacoes     String?
   criadoEm        DateTime          @default(now())
+
+  usuarioId       String
+  usuario         Usuario           @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 
   @@map("lancamentos")
 }

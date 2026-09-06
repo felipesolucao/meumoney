@@ -4,13 +4,19 @@
 // PATCH  -> marcar como pago/pendente, ou editar campos (não mexe na recorrência)
 // DELETE -> exclui apenas esta ocorrência. Se ?serie=true, exclui a regra de
 //           recorrência inteira (todas as ocorrências futuras e passadas).
+// ----------------------------------------------------------------------------
+// Todas as ações exigem que o lançamento pertença ao usuário logado.
 // ============================================================================
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "../../../../lib/prisma";
+import { obterSessao } from "../../../../lib/auth";
 
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
-  const lancamento = await prisma.lancamento.findUnique({
-    where: { id: params.id },
+  const sessao = await obterSessao();
+  if (!sessao) return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
+
+  const lancamento = await prisma.lancamento.findFirst({
+    where: { id: params.id, usuarioId: sessao.id },
     include: { categoria: true, conta: true, recorrente: true },
   });
   if (!lancamento) {
@@ -20,6 +26,12 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+  const sessao = await obterSessao();
+  if (!sessao) return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
+
+  const existente = await prisma.lancamento.findFirst({ where: { id: params.id, usuarioId: sessao.id } });
+  if (!existente) return NextResponse.json({ error: "Lançamento não encontrado." }, { status: 404 });
+
   const body = await req.json();
   const { acao, ...campos } = body as {
     acao?: "pagar" | "reabrir";
@@ -35,12 +47,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (acao === "pagar") {
     const lancamento = await prisma.lancamento.update({
       where: { id: params.id },
-      data: { status: "pago", dataPagamento: new Date() },
-    });
-    // valorPago só é preenchido depois de saber o valor atual do lançamento
-    await prisma.lancamento.update({
-      where: { id: params.id },
-      data: { valorPago: lancamento.valor },
+      data: { status: "pago", dataPagamento: new Date(), valorPago: existente.valor },
     });
     return NextResponse.json(lancamento);
   }
@@ -69,13 +76,22 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 }
 
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+  const sessao = await obterSessao();
+  if (!sessao) return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
+
+  const lancamento = await prisma.lancamento.findFirst({ where: { id: params.id, usuarioId: sessao.id } });
+  if (!lancamento) return NextResponse.json({ error: "Lançamento não encontrado." }, { status: 404 });
+
   const excluirSerie = req.nextUrl.searchParams.get("serie") === "true";
 
-  if (excluirSerie) {
-    const lancamento = await prisma.lancamento.findUnique({ where: { id: params.id } });
-    if (lancamento?.recorrenteId) {
-      // Excluir a regra apaga em cascata todas as ocorrências dela (ver schema).
-      await prisma.lancamentoRecorrente.delete({ where: { id: lancamento.recorrenteId } });
+  if (excluirSerie && lancamento.recorrenteId) {
+    // Excluir a regra apaga em cascata todas as ocorrências dela (ver schema).
+    // Confere de novo que a regra também é do usuário logado antes de apagar.
+    const regra = await prisma.lancamentoRecorrente.findFirst({
+      where: { id: lancamento.recorrenteId, usuarioId: sessao.id },
+    });
+    if (regra) {
+      await prisma.lancamentoRecorrente.delete({ where: { id: regra.id } });
       return NextResponse.json({ ok: true });
     }
   }

@@ -8,14 +8,17 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "../../../lib/prisma";
 import { formatarMoeda, iniciais, statusDoContrato } from "../../../lib/calculos";
+import { exigirSessao } from "../../../lib/auth";
 import Badge, { tomEScore, tomEStatusContrato } from "../../../components/Badge";
 import BotaoVoltar from "../../../components/BotaoVoltar";
 
 export const dynamic = "force-dynamic";
 
 export default async function DetalheCliente({ params }: { params: { id: string } }) {
-  const cliente = await prisma.cliente.findUnique({
-    where: { id: params.id },
+  const sessao = await exigirSessao();
+
+  const cliente = await prisma.cliente.findFirst({
+    where: { id: params.id, usuarioId: sessao.id },
     include: { contratos: { include: { parcelas: true }, orderBy: { criadoEm: "desc" } } },
   });
 

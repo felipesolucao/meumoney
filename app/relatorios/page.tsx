@@ -3,11 +3,14 @@
 // ============================================================================
 import { prisma } from "../../lib/prisma";
 import { formatarMoeda } from "../../lib/calculos";
+import { exigirSessao } from "../../lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export default async function Relatorios() {
-  const contratos = await prisma.contrato.findMany({ include: { parcelas: true } });
+  const sessao = await exigirSessao();
+
+  const contratos = await prisma.contrato.findMany({ where: { usuarioId: sessao.id }, include: { parcelas: true } });
   const todasParcelas = contratos.flatMap((c) => c.parcelas);
 
   const totalEmprestado = contratos.reduce((s, c) => s + Number(c.valorEmprestado), 0);

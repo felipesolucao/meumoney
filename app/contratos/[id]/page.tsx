@@ -5,6 +5,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "../../../lib/prisma";
 import { formatarMoeda, formatarData, statusDoContrato } from "../../../lib/calculos";
+import { exigirSessao } from "../../../lib/auth";
 import Badge, { tomEStatusContrato } from "../../../components/Badge";
 import ParcelasLista from "../../../components/ParcelasLista";
 import ContratoAcoes from "../../../components/ContratoAcoes";
@@ -21,8 +22,10 @@ const LABEL_FREQ: Record<string, string> = {
 };
 
 export default async function DetalheContrato({ params }: { params: { id: string } }) {
-  const contratoRaw = await prisma.contrato.findUnique({
-    where: { id: params.id },
+  const sessao = await exigirSessao();
+
+  const contratoRaw = await prisma.contrato.findFirst({
+    where: { id: params.id, usuarioId: sessao.id },
     include: { cliente: true, parcelas: { orderBy: { numero: "asc" } } },
   });
 

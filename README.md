@@ -103,3 +103,122 @@ Acesse http://localhost:3000
 - Geração de PDF do contrato ("Compartilhar PDF atualizado")
 - Cálculo de score de crédito automático com base no histórico de pagamentos
 - Notificações automáticas (push ou WhatsApp) para parcelas próximas do vencimento
+
+## Módulo de Controle Financeiro (`/financeiro`)
+
+Separado do módulo de empréstimos (Contratos/Parcelas), esse módulo cobre o
+financeiro do dia a dia — pessoal ou da empresa:
+
+- **Lançamento** = uma receita ou despesa (um "cartão" na lista de contas a
+  pagar/receber). Tem descrição, valor, categoria, conta/carteira, status
+  (pendente/pago) e data de vencimento.
+- **LancamentoRecorrente** = a "regra" por trás de uma conta fixa ou
+  parcelada. Ao criar um lançamento marcado como recorrente, o app gera os
+  `Lancamento`s automaticamente, exatamente como um Contrato gera Parcelas.
+  A recorrência pode terminar de 3 formas (campo `tipoFim`):
+  - `sem_fim` — conta fixa contínua (ex: salário, aluguel). Gera um lote de
+    12 ocorrências por vez (`HORIZONTE_SEM_FIM` em `lib/financeiro.ts`).
+  - `data_fim` — repete até uma data escolhida.
+  - `parcelas` — repete um número exato de vezes (ex: financiamento em 12x).
+- **Categoria** e **Conta** são cadastros simples (nome + ícone), criados
+  direto no formulário de novo lançamento com o botão "+".
+- Excluir um lançamento que pertence a uma recorrência pergunta se é para
+  excluir só aquela ocorrência ou a série inteira.
+
+### Aplicando esta atualização
+
+Se o projeto já estava rodando antes desse módulo existir, gere a migração
+do banco antes de subir para o Railway:
+
+```bash
+npx prisma migrate dev --name modulo_financeiro
+```
+
+Isso cria as tabelas novas (`lancamentos`, `lancamentos_recorrentes`,
+`categorias`, `contas`) sem apagar nada que já existia.
+
+## Redesign visual (ícones, sombras, saldo oculto)
+
+Todo o app foi atualizado para um visual mais "clean":
+
+- **`components/Icons.tsx`** — biblioteca de ícones em SVG (traço, sem
+  preenchimento) que substitui TODOS os emojis usados como ícone de
+  interface (botão de voltar, sino, lixeira, cadeado de saldo etc.). Emojis
+  que são *dados do usuário* (o ícone de uma categoria como "🎁 Bonificação")
+  continuam emoji de propósito — são conteúdo, não parte do design do app.
+- **`components/CardSaldo.tsx`** — o card grande de saldo (Início e
+  Financeiro) ganhou um padrão decorativo de linhas onduladas no fundo e um
+  ícone de olho que oculta o valor (mostra "R$ ••••••") — útil pra não expor
+  o saldo com alguém do lado.
+- **`components/BotaoVoltar.tsx`** — botão de voltar padronizado, reutilizado
+  em todas as telas que tinham esse botão duplicado antes.
+- **`app/globals.css`** — sombras mais suaves e em camadas (`.card`,
+  `.quick-tile`, `.icon-btn`), pra dar mais profundidade sem pesar o visual.
+
+## Login e contas de usuário
+
+Cada pessoa que usa o app agora tem sua própria conta, e só enxerga os
+próprios clientes, contratos, parcelas, categorias, contas e lançamentos —
+o Prisma filtra tudo por `usuarioId` em todas as rotas de API e em todas as
+páginas que buscam dados diretamente do banco.
+
+- **Cadastro** (`/cadastro`) exige e-mail, senha de **exatamente 6 números**
+  (tipo um PIN) e telefone (WhatsApp). Toda conta criada por aqui nasce com
+  papel `usuario` — nunca `admin`.
+- **Login** (`/login`) bloqueia por 5 minutos depois de 5 tentativas erradas
+  seguidas com o mesmo e-mail (proteção simples contra tentar todos os PINs
+  possíveis, já que 6 dígitos numéricos são só 1 milhão de combinações).
+- **Sessão**: um cookie `httpOnly` guarda um token assinado (JWT) por 30
+  dias — não tem "banco de sessões", é tudo verificado a partir da
+  assinatura do token (`lib/auth.ts`). **Defina a variável de ambiente
+  `JWT_SECRET`** no Railway e no seu `.env` local com um valor longo e
+  aleatório (ex: gere um com `openssl rand -base64 32` ou peça pra mim gerar
+  um) — sem isso, o app usa uma chave padrão insegura, ok só pra testar
+  localmente.
+- **`middleware.ts`** bloqueia o acesso a qualquer tela sem login (exceto
+  `/login` e `/cadastro`) redirecionando pra `/login`. As rotas de API se
+  protegem sozinhas (retornam erro 401 em JSON, em vez de redirecionar).
+
+### Conta de administrador
+
+Não existe cadastro público de admin (por segurança). Pra criar a sua conta
+de administrador em produção, rode uma vez, com o `DATABASE_URL` do Railway
+configurado (localmente no `.env`, ou via `railway run` direto no projeto):
+
+```bash
+node scripts/criar-admin.js seuemail@exemplo.com 123456 62999999999
+```
+
+Troque `123456` por uma senha de 6 dígitos à sua escolha, e o telefone pelo
+seu WhatsApp. Se o e-mail já existir (por exemplo, você já criou a conta
+pela tela de cadastro normal), o script só promove essa conta pra admin,
+sem mexer na senha.
+
+O admin acessa `/admin` (tem um atalho no Menu) e vê **apenas**: quantas
+contas existem na plataforma, a lista de e-mails/telefones/data de cadastro,
+e quantos clientes/lançamentos cada uma tem — **não** vê o conteúdo
+financeiro de ninguém (nomes de clientes, valores de contratos etc.).
+
+### Aplicando esta atualização (⚠️ apaga os dados atuais do banco)
+
+Como as tabelas que já existiam (`clientes`, `contratos`, `categorias`,
+`contas`, `lancamentos`, `lancamentos_recorrentes`) ganharam uma coluna
+`usuarioId` **obrigatória**, não dá pra rodar uma migração normal em cima de
+dados que já existem sem dono — o Prisma não sabe pra qual usuário atribuir
+os registros antigos. Se os dados atuais do seu banco são só de teste (como
+parece ser o caso), o caminho mais simples é resetar:
+
+```bash
+npx prisma migrate reset
+```
+
+Isso apaga todo o conteúdo do banco, aplica todas as migrações do zero
+(incluindo essa) e roda o `db:seed` de novo automaticamente — que já cria a
+conta de admin (`admin@jurex.com` / senha `123456`) e uma conta de teste
+(`teste@jurex.com` / senha `123456`) com alguns clientes e lançamentos de
+exemplo. **Troque a senha do admin depois com o script acima.**
+
+Se você tiver dados reais no banco de produção que não pode perder, me avise
+antes de rodar isso — nesse caso o certo é escrever uma migração manual que
+cria um "usuário dono" e atribui todos os registros antigos a ele, em vez de
+resetar.
