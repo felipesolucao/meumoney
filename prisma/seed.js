@@ -33,7 +33,6 @@ async function main() {
   const senhaPadrao = await bcrypt.hash("123456", 10);
 
   const admin = await prisma.usuario.upsert({
-<<<<<<< HEAD
     where: { email: "admin@meumoney.online" },
     update: {},
     create: { email: "admin@meumoney.online", senha: senhaPadrao, telefone: "62999999999", papel: "admin" },
@@ -43,17 +42,6 @@ async function main() {
     where: { email: "teste@meumoney.online" },
     update: {},
     create: { email: "teste@meumoney.online", senha: senhaPadrao, telefone: "62988888888", papel: "usuario" },
-=======
-    where: { email: "admin@jurex.com" },
-    update: {},
-    create: { email: "admin@jurex.com", senha: senhaPadrao, telefone: "62999999999", papel: "admin" },
-  });
-
-  const usuarioTeste = await prisma.usuario.upsert({
-    where: { email: "teste@jurex.com" },
-    update: {},
-    create: { email: "teste@jurex.com", senha: senhaPadrao, telefone: "62988888888", papel: "usuario" },
->>>>>>> 470fa79c11777a570bd09534c81caf2c38e22bb8
   });
 
   console.log(`Admin:  ${admin.email} / senha 123456`);

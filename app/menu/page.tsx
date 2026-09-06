@@ -2,10 +2,7 @@
 // PÁGINA: Menu
 // ============================================================================
 import Link from "next/link";
-<<<<<<< HEAD
 import Image from "next/image";
-=======
->>>>>>> 470fa79c11777a570bd09534c81caf2c38e22bb8
 import { exigirSessao } from "../../lib/auth";
 import BotaoSair from "../../components/BotaoSair";
 import {
@@ -34,18 +31,12 @@ export default async function Menu() {
 
   return (
     <div>
-<<<<<<< HEAD
       <div className="header-gradient flex items-center gap-3">
         <Image src="/logo.png" alt="MeuMoney" width={48} height={48} />
         <div>
           <h1 className="text-2xl font-bold">MeuMoney</h1>
           <p className="text-muted text-sm">{sessao.email}</p>
         </div>
-=======
-      <div className="header-gradient">
-        <h1 className="text-2xl font-bold">Menu</h1>
-        <p className="text-muted text-sm">{sessao.email}</p>
->>>>>>> 470fa79c11777a570bd09534c81caf2c38e22bb8
       </div>
 
       <div className="px-5 mt-5 space-y-3">

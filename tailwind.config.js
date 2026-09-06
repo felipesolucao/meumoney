@@ -1,9 +1,5 @@
 /** ==========================================================================
-<<<<<<< HEAD
  * TAILWIND CONFIG — paleta baseada no design de referência (MeuMoney)
-=======
- * TAILWIND CONFIG — paleta baseada no design de referência (Jurex Brasil)
->>>>>>> 470fa79c11777a570bd09534c81caf2c38e22bb8
  * ======================================================================== */
 /** @type {import('tailwindcss').Config} */
 module.exports = {

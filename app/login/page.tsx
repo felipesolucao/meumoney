@@ -6,10 +6,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-<<<<<<< HEAD
 import Image from "next/image";
-=======
->>>>>>> 470fa79c11777a570bd09534c81caf2c38e22bb8
 
 export default function LoginPage() {
   const router = useRouter();
@@ -19,32 +16,47 @@ export default function LoginPage() {
   const [erro, setErro] = useState("");
 
   async function entrar() {
+    // Validação básica antes de bater na API, com mensagem clara.
+    if (!email.trim()) return setErro("Informe seu e-mail.");
+    if (senha.length !== 6) return setErro("A senha deve ter exatamente 6 números.");
+
     setErro("");
     setEntrando(true);
-    const res = await fetch("/api/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, senha }),
-    });
-    setEntrando(false);
 
-    if (res.ok) {
-      router.push("/");
-      router.refresh();
-    } else {
-      const data = await res.json();
-      setErro(data.error || "Não foi possível entrar.");
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, senha }),
+      });
+
+      // Tenta ler o corpo como JSON; se a API responder algo que não é JSON
+      // (ex.: erro 500 puro do servidor), não deixa isso virar exceção solta.
+      let data: { error?: string } = {};
+      try {
+        data = await res.json();
+      } catch {
+        data = {};
+      }
+
+      if (res.ok) {
+        router.push("/");
+        router.refresh();
+      } else {
+        setErro(data.error || "Não foi possível entrar. Tente novamente em instantes.");
+      }
+    } catch {
+      // Falha de rede (sem internet, servidor fora do ar, etc.)
+      setErro("Falha de conexão. Verifique sua internet e tente novamente.");
+    } finally {
+      setEntrando(false);
     }
   }
 
   return (
     <div className="min-h-screen flex flex-col justify-center px-6">
       <div className="mb-8 text-center">
-<<<<<<< HEAD
         <Image src="/logo.png" alt="MeuMoney" width={96} height={96} className="mx-auto" priority />
-=======
-        <div className="avatar !w-16 !h-16 !text-2xl mx-auto">JX</div>
->>>>>>> 470fa79c11777a570bd09534c81caf2c38e22bb8
         <h1 className="text-2xl font-bold mt-4">Entrar</h1>
         <p className="text-muted text-sm">Acesse sua conta financeira</p>
       </div>

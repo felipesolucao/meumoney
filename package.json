@@ -1,9 +1,5 @@
 {
-<<<<<<< HEAD
   "name": "meumoney-app",
-=======
-  "name": "jurex-app",
->>>>>>> 470fa79c11777a570bd09534c81caf2c38e22bb8
   "version": "1.0.0",
   "private": true,
   "scripts": {
