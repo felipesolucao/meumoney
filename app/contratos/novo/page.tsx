@@ -3,14 +3,24 @@
 // ============================================================================
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { calcularContrato, formatarMoeda, Frequencia, TipoEmprestimo } from "../../../lib/calculos";
 
 type Cliente = { id: string; nome: string };
 
-export default function NovoContrato() {
+// O Next.js exige que qualquer componente que use useSearchParams() esteja
+// dentro de um <Suspense>, senão a geração estática da página falha no build.
+export default function NovoContratoPage() {
+  return (
+    <Suspense fallback={<div className="px-5 pt-10 text-center text-muted">Carregando...</div>}>
+      <NovoContrato />
+    </Suspense>
+  );
+}
+
+function NovoContrato() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const clienteIdInicial = searchParams.get("clienteId") || "";
