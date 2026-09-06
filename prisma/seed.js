@@ -53,6 +53,31 @@ async function main() {
     });
   }
 
+  // --- Categorias e contas padrão do módulo financeiro ----------------------
+  const categorias = [
+    { nome: "Salário", tipo: "receita", icone: "💵" },
+    { nome: "Bonificação", tipo: "receita", icone: "🎁" },
+    { nome: "Vendas", tipo: "receita", icone: "🛒" },
+    { nome: "Aluguel", tipo: "despesa", icone: "🏠" },
+    { nome: "Mercado", tipo: "despesa", icone: "🛍️" },
+    { nome: "Software/Assinaturas", tipo: "despesa", icone: "💻" },
+    { nome: "Transporte", tipo: "despesa", icone: "🚗" },
+  ];
+  // (o seed é feito para rodar uma única vez em um banco vazio — se rodar de
+  // novo, essas categorias/contas simplesmente se repetem, sem problema)
+  for (const c of categorias) {
+    await prisma.categoria.create({ data: c });
+  }
+
+  const contas = [
+    { nome: "Nubank", icone: "💜" },
+    { nome: "Infinitypay", icone: "🏦" },
+    { nome: "Dinheiro", icone: "💵" },
+  ];
+  for (const c of contas) {
+    await prisma.conta.create({ data: c });
+  }
+
   console.log("Seed concluído com sucesso.");
 }
 

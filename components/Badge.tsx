@@ -63,3 +63,18 @@ export function tomEScore(score: string): { tom: Tom; texto: string } {
       return { tom: "amber", texto: "Score médio" };
   }
 }
+
+// ----------------------------------------------------------------------------
+// Status de um lançamento do módulo financeiro (pendente/atrasado/pago).
+// Recebe o status "efetivo" já calculado por statusEfetivoLancamento().
+// ----------------------------------------------------------------------------
+export function tomEStatusLancamento(statusEfetivo: "pendente" | "atrasado" | "pago"): { tom: Tom; texto: string } {
+  switch (statusEfetivo) {
+    case "pago":
+      return { tom: "verde", texto: "Pago" };
+    case "atrasado":
+      return { tom: "vermelho", texto: "Atrasado" };
+    default:
+      return { tom: "amber", texto: "Pendente" };
+  }
+}

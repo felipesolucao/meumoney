@@ -11,9 +11,9 @@ import { usePathname } from "next/navigation";
 
 const ITENS = [
   { href: "/", label: "Início", icon: IconInicio },
+  { href: "/financeiro", label: "Financeiro", icon: IconFinanceiro },
   { href: "/contratos", label: "Contratos", icon: IconContratos },
   { href: "/clientes", label: "Clientes", icon: IconClientes },
-  { href: "/relatorios", label: "Relatórios", icon: IconRelatorios },
   { href: "/menu", label: "Menu", icon: IconMenu },
 ];
 
@@ -60,6 +60,15 @@ function IconInicio({ ativo }: { ativo: boolean }) {
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
       <path d="M4 11.5L12 4l8 7.5" stroke={cor(ativo)} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
       <path d="M6 10v9a1 1 0 001 1h10a1 1 0 001-1v-9" stroke={cor(ativo)} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function IconFinanceiro({ ativo }: { ativo: boolean }) {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+      <circle cx="12" cy="12" r="8.5" stroke={cor(ativo)} strokeWidth="2" />
+      <path d="M12 7.5v9M9.5 9.8c0-1.1 1.1-2 2.5-2s2.5.7 2.5 1.8-1.1 1.6-2.5 1.9c-1.4.3-2.5.8-2.5 1.9s1.1 1.8 2.5 1.8 2.5-.9 2.5-2" stroke={cor(ativo)} strokeWidth="1.6" strokeLinecap="round" />
     </svg>
   );
 }
