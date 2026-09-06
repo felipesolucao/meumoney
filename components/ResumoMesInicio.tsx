@@ -9,8 +9,8 @@
 //     de todas as carteiras/contas bancárias, somado)
 //   - Despesas pagas no mês
 //   - Total de despesas no mês (pagas + ainda pendentes)
-//   - Recebíveis − despesas do mês (total pendente a receber, de todos os
-//     meses, menos o total de despesas do mês selecionado)
+//   - Receitas − despesas do mês (total de receitas do mês, pagas + a
+//     receber, menos o total de despesas do mês, pagas + a pagar)
 //
 // Client component porque o mês navega sem recarregar a página — os dados
 // vêm de duas APIs já existentes: /api/financeiro/resumo (mês) e
@@ -31,7 +31,7 @@ type ResumoMes = {
   aReceberDoMes: number;
   despesasDoMes: number;
   totalDespesasDoMes: number;
-  totalAReceber: number;
+  totalReceitasDoMes: number;
 };
 
 export default function ResumoMesInicio() {
@@ -110,16 +110,17 @@ export default function ResumoMesInicio() {
         </Link>
       </div>
 
-      {/* Saldo projetado: tudo que ainda está pendente pra receber (todos os
-          meses, não só o selecionado) menos o total de despesas do mês
-          selecionado — uma ideia de "sobra" se tudo que falta receber
-          entrasse e as despesas do mês fossem todas pagas. */}
+      {/* Receitas - despesas do mês: total de receitas do mês (pagas + a
+          receber) menos o total de despesas do mês (pagas + a pagar) —
+          diferente do "Saldo do mês" acima, que só olha o que já ACONTECEU
+          (pago), este aqui projeta o mês inteiro como se tudo fosse
+          resolvido (recebido/pago). */}
       <div className="mt-4">
         <CardSaldo
-          label="RECEBÍVEIS − DESPESAS DO MÊS"
-          valor={carregando ? "R$ —" : formatarMoeda((resumo?.totalAReceber ?? 0) - (resumo?.totalDespesasDoMes ?? 0))}
+          label="RECEITAS − DESPESAS DO MÊS"
+          valor={carregando ? "R$ —" : formatarMoeda((resumo?.totalReceitasDoMes ?? 0) - (resumo?.totalDespesasDoMes ?? 0))}
           corValor={
-            (resumo?.totalAReceber ?? 0) - (resumo?.totalDespesasDoMes ?? 0) >= 0
+            (resumo?.totalReceitasDoMes ?? 0) - (resumo?.totalDespesasDoMes ?? 0) >= 0
               ? "var(--color-success)"
               : "var(--color-error)"
           }

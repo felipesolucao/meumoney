@@ -66,6 +66,11 @@ export async function GET(req: NextRequest) {
   // Total de despesas do mês = já pagas + ainda pendentes (tudo que vence
   // no mês, independente do status já ter sido resolvido ou não).
   const totalDespesasDoMes = despesasDoMes + aPagarDoMes;
+  // Mesma ideia pro lado das receitas — usada no card "Receitas - Despesas
+  // do mês" da Início, que precisa do total do MÊS (pago + pendente) dos
+  // dois lados, não do total pendente GERAL (esse é o totalAReceber abaixo,
+  // que olha todos os meses e por isso não deve entrar nessa conta).
+  const totalReceitasDoMes = receitasDoMes + aReceberDoMes;
 
   const totalAPagar = pendentesDespesa.reduce((s, l) => s + Number(l.valor), 0);
   const totalAReceber = pendentesReceita.reduce((s, l) => s + Number(l.valor), 0);
@@ -80,6 +85,7 @@ export async function GET(req: NextRequest) {
     aReceberDoMes,
     aPagarDoMes,
     totalDespesasDoMes,
+    totalReceitasDoMes,
     totalAPagar,
     totalAReceber,
     contasAPagar: pendentesDespesa.length,

@@ -20,7 +20,6 @@ import HeaderTopo from "../components/HeaderTopo";
 import ResumoMesInicio from "../components/ResumoMesInicio";
 import DespesasPorCategoriaInicio from "../components/DespesasPorCategoriaInicio";
 import {
-  IconWallet,
   IconTrendUp,
   IconTrendDown,
   IconAlert,
@@ -49,23 +48,9 @@ export default async function Inicio() {
       </div>
 
       <div className="px-5 mt-5 space-y-5">
-        {/* Saldo de empréstimos — o outro módulo, resumido numa única linha */}
-        <Link href="/emprestimos" className="card stat-card flex items-center gap-3 block" style={tonCss("var(--color-primary)", "var(--color-primary-subtle)")}>
-          <div className="stat-icon">
-            <IconWallet size={20} />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-semibold tracking-wide text-muted">SALDO DE EMPRÉSTIMOS</p>
-            <p className="font-bold text-lg">{formatarMoeda(resumo.totalEmprestado)}</p>
-            <p className="text-xs text-muted mt-0.5">
-              {formatarMoeda(resumo.recebidoEmprestimos)} recebido · {formatarMoeda(resumo.aReceberEmprestimos)} a receber
-            </p>
-          </div>
-        </Link>
-
         {/* Resumo do mês — mesmo seletor de mês usado em "Transações", com
             saldo do mês, a receber, saldo em contas, despesas do mês e o
-            saldo projetado (recebíveis - despesas do mês). */}
+            saldo total (receitas - despesas do mês). */}
         <div>
           <p className="text-xs font-semibold tracking-wide text-muted mb-3">RESUMO DO MÊS</p>
           <ResumoMesInicio />
