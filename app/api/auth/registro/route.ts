@@ -10,16 +10,19 @@ import { senhaValida, emailValido, gerarHashSenha } from "../../../../lib/senha"
 
 export async function POST(req: NextRequest) {
   try {
-    let body: { email?: string; senha?: string; telefone?: string };
+    let body: { email?: string; senha?: string; telefone?: string; nome?: string };
     try {
       body = await req.json();
     } catch {
       return NextResponse.json({ error: "Requisição inválida. Recarregue a página e tente novamente." }, { status: 400 });
     }
 
-    const { email, senha, telefone } = body;
+    const { email, senha, telefone, nome } = body;
 
-    // --- Validação dos 3 campos exigidos no cadastro -------------------------
+    // --- Validação dos campos exigidos no cadastro ----------------------------
+    if (!nome || !nome.trim()) {
+      return NextResponse.json({ error: "Informe seu nome." }, { status: 400 });
+    }
     if (!email || !emailValido(email)) {
       return NextResponse.json({ error: "Informe um e-mail válido." }, { status: 400 });
     }
@@ -38,6 +41,7 @@ export async function POST(req: NextRequest) {
 
     const usuario = await prisma.usuario.create({
       data: {
+        nome: nome.trim(),
         email: email.toLowerCase().trim(),
         senha: await gerarHashSenha(senha),
         telefone: telefoneLimpo,
@@ -45,9 +49,9 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    await criarSessao({ id: usuario.id, email: usuario.email, papel: usuario.papel });
+    await criarSessao({ id: usuario.id, email: usuario.email, nome: usuario.nome, papel: usuario.papel });
 
-    return NextResponse.json({ id: usuario.id, email: usuario.email }, { status: 201 });
+    return NextResponse.json({ id: usuario.id, email: usuario.email, nome: usuario.nome }, { status: 201 });
   } catch (erro) {
     // Erro inesperado (ex.: banco de dados fora do ar, violação de unicidade
     // não prevista). Loga no servidor e devolve JSON, nunca um corpo vazio.

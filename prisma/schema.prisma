@@ -43,6 +43,11 @@ model Usuario {
   email     String       @unique
   senha     String       // hash bcrypt — nunca guardamos a senha em texto puro
   telefone  String       // WhatsApp, exigido no cadastro
+  // Nome usado na saudação ("Olá, {primeiro nome}") e no avatar (inicial) do
+  // topo do app. @default("Usuário") só existe para não quebrar contas que já
+  // existiam antes deste campo — usuários novos sempre preenchem no cadastro,
+  // e qualquer um pode corrigir depois em /perfil.
+  nome      String       @default("Usuário")
   papel     PapelUsuario @default(usuario)
   criadoEm  DateTime     @default(now())
 

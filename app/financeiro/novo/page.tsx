@@ -38,7 +38,14 @@ import {
   IconRepeat,
   IconPlus,
   IconChevronDown,
+  IconDocument,
 } from "../../../components/Icons";
+
+// Opção extra no seletor do topo — "Empréstimo" não é um Lancamento, é um
+// Contrato (outro módulo, com cliente/parcelas/juros). Por isso ela não entra
+// no estado "tipo" (que continua só "receita" | "despesa" para o resto do
+// formulário) — escolher "Empréstimo" só navega para a tela de novo contrato.
+type TipoTransacao = TipoLancamento | "emprestimo";
 
 type Categoria = { id: string; nome: string; icone: string; tipo: TipoLancamento };
 type Conta = { id: string; nome: string; icone: string };
@@ -117,6 +124,17 @@ function NovoLancamentoConteudo() {
     if (atalho === "ontem") setDataVencimento(isoHoje(-1));
   }
 
+  // Seletor do topo: "Empréstimo" leva para o módulo de contratos (outro
+  // model, outro fluxo) — nunca fica selecionado aqui, só navega. "Despesa"
+  // e "Receita" continuam nesta mesma tela, só trocando o estado "tipo".
+  function escolherTipoTransacao(escolha: TipoTransacao) {
+    if (escolha === "emprestimo") {
+      router.push("/contratos/novo");
+      return;
+    }
+    setTipo(escolha);
+  }
+
   async function criarConta() {
     const nome = window.prompt("Nome da nova conta/carteira (ex: Nubank, Dinheiro):");
     if (!nome) return;
@@ -182,33 +200,46 @@ function NovoLancamentoConteudo() {
       <div className="header-gradient flex items-center gap-3">
         <BotaoVoltar href="/financeiro" />
         <div>
-          <h1 className="text-2xl font-bold">Novo lançamento</h1>
-          <p className="text-sm text-muted mt-0.5">Registre uma entrada ou saída financeira</p>
+          <h1 className="text-2xl font-bold">Nova transação</h1>
+          <p className="text-sm text-muted mt-0.5">Escolha o tipo e preencha os dados</p>
         </div>
       </div>
 
       <div className="px-5 mt-6 space-y-4 pb-4">
         {/* ============================================================ */}
-        {/* CARD: Tipo + Valor + Descrição                                */}
+        {/* Linha 1: tipo da transação — Empréstimo / Despesa / Receita   */}
+        {/* ============================================================ */}
+        <div className="grid grid-cols-3 gap-2">
+          <button
+            type="button"
+            onClick={() => escolherTipoTransacao("emprestimo")}
+            className="flex flex-col items-center justify-center gap-1 btn-outline !py-3"
+          >
+            <IconDocument size={18} />
+            <span className="text-xs">Empréstimo</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => escolherTipoTransacao("despesa")}
+            className={`flex flex-col items-center justify-center gap-1 !py-3 ${tipo === "despesa" ? "btn-danger" : "btn-outline"}`}
+          >
+            <IconReceipt size={18} />
+            <span className="text-xs">Despesa</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => escolherTipoTransacao("receita")}
+            className={`flex flex-col items-center justify-center gap-1 !py-3 ${tipo === "receita" ? "btn-primary" : "btn-outline"}`}
+          >
+            <IconWallet size={18} />
+            <span className="text-xs">Receita</span>
+          </button>
+        </div>
+
+        {/* ============================================================ */}
+        {/* CARD: Valor + Descrição                                       */}
         {/* ============================================================ */}
         <div className="card space-y-5">
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={() => setTipo("receita")}
-              className={`flex items-center justify-center gap-2 ${tipo === "receita" ? "btn-primary !py-3.5" : "btn-outline !py-3.5"}`}
-            >
-              <IconWallet size={18} /> Receita
-            </button>
-            <button
-              type="button"
-              onClick={() => setTipo("despesa")}
-              className={`flex items-center justify-center gap-2 ${tipo === "despesa" ? "btn-danger !py-3.5" : "btn-outline !py-3.5"}`}
-            >
-              <IconReceipt size={18} /> Despesa
-            </button>
-          </div>
-
           {/* --- Valor ---------------------------------------------------------- */}
           <div>
             <p className="text-xs font-semibold tracking-wide text-muted mb-2">

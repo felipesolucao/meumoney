@@ -12,6 +12,7 @@ import {
   IconWallet,
   IconCalendar,
   IconUser,
+  IconUsers as IconClientes,
   IconDocument,
   IconChart,
   IconUsers,
@@ -19,7 +20,12 @@ import {
   IconBuilding,
 } from "../../components/Icons";
 
+// "Empréstimos" e "Clientes" saíram do rodapé (BottomNav) para abrir espaço
+// para o botão central de nova transação — por isso entram aqui, no topo da
+// lista, para continuarem a um toque de distância.
 const ITENS = [
+  { href: "/emprestimos", icon: IconWallet, label: "Empréstimos", desc: "Total emprestado, recebido e a receber" },
+  { href: "/clientes", icon: IconClientes, label: "Clientes", desc: "Lista de clientes e contratos" },
   { href: "/financeiro/novo", icon: IconPlus, label: "Novo lançamento", desc: "Cadastrar uma receita ou despesa" },
   { href: "/financeiro/pagar", icon: IconReceipt, label: "Contas a pagar", desc: "Histórico de despesas" },
   { href: "/financeiro/receber", icon: IconWallet, label: "Contas a receber", desc: "Histórico de receitas" },
@@ -46,6 +52,19 @@ export default async function Menu() {
       </div>
 
       <div className="px-5 mt-5 space-y-3">
+        <Link href="/perfil" className="card flex items-center gap-3 block">
+          <div
+            className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold flex-shrink-0"
+            style={{ background: "var(--gradient-avatar)" }}
+          >
+            {sessao.nome.trim().charAt(0).toUpperCase()}
+          </div>
+          <div>
+            <p className="font-bold">{sessao.nome}</p>
+            <p className="text-sm text-muted">Ver e editar meu perfil</p>
+          </div>
+        </Link>
+
         {sessao.papel === "admin" && (
           <Link href="/admin" className="card flex items-center gap-3 block" style={{ background: "var(--color-primary-surface)" }}>
             <div className="w-12 h-12 rounded-md bg-card flex items-center justify-center text-primary flex-shrink-0">

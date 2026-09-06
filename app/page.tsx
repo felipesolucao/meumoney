@@ -17,8 +17,8 @@ import { formatarMoeda } from "../lib/calculos";
 import { calcularResumoGeral } from "../lib/resumoGeral";
 import { tonCss } from "../lib/estiloCard";
 import CardSaldo from "../components/CardSaldo";
+import HeaderTopo from "../components/HeaderTopo";
 import {
-  IconBell,
   IconWallet,
   IconTrendUp,
   IconTrendDown,
@@ -44,15 +44,7 @@ export default async function Inicio() {
   return (
     <div>
       <div className="header-gradient">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-muted text-sm">Olá,</p>
-            <h1 className="text-2xl font-bold">Visão geral</h1>
-          </div>
-          <div className="icon-btn text-foreground">
-            <IconBell size={19} />
-          </div>
-        </div>
+        <HeaderTopo nome={sessao.nome} />
 
         {/* Saldo financeiro — receitas pagas menos despesas pagas, no geral */}
         <div className="mt-5">

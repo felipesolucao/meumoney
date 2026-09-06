@@ -14,6 +14,7 @@ import Image from "next/image";
 
 export default function CadastroPage() {
   const router = useRouter();
+  const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
   const [telefone, setTelefone] = useState("");
   const [senha, setSenha] = useState("");
@@ -23,6 +24,7 @@ export default function CadastroPage() {
 
   async function cadastrar() {
     // Validações locais primeiro, com mensagens específicas.
+    if (!nome.trim()) return setErro("Informe seu nome.");
     if (!email.trim()) return setErro("Informe seu e-mail.");
     if (!telefone.trim()) return setErro("Informe seu telefone (WhatsApp).");
     if (senha.length !== 6) return setErro("A senha deve ter exatamente 6 números.");
@@ -35,7 +37,7 @@ export default function CadastroPage() {
       const res = await fetch("/api/auth/registro", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, senha, telefone }),
+        body: JSON.stringify({ nome, email, senha, telefone }),
       });
 
       // Protege contra respostas de erro que não vêm em JSON (ex.: 500 puro).
@@ -69,6 +71,17 @@ export default function CadastroPage() {
       </div>
 
       <div className="space-y-4">
+        <div>
+          <p className="text-xs font-semibold tracking-wide text-muted mb-2">NOME</p>
+          <input
+            value={nome}
+            onChange={(e) => setNome(e.target.value)}
+            placeholder="Seu nome completo"
+            autoFocus
+            className="w-full rounded-md border border-border px-4 py-3.5 outline-none focus:border-primary"
+          />
+        </div>
+
         <div>
           <p className="text-xs font-semibold tracking-wide text-muted mb-2">E-MAIL</p>
           <input

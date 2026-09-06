@@ -40,9 +40,9 @@ export async function POST(req: NextRequest) {
     }
 
     limparTentativas(emailNormalizado);
-    await criarSessao({ id: usuario.id, email: usuario.email, papel: usuario.papel });
+    await criarSessao({ id: usuario.id, email: usuario.email, nome: usuario.nome, papel: usuario.papel });
 
-    return NextResponse.json({ id: usuario.id, email: usuario.email, papel: usuario.papel });
+    return NextResponse.json({ id: usuario.id, email: usuario.email, nome: usuario.nome, papel: usuario.papel });
   } catch (erro) {
     // Erro inesperado (ex.: banco de dados fora do ar). Loga no servidor e
     // devolve uma mensagem em JSON — nunca deixa a rota "estourar" sem corpo,

@@ -21,6 +21,7 @@ const DURACAO_SEGUNDOS = 60 * 60 * 24 * 30; // 30 dias
 export type SessaoUsuario = {
   id: string;
   email: string;
+  nome: string;
   papel: "admin" | "usuario";
 };
 
@@ -52,7 +53,12 @@ export async function obterSessao(): Promise<SessaoUsuario | null> {
   if (!token) return null;
   try {
     const { payload } = await jwtVerify(token, CHAVE);
-    return { id: payload.id as string, email: payload.email as string, papel: payload.papel as "admin" | "usuario" };
+    return {
+      id: payload.id as string,
+      email: payload.email as string,
+      nome: (payload.nome as string) || "Usuário",
+      papel: payload.papel as "admin" | "usuario",
+    };
   } catch {
     return null;
   }
