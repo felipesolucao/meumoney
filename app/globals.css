@@ -271,6 +271,20 @@ h6 {
   padding-bottom: var(--shell-bottom-space);
 }
 
+/* Largura útil do menu flutuante inferior — igual ao .app-shell (mesmo
+   max-width, centralizado), mas SEM background e SEM min-height. É um
+   elemento próprio (e não uma reaproveitação do .app-shell) porque o
+   .app-shell pinta um fundo sólido; usado sem essa cor, o fundo aparecia
+   "vazando" atrás do pill flutuante, por cima dos últimos cards da tela ao
+   rolar — o pill (.card, com seu próprio fundo) é a única coisa que deve
+   aparecer ali. */
+.bottom-nav-shell {
+  max-width: var(--shell-max-width);
+  margin: 0 auto;
+  position: relative;
+  width: 100%;
+}
+
 /* Cabeçalho em degradê verde-claro, usado no topo de cada tela */
 .header-gradient {
   background: var(--gradient-header);
