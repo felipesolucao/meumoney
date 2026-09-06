@@ -7,10 +7,15 @@
 //                                                             (inclui ações de Parcela)
 // "voltar" define para onde a seta de voltar do topo aponta.
 // Traz um seletor de mês (mês atual por padrão) e a timeline, com reversão.
+//
+// useSearchParams() exige um <Suspense> ao redor quando a página é
+// pré-renderizada no build (ver https://nextjs.org/docs/messages/missing-suspense-with-csr-bailout),
+// por isso a lógica fica num componente filho (HistoricoConteudo) e a
+// exportação padrão só monta o Suspense em volta dele.
 // ============================================================================
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import MesSeletor from "../../components/MesSeletor";
 import HistoricoTimeline, { HistoricoItem } from "../../components/HistoricoTimeline";
@@ -20,7 +25,7 @@ function pad(n: number) {
   return String(n).padStart(2, "0");
 }
 
-export default function HistoricoPage() {
+function HistoricoConteudo() {
   const params = useSearchParams();
   const entidade = params.get("entidade") || "Lancamento";
   const voltar = params.get("voltar") || "/financeiro";
@@ -78,5 +83,22 @@ export default function HistoricoPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function HistoricoPage() {
+  return (
+    <Suspense
+      fallback={
+        <div>
+          <div className="header-gradient">
+            <h1 className="text-xl font-bold">Histórico</h1>
+          </div>
+          <p className="text-center text-muted text-sm py-10">Carregando...</p>
+        </div>
+      }
+    >
+      <HistoricoConteudo />
+    </Suspense>
   );
 }
