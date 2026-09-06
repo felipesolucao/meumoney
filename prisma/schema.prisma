@@ -52,6 +52,7 @@ model Usuario {
   contas                 Conta[]
   lancamentos            Lancamento[]
   lancamentosRecorrentes LancamentoRecorrente[]
+  historicoAcoes         HistoricoAcao[]
 
   @@map("usuarios")
 }
@@ -102,14 +103,41 @@ enum StatusParcela {
 }
 
 // ----------------------------------------------------------------------------
+// ENUM: Situação cadastral do cliente (independente do score de crédito).
+// ----------------------------------------------------------------------------
+enum SituacaoCliente {
+  ativo
+  inadimplente
+  inativo
+}
+
+// ----------------------------------------------------------------------------
 // MODEL: Cliente
 // ----------------------------------------------------------------------------
 model Cliente {
   id        String       @id @default(cuid())
   nome      String
   telefone  String?
+  telefone2 String?         // telefone secundário / contato alternativo
+  email     String?
   cpf       String?
+  rg        String?
+  dataNascimento DateTime?
   score     ScoreCliente @default(medio)
+  situacao  SituacaoCliente @default(ativo)
+
+  // --- Endereço (campos separados para permitir busca por CEP no futuro) ----
+  cep         String?
+  logradouro  String?
+  numero      String?
+  complemento String?
+  bairro      String?
+  cidade      String?
+  uf          String?
+
+  referencia   String? // quem indicou este cliente
+  observacoes  String? // notas internas, não aparecem em PDF/WhatsApp
+
   criadoEm  DateTime     @default(now())
   contratos Contrato[]
 
@@ -338,4 +366,50 @@ model Lancamento {
   usuario         Usuario           @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 
   @@map("lancamentos")
+}
+
+// ============================================================================
+// MÓDULO: HISTÓRICO DE AÇÕES (auditoria + reversão)
+// ----------------------------------------------------------------------------
+// Registra toda ação relevante feita no sistema — criar contrato, editar
+// lançamento, marcar parcela como paga, cadastrar/editar cliente, excluir
+// algo — guardando um "antes" e um "depois" em JSON. Isso permite:
+//   1) Mostrar uma linha do tempo legível (igual ao extrato de um app bancário)
+//   2) Reverter (desfazer) qualquer ação, restaurando o snapshot "antes"
+//
+// Usado tanto pela tela de Histórico do Financeiro quanto pela tela de
+// Histórico de Contratos — o mesmo model, filtrado por "entidade".
+// Nunca é apagado: uma reversão gera uma NOVA linha, mantendo o rastro
+// completo de tudo o que aconteceu (e de tudo o que foi desfeito).
+// ============================================================================
+enum EntidadeHistorico {
+  Contrato
+  Parcela
+  Cliente
+  Lancamento
+}
+
+model HistoricoAcao {
+  id          String            @id @default(cuid())
+  tipo        String            // ex: "CONTRATO_CRIADO", "LANCAMENTO_EDITADO", "PARCELA_PAGA", "REVERSAO"
+  entidade    EntidadeHistorico
+  entidadeId  String            // id do registro afetado (Contrato, Parcela, Cliente ou Lancamento)
+
+  dadosAntes  Json?             // snapshot completo antes da ação (null se foi uma criação)
+  dadosDepois Json?             // snapshot completo depois da ação (null se foi uma exclusão)
+
+  descricao   String            // texto amigável exibido na timeline, ex: "Contrato criado - R$ 89,00"
+  valor       Decimal?          @db.Decimal(12, 2) // valor em destaque na linha (positivo = entrada, negativo = saída)
+
+  revertidoEm  DateTime?        // preenchido quando esta ação é desfeita
+  revertidoPor String?          // id do usuário que reverteu
+  origemId     String?          // se este registro É a reversão de outra ação, aponta para ela
+
+  criadoEm    DateTime          @default(now())
+
+  usuarioId   String
+  usuario     Usuario           @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioId, entidade, criadoEm])
+  @@map("historico_acoes")
 }

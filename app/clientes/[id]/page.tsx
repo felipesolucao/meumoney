@@ -1,16 +1,18 @@
 // ============================================================================
 // PÁGINA: Detalhe do cliente
 // ----------------------------------------------------------------------------
-// Mostra dados do cliente, score, e todos os contratos vinculados a ele,
-// com o progresso de pagamento de cada um.
+// Mostra dados do cliente, score/situação, contato, endereço, observações
+// internas e todos os contratos vinculados a ele, com o progresso de
+// pagamento de cada um.
 // ============================================================================
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "../../../lib/prisma";
-import { formatarMoeda, iniciais, statusDoContrato } from "../../../lib/calculos";
+import { formatarMoeda, formatarData, iniciais, statusDoContrato } from "../../../lib/calculos";
 import { exigirSessao } from "../../../lib/auth";
-import Badge, { tomEScore, tomEStatusContrato } from "../../../components/Badge";
+import Badge, { tomEScore, tomEStatusContrato, tomESituacaoCliente } from "../../../components/Badge";
 import BotaoVoltar from "../../../components/BotaoVoltar";
+import { IconEdit, IconPhone, IconMail, IconMapPin } from "../../../components/Icons";
 
 export const dynamic = "force-dynamic";
 
@@ -25,17 +27,31 @@ export default async function DetalheCliente({ params }: { params: { id: string 
   if (!cliente) notFound();
 
   const { tom, texto } = tomEScore(cliente.score);
+  const situacaoInfo = tomESituacaoCliente(cliente.situacao);
   const totalEmprestado = cliente.contratos.reduce((s, c) => s + Number(c.valorEmprestado), 0);
   const totalAReceber = cliente.contratos
     .flatMap((c) => c.parcelas)
     .filter((p) => p.status !== "pago")
     .reduce((s, p) => s + Number(p.valor), 0);
 
+  const enderecoCompleto = [
+    cliente.logradouro && cliente.numero ? `${cliente.logradouro}, ${cliente.numero}` : cliente.logradouro,
+    cliente.complemento,
+    cliente.bairro,
+    cliente.cidade && cliente.uf ? `${cliente.cidade}/${cliente.uf}` : cliente.cidade,
+    cliente.cep,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
   return (
     <div>
       <div className="header-gradient flex items-center gap-3">
         <BotaoVoltar href="/clientes" />
-        <h1 className="text-xl font-bold truncate">{cliente.nome}</h1>
+        <h1 className="text-xl font-bold truncate flex-1">{cliente.nome}</h1>
+        <Link href={`/clientes/${cliente.id}/editar`} className="icon-btn text-ink">
+          <IconEdit size={17} />
+        </Link>
       </div>
 
       <div className="px-5 mt-5 space-y-5">
@@ -46,7 +62,10 @@ export default async function DetalheCliente({ params }: { params: { id: string 
               <p className="font-bold text-lg">{cliente.nome}</p>
               {cliente.telefone && <p className="text-sm text-muted">{cliente.telefone}</p>}
             </div>
-            <Badge tom={tom}>{texto}</Badge>
+            <div className="flex flex-col items-end gap-1.5">
+              <Badge tom={tom}>{texto}</Badge>
+              <Badge tom={situacaoInfo.tom}>{situacaoInfo.texto}</Badge>
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3 mt-4">
@@ -60,6 +79,75 @@ export default async function DetalheCliente({ params }: { params: { id: string 
             </div>
           </div>
         </div>
+
+        {/* --- Dados de contato ------------------------------------------------ */}
+        <div className="card flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-surface flex items-center justify-center text-primary flex-shrink-0">
+            <IconPhone size={18} />
+          </div>
+          <div>
+            <p className="text-xs font-semibold tracking-wide text-muted">TELEFONE</p>
+            <p className="font-medium">{cliente.telefone || "—"}</p>
+            {cliente.telefone2 && <p className="text-sm text-muted">{cliente.telefone2} (secundário)</p>}
+          </div>
+        </div>
+
+        <div className="card flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-surface flex items-center justify-center text-primary flex-shrink-0">
+            <IconMail size={18} />
+          </div>
+          <div>
+            <p className="text-xs font-semibold tracking-wide text-muted">E-MAIL</p>
+            <p className="font-medium">{cliente.email || "—"}</p>
+          </div>
+        </div>
+
+        <div className="card flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-surface flex items-center justify-center text-primary flex-shrink-0">
+            <IconMapPin size={18} />
+          </div>
+          <div>
+            <p className="text-xs font-semibold tracking-wide text-muted">ENDEREÇO</p>
+            <p className="font-medium">{enderecoCompleto || "—"}</p>
+          </div>
+        </div>
+
+        {/* --- Documentos e outros dados cadastrais ----------------------------- */}
+        {(cliente.cpf || cliente.rg || cliente.dataNascimento || cliente.referencia) && (
+          <div className="card grid grid-cols-2 gap-3">
+            {cliente.cpf && (
+              <div>
+                <p className="text-xs font-semibold tracking-wide text-muted">CPF/CNPJ</p>
+                <p className="font-medium text-sm mt-0.5">{cliente.cpf}</p>
+              </div>
+            )}
+            {cliente.rg && (
+              <div>
+                <p className="text-xs font-semibold tracking-wide text-muted">RG</p>
+                <p className="font-medium text-sm mt-0.5">{cliente.rg}</p>
+              </div>
+            )}
+            {cliente.dataNascimento && (
+              <div>
+                <p className="text-xs font-semibold tracking-wide text-muted">NASCIMENTO</p>
+                <p className="font-medium text-sm mt-0.5">{formatarData(cliente.dataNascimento)}</p>
+              </div>
+            )}
+            {cliente.referencia && (
+              <div>
+                <p className="text-xs font-semibold tracking-wide text-muted">INDICADO POR</p>
+                <p className="font-medium text-sm mt-0.5">{cliente.referencia}</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {cliente.observacoes && (
+          <div className="card">
+            <p className="text-xs font-semibold tracking-wide text-muted">OBSERVAÇÕES INTERNAS</p>
+            <p className="text-sm mt-1 whitespace-pre-wrap">{cliente.observacoes}</p>
+          </div>
+        )}
 
         <Link href={`/contratos/novo?clienteId=${cliente.id}`} className="btn-primary">
           + Novo contrato para este cliente

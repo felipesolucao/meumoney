@@ -10,7 +10,7 @@ import { prisma } from "../../lib/prisma";
 import { formatarMoeda, statusEfetivoLancamento } from "../../lib/financeiro";
 import { exigirSessao } from "../../lib/auth";
 import CardSaldo from "../../components/CardSaldo";
-import { IconPlus, IconReceipt, IconWallet, IconAlert } from "../../components/Icons";
+import { IconPlus, IconReceipt, IconWallet, IconAlert, IconHistory } from "../../components/Icons";
 
 export const dynamic = "force-dynamic";
 
@@ -53,6 +53,15 @@ export default async function Financeiro() {
           </div>
           <Link href="/financeiro/novo" className="icon-btn text-primary">
             <IconPlus size={20} />
+          </Link>
+        </div>
+
+        <div className="flex justify-end mt-2">
+          <Link
+            href="/historico?entidade=Lancamento&voltar=/financeiro"
+            className="text-sm font-semibold text-primary flex items-center gap-1.5"
+          >
+            <IconHistory size={15} /> Ver histórico
           </Link>
         </div>
 

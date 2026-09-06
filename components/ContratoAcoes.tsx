@@ -3,10 +3,11 @@
 // ============================================================================
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { formatarMoeda, formatarData } from "../lib/calculos";
-import { IconSend, IconTrash, IconRefresh } from "./Icons";
+import { IconSend, IconTrash, IconHistory } from "./Icons";
 
 export default function ContratoAcoes({
   contratoId,
@@ -59,12 +60,12 @@ export default function ContratoAcoes({
         >
           <IconTrash size={16} /> {excluindo ? "Excluindo..." : "Excluir"}
         </button>
-        <button
-          onClick={() => router.push(`/contratos/${contratoId}`)}
+        <Link
+          href={`/historico?entidade=Contrato&voltar=/contratos/${contratoId}`}
           className="btn-outline flex items-center justify-center gap-2"
         >
-          <IconRefresh size={16} /> Atualizar
-        </button>
+          <IconHistory size={16} /> Histórico
+        </Link>
       </div>
     </div>
   );

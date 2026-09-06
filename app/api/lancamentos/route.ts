@@ -14,6 +14,7 @@ import { prisma } from "../../../lib/prisma";
 import { obterSessao } from "../../../lib/auth";
 import { gerarOcorrencias, statusEfetivoLancamento } from "../../../lib/financeiro";
 import type { TipoLancamento, OrigemFinanceira, PeriodicidadeLancamento, TipoFimRecorrencia } from "../../../lib/financeiro";
+import { registrarAcao } from "../../../lib/historico";
 
 export async function GET(req: NextRequest) {
   const sessao = await obterSessao();
@@ -118,6 +119,17 @@ export async function POST(req: NextRequest) {
       },
       include: { categoria: true, conta: true },
     });
+
+    await registrarAcao(prisma, {
+      usuarioId: sessao.id,
+      tipo: "LANCAMENTO_CRIADO",
+      entidade: "Lancamento",
+      entidadeId: lancamento.id,
+      descricao: `${tipo === "receita" ? "Receita" : "Despesa"} criada: ${descricao}`,
+      valor: tipo === "receita" ? Number(valor) : Number(valor) * -1,
+      dadosDepois: lancamento,
+    });
+
     return NextResponse.json(lancamento, { status: 201 });
   }
 
@@ -172,6 +184,19 @@ export async function POST(req: NextRequest) {
     where: { recorrenteId: regra.id },
     include: { categoria: true, conta: true },
     orderBy: { dataVencimento: "asc" },
+  });
+
+  // Um único evento de histórico para a série inteira (em vez de um por
+  // ocorrência) — evita poluir a timeline quando alguém cria uma conta fixa
+  // com dezenas de parcelas de uma vez.
+  await registrarAcao(prisma, {
+    usuarioId: sessao.id,
+    tipo: "LANCAMENTO_RECORRENTE_CRIADO",
+    entidade: "Lancamento",
+    entidadeId: lancamentosCriados[0]?.id ?? regra.id,
+    descricao: `${tipo === "receita" ? "Receita" : "Despesa"} recorrente criada: ${descricao} (${lancamentosCriados.length} ocorrência(s))`,
+    valor: tipo === "receita" ? Number(valor) : Number(valor) * -1,
+    dadosDepois: { regra, quantidadeOcorrencias: lancamentosCriados.length },
   });
 
   return NextResponse.json({ recorrente: regra, lancamentos: lancamentosCriados }, { status: 201 });

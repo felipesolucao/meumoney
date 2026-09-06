@@ -157,3 +157,38 @@ export function formatarData(data: Date | string): string {
 export function iniciais(nome: string): string {
   return nome.trim().charAt(0).toUpperCase();
 }
+
+// ----------------------------------------------------------------------------
+// Rótulo de dia usado para agrupar listas por data (ex: "Sábado, 19"),
+// no mesmo padrão do app de referência. Usado tanto na lista de lançamentos
+// quanto na timeline de histórico.
+// ----------------------------------------------------------------------------
+export function rotuloDia(data: Date | string): string {
+  const d = typeof data === "string" ? new Date(data) : data;
+  const diaSemana = d.toLocaleDateString("pt-BR", { weekday: "long", timeZone: "UTC" });
+  const dia = d.toLocaleDateString("pt-BR", { day: "2-digit", timeZone: "UTC" });
+  return `${diaSemana.charAt(0).toUpperCase()}${diaSemana.slice(1)}, ${dia}`;
+}
+
+// ----------------------------------------------------------------------------
+// Agrupa uma lista qualquer por dia (chave = data em yyyy-mm-dd), mantendo a
+// ordem em que os itens chegaram — a lista já deve vir ordenada (desc/asc)
+// antes de passar por aqui.
+// ----------------------------------------------------------------------------
+export function agruparPorDia<T>(itens: T[], obterData: (item: T) => Date | string): { rotulo: string; itens: T[] }[] {
+  const grupos: { chave: string; rotulo: string; itens: T[] }[] = [];
+
+  for (const item of itens) {
+    const data = obterData(item);
+    const d = typeof data === "string" ? new Date(data) : data;
+    const chave = d.toISOString().slice(0, 10);
+    const ultimo = grupos[grupos.length - 1];
+    if (ultimo && ultimo.chave === chave) {
+      ultimo.itens.push(item);
+    } else {
+      grupos.push({ chave, rotulo: rotuloDia(d), itens: [item] });
+    }
+  }
+
+  return grupos.map(({ rotulo, itens }) => ({ rotulo, itens }));
+}

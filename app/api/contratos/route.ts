@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "../../../lib/prisma";
 import { obterSessao } from "../../../lib/auth";
 import { calcularContrato, gerarCodigoContrato, TipoEmprestimo, Frequencia } from "../../../lib/calculos";
+import { registrarAcao } from "../../../lib/historico";
 
 export async function GET() {
   const sessao = await obterSessao();
@@ -97,6 +98,16 @@ export async function POST(req: NextRequest) {
       },
     },
     include: { parcelas: true, cliente: true },
+  });
+
+  await registrarAcao(prisma, {
+    usuarioId: sessao.id,
+    tipo: "CONTRATO_CRIADO",
+    entidade: "Contrato",
+    entidadeId: contrato.id,
+    descricao: `Contrato criado - ${contrato.codigo} (${cliente.nome})`,
+    valor: Number(contrato.valorEmprestado) * -1, // saída de caixa ao emprestar
+    dadosDepois: contrato,
   });
 
   return NextResponse.json(contrato, { status: 201 });

@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { formatarMoeda, formatarData, statusDoContrato } from "../../lib/calculos";
 import Badge, { tomEStatusContrato } from "../../components/Badge";
+import { IconHistory } from "../../components/Icons";
 
 type Contrato = {
   id: string;
@@ -52,9 +53,14 @@ export default function Contratos() {
 
   return (
     <div>
-      <div className="header-gradient">
-        <h1 className="text-2xl font-bold">Contratos</h1>
-        <p className="text-muted text-sm">{contratos.length} contrato(s)</p>
+      <div className="header-gradient flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Contratos</h1>
+          <p className="text-muted text-sm">{contratos.length} contrato(s)</p>
+        </div>
+        <Link href="/historico?entidade=Contrato&voltar=/contratos" className="icon-btn text-ink">
+          <IconHistory size={18} />
+        </Link>
       </div>
 
       <div className="px-5 mt-5 space-y-4">

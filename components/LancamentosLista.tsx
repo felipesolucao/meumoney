@@ -5,18 +5,26 @@
 // o filtro de tipo que a página passa por fora (ver app/financeiro/pagar e
 // app/financeiro/receber).
 //
+// A lista chega já ordenada por data decrescente (mais recente primeiro) e
+// aqui é agrupada por dia, no mesmo padrão do app de referência.
+//
+// Editar    -> abre a tela de edição do lançamento
 // Pagar/Receber -> marca o lançamento como pago
-// Reabrir       -> volta o lançamento para pendente (desfaz um pagamento)
-// Excluir       -> remove só esta ocorrência, ou a série inteira se for uma
-//                  conta fixa/parcelada (o usuário escolhe na confirmação)
+// Reabrir   -> volta o lançamento para pendente (desfaz um pagamento)
+// Excluir   -> remove só esta ocorrência, ou a série inteira se for uma
+//              conta fixa/parcelada (o usuário escolhe na confirmação)
+// Todas as ações acima ficam registradas no Histórico e podem ser revertidas
+// por lá (ver /historico).
 // ============================================================================
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { formatarMoeda, formatarData, statusEfetivoLancamento } from "../lib/financeiro";
+import { useMemo, useState } from "react";
+import { formatarMoeda, statusEfetivoLancamento } from "../lib/financeiro";
+import { agruparPorDia } from "../lib/calculos";
 import Badge, { tomEStatusLancamento } from "./Badge";
-import { IconWallet, IconReceipt, IconCheck, IconUndo, IconTrash } from "./Icons";
+import { IconWallet, IconReceipt, IconCheck, IconUndo, IconTrash, IconEdit } from "./Icons";
 
 export type LancamentoItem = {
   id: string;
@@ -35,6 +43,11 @@ export type LancamentoItem = {
 export default function LancamentosLista({ lancamentos }: { lancamentos: LancamentoItem[] }) {
   const router = useRouter();
   const [carregandoId, setCarregandoId] = useState<string | null>(null);
+
+  const grupos = useMemo(
+    () => agruparPorDia(lancamentos, (item) => item.dataVencimento),
+    [lancamentos]
+  );
 
   async function alternarStatus(item: LancamentoItem) {
     setCarregandoId(item.id);
@@ -72,72 +85,81 @@ export default function LancamentosLista({ lancamentos }: { lancamentos: Lancame
   }
 
   return (
-    <div className="space-y-3">
-      {lancamentos.map((item) => {
-        const efetivo = statusEfetivoLancamento(item.status, item.dataVencimento);
-        const { tom, texto } = tomEStatusLancamento(efetivo);
-        const corValor = item.tipo === "receita" ? "text-primary" : "text-danger";
-        const ocupado = carregandoId === item.id;
+    <div className="space-y-5">
+      {grupos.map((grupo) => (
+        <div key={grupo.rotulo}>
+          <p className="text-xs font-semibold tracking-wide text-muted mb-2">{grupo.rotulo}</p>
+          <div className="space-y-3">
+            {grupo.itens.map((item) => {
+              const efetivo = statusEfetivoLancamento(item.status, item.dataVencimento);
+              const { tom, texto } = tomEStatusLancamento(efetivo);
+              const corValor = item.tipo === "receita" ? "text-primary" : "text-danger";
+              const ocupado = carregandoId === item.id;
 
-        return (
-          <div key={item.id} className="card space-y-3">
-            <div className="flex items-start gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-surface flex items-center justify-center text-xl flex-shrink-0">
-                {item.categoria?.icone || (
-                  <span className="text-primary">
-                    {item.tipo === "receita" ? <IconWallet size={20} /> : <IconReceipt size={20} />}
-                  </span>
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="font-bold truncate">{item.descricao}</p>
-                  <Badge tom={tom}>{texto}</Badge>
-                </div>
-                <p className="text-sm text-muted">
-                  {[item.categoria?.nome, item.conta?.nome, item.origem === "empresarial" ? "Empresarial" : "Pessoal"]
-                    .filter(Boolean)
-                    .join(" · ")}
-                </p>
-                <div className="flex items-center justify-between mt-1">
-                  <p className="text-xs text-muted">Vence em {formatarData(item.dataVencimento)}</p>
-                  <p className={`font-bold ${corValor}`}>
-                    {item.tipo === "receita" ? "+" : "-"} {formatarMoeda(item.valor)}
-                  </p>
-                </div>
-              </div>
-            </div>
+              return (
+                <div key={item.id} className="card space-y-3">
+                  <div className="flex items-start gap-3">
+                    <div className="w-12 h-12 rounded-2xl bg-surface flex items-center justify-center text-xl flex-shrink-0">
+                      {item.categoria?.icone || (
+                        <span className="text-primary">
+                          {item.tipo === "receita" ? <IconWallet size={20} /> : <IconReceipt size={20} />}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="font-bold truncate">{item.descricao}</p>
+                        <Badge tom={tom}>{texto}</Badge>
+                      </div>
+                      <p className="text-sm text-muted">
+                        {[item.categoria?.nome, item.conta?.nome, item.origem === "empresarial" ? "Empresarial" : "Pessoal"]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </p>
+                      <p className={`font-bold mt-1 ${corValor}`}>
+                        {item.tipo === "receita" ? "+" : "-"} {formatarMoeda(item.valor)}
+                      </p>
+                    </div>
+                  </div>
 
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                onClick={() => alternarStatus(item)}
-                disabled={ocupado}
-                className={`flex items-center justify-center gap-1.5 ${
-                  item.status === "pago" ? "btn-outline !py-2.5 text-sm" : "btn-primary !py-2.5 text-sm"
-                }`}
-              >
-                {item.status === "pago" ? (
-                  <>
-                    <IconUndo size={16} /> Reabrir
-                  </>
-                ) : (
-                  <>
-                    <IconCheck size={16} /> {item.tipo === "receita" ? "Recebido" : "Pago"}
-                  </>
-                )}
-              </button>
-              <button
-                onClick={() => excluir(item)}
-                disabled={ocupado}
-                className="btn-outline !py-2.5 text-sm text-danger flex items-center justify-center gap-1.5"
-                style={{ borderColor: "#f4c7c2" }}
-              >
-                <IconTrash size={16} /> Excluir
-              </button>
-            </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <Link
+                      href={`/financeiro/${item.id}/editar`}
+                      className="btn-chip"
+                      style={{ background: "#EEF1F0", color: "#172033" }}
+                    >
+                      <IconEdit size={14} /> Editar
+                    </Link>
+                    <button
+                      onClick={() => alternarStatus(item)}
+                      disabled={ocupado}
+                      className={`btn-chip ${item.status === "pago" ? "btn-outline !min-h-0" : "btn-primary !min-h-0"}`}
+                    >
+                      {item.status === "pago" ? (
+                        <>
+                          <IconUndo size={14} /> Reabrir
+                        </>
+                      ) : (
+                        <>
+                          <IconCheck size={14} /> {item.tipo === "receita" ? "Recebido" : "Pago"}
+                        </>
+                      )}
+                    </button>
+                    <button
+                      onClick={() => excluir(item)}
+                      disabled={ocupado}
+                      className="btn-chip text-danger"
+                      style={{ background: "#FBE4E2" }}
+                    >
+                      <IconTrash size={14} /> Excluir
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
-        );
-      })}
+        </div>
+      ))}
     </div>
   );
 }

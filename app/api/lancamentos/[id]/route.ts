@@ -6,10 +6,13 @@
 //           recorrência inteira (todas as ocorrências futuras e passadas).
 // ----------------------------------------------------------------------------
 // Todas as ações exigem que o lançamento pertença ao usuário logado.
+// Toda alteração/exclusão grava um snapshot "antes" em HistoricoAcao, o que
+// permite desfazer (reverter) a ação depois pela tela de Histórico.
 // ============================================================================
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "../../../../lib/prisma";
 import { obterSessao } from "../../../../lib/auth";
+import { registrarAcao } from "../../../../lib/historico";
 
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
   const sessao = await obterSessao();
@@ -43,11 +46,23 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     observacoes?: string;
   };
 
+  const sinal = existente.tipo === "receita" ? 1 : -1;
+
   // --- Ações rápidas usadas pelos botões da lista --------------------------
   if (acao === "pagar") {
     const lancamento = await prisma.lancamento.update({
       where: { id: params.id },
       data: { status: "pago", dataPagamento: new Date(), valorPago: existente.valor },
+    });
+    await registrarAcao(prisma, {
+      usuarioId: sessao.id,
+      tipo: "LANCAMENTO_PAGO",
+      entidade: "Lancamento",
+      entidadeId: lancamento.id,
+      descricao: `${existente.tipo === "receita" ? "Recebido" : "Pago"}: ${existente.descricao}`,
+      valor: Number(existente.valor) * sinal,
+      dadosAntes: existente,
+      dadosDepois: lancamento,
     });
     return NextResponse.json(lancamento);
   }
@@ -56,6 +71,16 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     const lancamento = await prisma.lancamento.update({
       where: { id: params.id },
       data: { status: "pendente", dataPagamento: null, valorPago: null },
+    });
+    await registrarAcao(prisma, {
+      usuarioId: sessao.id,
+      tipo: "LANCAMENTO_REABERTO",
+      entidade: "Lancamento",
+      entidadeId: lancamento.id,
+      descricao: `Reaberto: ${existente.descricao}`,
+      valor: Number(existente.valor) * sinal,
+      dadosAntes: existente,
+      dadosDepois: lancamento,
     });
     return NextResponse.json(lancamento);
   }
@@ -72,6 +97,18 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       ...(campos.observacoes !== undefined ? { observacoes: campos.observacoes || null } : {}),
     },
   });
+
+  await registrarAcao(prisma, {
+    usuarioId: sessao.id,
+    tipo: "LANCAMENTO_EDITADO",
+    entidade: "Lancamento",
+    entidadeId: lancamento.id,
+    descricao: `Lançamento editado: ${lancamento.descricao}`,
+    valor: Number(lancamento.valor) * sinal,
+    dadosAntes: existente,
+    dadosDepois: lancamento,
+  });
+
   return NextResponse.json(lancamento);
 }
 
@@ -83,6 +120,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
   if (!lancamento) return NextResponse.json({ error: "Lançamento não encontrado." }, { status: 404 });
 
   const excluirSerie = req.nextUrl.searchParams.get("serie") === "true";
+  const sinal = lancamento.tipo === "receita" ? 1 : -1;
 
   if (excluirSerie && lancamento.recorrenteId) {
     // Excluir a regra apaga em cascata todas as ocorrências dela (ver schema).
@@ -92,10 +130,32 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     });
     if (regra) {
       await prisma.lancamentoRecorrente.delete({ where: { id: regra.id } });
+      await registrarAcao(prisma, {
+        usuarioId: sessao.id,
+        tipo: "LANCAMENTO_SERIE_EXCLUIDA",
+        entidade: "Lancamento",
+        entidadeId: lancamento.id,
+        descricao: `Série excluída: ${lancamento.descricao}`,
+        valor: Number(lancamento.valor) * sinal,
+        dadosAntes: { regra, lancamento },
+        // Nota: por envolver múltiplos registros em cascata, a reversão de uma
+        // série inteira não é suportada automaticamente — ver lib/historico.ts.
+      });
       return NextResponse.json({ ok: true });
     }
   }
 
   await prisma.lancamento.delete({ where: { id: params.id } });
+
+  await registrarAcao(prisma, {
+    usuarioId: sessao.id,
+    tipo: "LANCAMENTO_EXCLUIDO",
+    entidade: "Lancamento",
+    entidadeId: lancamento.id,
+    descricao: `Lançamento excluído: ${lancamento.descricao}`,
+    valor: Number(lancamento.valor) * sinal,
+    dadosAntes: lancamento,
+  });
+
   return NextResponse.json({ ok: true });
 }

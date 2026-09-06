@@ -65,6 +65,22 @@ export function tomEScore(score: string): { tom: Tom; texto: string } {
 }
 
 // ----------------------------------------------------------------------------
+// Situação cadastral do cliente — independente do score de crédito.
+// ----------------------------------------------------------------------------
+export function tomESituacaoCliente(situacao: string): { tom: Tom; texto: string } {
+  switch (situacao) {
+    case "ativo":
+      return { tom: "verde", texto: "Ativo" };
+    case "inadimplente":
+      return { tom: "vermelho", texto: "Inadimplente" };
+    case "inativo":
+      return { tom: "neutro", texto: "Inativo" };
+    default:
+      return { tom: "neutro", texto: situacao };
+  }
+}
+
+// ----------------------------------------------------------------------------
 // Status de um lançamento do módulo financeiro (pendente/atrasado/pago).
 // Recebe o status "efetivo" já calculado por statusEfetivoLancamento().
 // ----------------------------------------------------------------------------
