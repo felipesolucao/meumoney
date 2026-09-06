@@ -1,0 +1,129 @@
+/* ============================================================================
+   GLOBAL STYLES
+   ----------------------------------------------------------------------------
+   Fundo levemente esverdeado, cartões brancos com sombra suave, cabeçalho em
+   degradê verde — replicando o visual das telas de referência do app.
+   ========================================================================== */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body {
+  padding: 0;
+  margin: 0;
+  background: #f6faf7;
+  color: #172033;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* Área útil central, imitando a largura de um app mobile mesmo no desktop */
+.app-shell {
+  max-width: 480px;
+  margin: 0 auto;
+  min-height: 100vh;
+  background: #f6faf7;
+  position: relative;
+  padding-bottom: 96px; /* espaço para a barra inferior fixa */
+}
+
+/* Cabeçalho em degradê verde-claro, usado no topo de cada tela */
+.header-gradient {
+  background: linear-gradient(180deg, #eaf8ef 0%, #f6faf7 100%);
+  padding: 20px 20px 16px;
+  border-bottom-left-radius: 28px;
+  border-bottom-right-radius: 28px;
+}
+
+/* Cartão branco padrão usado em listas (clientes, contratos, parcelas) */
+.card {
+  background: #ffffff;
+  border-radius: 22px;
+  box-shadow: 0 1px 2px rgba(23, 32, 51, 0.04), 0 12px 28px -14px rgba(23, 32, 51, 0.16);
+  padding: 18px;
+}
+
+/* Azulejo do "Acesso rápido" — ícone dentro de um quadrado com sombra suave,
+   igual ao padrão usado nas telas de referência (ícones de linha, não emoji) */
+.quick-tile {
+  width: 56px;
+  height: 56px;
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(23, 32, 51, 0.04), 0 10px 22px -12px rgba(23, 32, 51, 0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Botão circular pequeno (voltar, sino de notificação) no topo das telas */
+.icon-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(23, 32, 51, 0.04), 0 8px 18px -10px rgba(23, 32, 51, 0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* Selo (badge) de status, usado para score, "em dia", "a vencer" etc. */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.badge-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.btn-primary {
+  background: linear-gradient(180deg, #45bd70 0%, #268a4c 100%);
+  color: white;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 16px;
+  text-align: center;
+  width: 100%;
+  display: block;
+}
+
+.btn-outline {
+  border: 1px solid #d8e6dc;
+  color: #172033;
+  font-weight: 600;
+  border-radius: 999px;
+  padding: 14px;
+  text-align: center;
+  width: 100%;
+  display: block;
+  background: white;
+}
+
+.avatar {
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 700;
+  font-size: 18px;
+  background: linear-gradient(160deg, #4fbf76 0%, #2c8f52 100%);
+  flex-shrink: 0;
+}

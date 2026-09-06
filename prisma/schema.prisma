@@ -1,0 +1,341 @@
+// ============================================================================
+// PRISMA SCHEMA — Jurex App (financeiro / recebíveis)
+// ----------------------------------------------------------------------------
+// Banco de dados: PostgreSQL (usar o plugin "PostgreSQL" do Railway).
+// A variável DATABASE_URL deve vir do Railway (Settings > Variables) e ser
+// colocada no .env local ou nas variáveis de ambiente do serviço no Railway.
+// ============================================================================
+
+generator client {
+  provider      = "prisma-client-js"
+  // "rhel-*" são necessários porque as rotas de API rodam como funções
+  // serverless (AWS Lambda) quando publicadas no Netlify — um ambiente
+  // Linux diferente do seu Windows local, que usa o binário "native".
+  binaryTargets = ["native", "rhel-openssl-1.0.x", "rhel-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// MÓDULO: LOGIN E CONTAS DE USUÁRIO
+// ----------------------------------------------------------------------------
+// Cada Usuario só enxerga os próprios clientes/contratos/lançamentos —
+// exceto o "admin", que não vê os dados financeiros dos outros, só a lista
+// de quem se cadastrou na plataforma (ver app/admin).
+// ============================================================================
+
+// ----------------------------------------------------------------------------
+// ENUM: Papel do usuário — admin (dono da plataforma) ou usuario (cliente comum)
+// ----------------------------------------------------------------------------
+enum PapelUsuario {
+  admin
+  usuario
+}
+
+// ----------------------------------------------------------------------------
+// MODEL: Usuario — quem faz login no app.
+// ----------------------------------------------------------------------------
+model Usuario {
+  id        String       @id @default(cuid())
+  email     String       @unique
+  senha     String       // hash bcrypt — nunca guardamos a senha em texto puro
+  telefone  String       // WhatsApp, exigido no cadastro
+  papel     PapelUsuario @default(usuario)
+  criadoEm  DateTime     @default(now())
+
+  clientes               Cliente[]
+  contratos              Contrato[]
+  categorias             Categoria[]
+  contas                 Conta[]
+  lancamentos            Lancamento[]
+  lancamentosRecorrentes LancamentoRecorrente[]
+
+  @@map("usuarios")
+}
+
+// ----------------------------------------------------------------------------
+// ENUM: Score de crédito do cliente (calculado ou definido manualmente)
+// ----------------------------------------------------------------------------
+enum ScoreCliente {
+  baixo
+  medio
+  alto
+}
+
+// ----------------------------------------------------------------------------
+// ENUM: Tipo de empréstimo do contrato
+// ----------------------------------------------------------------------------
+enum TipoEmprestimo {
+  fixo  // Valor Fixo: o valor total já é o valor a receber, sem cálculo de juros
+  juros // Com Juros: aplica juros % a.m. sobre o valor emprestado
+}
+
+// ----------------------------------------------------------------------------
+// ENUM: Frequência de pagamento das parcelas
+// ----------------------------------------------------------------------------
+enum Frequencia {
+  diaria
+  semanal
+  quinzenal
+  mensal
+}
+
+// ----------------------------------------------------------------------------
+// ENUM: Status do contrato
+// ----------------------------------------------------------------------------
+enum StatusContrato {
+  em_dia
+  atrasado
+  quitado
+}
+
+// ----------------------------------------------------------------------------
+// ENUM: Status da parcela
+// ----------------------------------------------------------------------------
+enum StatusParcela {
+  a_vencer
+  atrasado
+  pago
+}
+
+// ----------------------------------------------------------------------------
+// MODEL: Cliente
+// ----------------------------------------------------------------------------
+model Cliente {
+  id        String       @id @default(cuid())
+  nome      String
+  telefone  String?
+  cpf       String?
+  score     ScoreCliente @default(medio)
+  criadoEm  DateTime     @default(now())
+  contratos Contrato[]
+
+  usuarioId String
+  usuario   Usuario      @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@map("clientes")
+}
+
+// ----------------------------------------------------------------------------
+// MODEL: Contrato
+// ----------------------------------------------------------------------------
+model Contrato {
+  id                  String         @id @default(cuid())
+  codigo              String         @unique // ex: #5B32E7, gerado automaticamente
+  clienteId           String
+  cliente             Cliente        @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+
+  valorEmprestado      Decimal        @db.Decimal(12, 2)
+  tipoEmprestimo       TipoEmprestimo
+  jurosAoMes           Decimal        @default(0) @db.Decimal(6, 3) // % a.m.
+  jurosAtraso          Boolean        @default(false)
+  numeroParcelas       Int
+  frequencia           Frequencia
+  dataPrimeiraParcela  DateTime
+
+  valorTotal           Decimal        @db.Decimal(12, 2) // valor total a receber (com juros, se houver)
+  valorLucro           Decimal        @db.Decimal(12, 2) // valorTotal - valorEmprestado
+
+  status               StatusContrato @default(em_dia)
+  criadoEm             DateTime       @default(now())
+
+  parcelas             Parcela[]
+
+  usuarioId            String
+  usuario              Usuario        @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@map("contratos")
+}
+
+// ----------------------------------------------------------------------------
+// MODEL: Parcela
+// ----------------------------------------------------------------------------
+model Parcela {
+  id          String        @id @default(cuid())
+  contratoId  String
+  contrato    Contrato      @relation(fields: [contratoId], references: [id], onDelete: Cascade)
+
+  numero      Int
+  valor       Decimal       @db.Decimal(12, 2)
+  vencimento  DateTime
+  status      StatusParcela @default(a_vencer)
+  pagoEm      DateTime?
+  valorPago   Decimal?      @db.Decimal(12, 2)
+
+  @@map("parcelas")
+}
+
+// ============================================================================
+// MÓDULO: CONTROLE FINANCEIRO (pessoal e empresarial)
+// ----------------------------------------------------------------------------
+// Independente do módulo de Contratos/Parcelas (que é específico de
+// empréstimos a clientes), este módulo cobre o financeiro do dia a dia:
+// contas a pagar, contas a receber, receitas fixas, despesas parceladas etc.
+// ============================================================================
+
+// ----------------------------------------------------------------------------
+// ENUM: Receita ou Despesa — o tipo de lançamento financeiro.
+// ----------------------------------------------------------------------------
+enum TipoLancamento {
+  receita
+  despesa
+}
+
+// ----------------------------------------------------------------------------
+// ENUM: Se o lançamento é do bolso pessoal ou do negócio/empresa.
+// Permite separar os relatórios de "vida pessoal" e "empresa" no mesmo app.
+// ----------------------------------------------------------------------------
+enum OrigemFinanceira {
+  pessoal
+  empresarial
+}
+
+// ----------------------------------------------------------------------------
+// ENUM: Status de pagamento/recebimento de um lançamento.
+// ----------------------------------------------------------------------------
+enum StatusLancamento {
+  pendente
+  pago
+}
+
+// ----------------------------------------------------------------------------
+// ENUM: Como a recorrência de um lançamento termina.
+//   sem_fim  -> conta fixa que se repete indefinidamente (ex: aluguel, salário)
+//   data_fim -> se repete até uma data específica informada pelo usuário
+//   parcelas -> se repete por uma quantidade definida de vezes (ex: 12x)
+// ----------------------------------------------------------------------------
+enum TipoFimRecorrencia {
+  sem_fim
+  data_fim
+  parcelas
+}
+
+// ----------------------------------------------------------------------------
+// ENUM: De quanto em quanto tempo o lançamento recorrente se repete.
+// ----------------------------------------------------------------------------
+enum PeriodicidadeLancamento {
+  diaria
+  semanal
+  quinzenal
+  mensal
+  anual
+}
+
+// ----------------------------------------------------------------------------
+// MODEL: Categoria (ex: Salário, Bonificação, Mercado, Aluguel, Software)
+// Cada categoria pertence a um tipo (receita ou despesa), igual ao app de
+// referência, onde as tags de receita e despesa não se misturam.
+// ----------------------------------------------------------------------------
+model Categoria {
+  id                    String                 @id @default(cuid())
+  nome                  String
+  tipo                  TipoLancamento
+  icone                 String                 @default("💰")
+  cor                   String                 @default("#2FA85A")
+  criadoEm              DateTime               @default(now())
+
+  usuarioId             String
+  usuario               Usuario                @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  lancamentos           Lancamento[]
+  lancamentosRecorrentes LancamentoRecorrente[]
+
+  @@map("categorias")
+}
+
+// ----------------------------------------------------------------------------
+// MODEL: Conta/Carteira (ex: Nubank, Infinitypay, Dinheiro em espécie)
+// Usada para saber de onde saiu ou para onde foi cada valor.
+// ----------------------------------------------------------------------------
+model Conta {
+  id                    String                 @id @default(cuid())
+  nome                  String
+  icone                 String                 @default("🏦")
+  criadoEm              DateTime               @default(now())
+
+  usuarioId             String
+  usuario               Usuario                @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  lancamentos           Lancamento[]
+  lancamentosRecorrentes LancamentoRecorrente[]
+
+  @@map("contas")
+}
+
+// ----------------------------------------------------------------------------
+// MODEL: LancamentoRecorrente — a "regra" de uma conta fixa ou parcelada.
+// ----------------------------------------------------------------------------
+// Não aparece diretamente nas listas de "a pagar"/"a receber" — ela é o
+// molde que gera os lançamentos reais (igual ao Contrato gerando Parcelas).
+// Guardamos a regra para permitir editar/encerrar a recorrência inteira de
+// uma vez (ex: "cancelar essa assinatura fixa a partir de hoje").
+// ----------------------------------------------------------------------------
+model LancamentoRecorrente {
+  id              String                  @id @default(cuid())
+  descricao       String
+  valor           Decimal                 @db.Decimal(12, 2)
+  tipo            TipoLancamento
+  origem          OrigemFinanceira        @default(pessoal)
+
+  categoriaId     String?
+  categoria       Categoria?              @relation(fields: [categoriaId], references: [id])
+  contaId         String?
+  conta           Conta?                  @relation(fields: [contaId], references: [id])
+
+  periodicidade   PeriodicidadeLancamento
+  tipoFim         TipoFimRecorrencia
+  dataInicio      DateTime
+  dataFim         DateTime?               // usado quando tipoFim = data_fim
+  numeroParcelas  Int?                    // usado quando tipoFim = parcelas
+
+  ativo           Boolean                 @default(true) // false = recorrência encerrada manualmente
+  observacoes     String?
+  criadoEm        DateTime                @default(now())
+
+  usuarioId       String
+  usuario         Usuario                 @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  lancamentos     Lancamento[]
+
+  @@map("lancamentos_recorrentes")
+}
+
+// ----------------------------------------------------------------------------
+// MODEL: Lancamento — cada ocorrência real de receita ou despesa.
+// ----------------------------------------------------------------------------
+// É o que aparece nas telas de "Contas a pagar", "Contas a receber" e nos
+// relatórios de balanço mensal. Pode ser avulso (recorrenteId = null) ou
+// gerado a partir de um LancamentoRecorrente (conta fixa/parcelada).
+// ----------------------------------------------------------------------------
+model Lancamento {
+  id              String            @id @default(cuid())
+  descricao       String
+  valor           Decimal           @db.Decimal(12, 2)
+  tipo            TipoLancamento
+  origem          OrigemFinanceira  @default(pessoal)
+  status          StatusLancamento  @default(pendente)
+
+  dataVencimento  DateTime
+  dataPagamento   DateTime?
+  valorPago       Decimal?          @db.Decimal(12, 2)
+
+  categoriaId     String?
+  categoria       Categoria?        @relation(fields: [categoriaId], references: [id])
+  contaId         String?
+  conta           Conta?            @relation(fields: [contaId], references: [id])
+
+  recorrenteId    String?
+  recorrente      LancamentoRecorrente? @relation(fields: [recorrenteId], references: [id], onDelete: Cascade)
+  numeroParcela   Int?              // posição desta ocorrência dentro da recorrência (1, 2, 3...)
+
+  observacoes     String?
+  criadoEm        DateTime          @default(now())
+
+  usuarioId       String
+  usuario         Usuario           @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@map("lancamentos")
+}
