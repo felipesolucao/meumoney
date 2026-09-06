@@ -14,12 +14,14 @@ import {
   IconDocument,
   IconChart,
   IconUsers,
+  IconTag,
 } from "../../components/Icons";
 
 const ITENS = [
   { href: "/financeiro/novo", icon: IconPlus, label: "Novo lançamento", desc: "Cadastrar uma receita ou despesa" },
   { href: "/financeiro/pagar", icon: IconReceipt, label: "Contas a pagar", desc: "Histórico de despesas" },
   { href: "/financeiro/receber", icon: IconWallet, label: "Contas a receber", desc: "Histórico de receitas" },
+  { href: "/financeiro/categorias", icon: IconTag, label: "Categorias", desc: "Emoji, nome e histórico por categoria" },
   { href: "/parcelas", icon: IconCalendar, label: "Parcelas", desc: "Ver todas as parcelas por período" },
   { href: "/clientes/novo", icon: IconUser, label: "Novo cliente", desc: "Cadastrar um novo cliente" },
   { href: "/contratos/novo", icon: IconDocument, label: "Novo contrato", desc: "Criar um novo empréstimo" },

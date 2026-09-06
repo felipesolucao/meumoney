@@ -7,10 +7,18 @@
 //   - Fixo/sem fim -> repete indefinidamente (ex: salário, aluguel)
 //   - Com data fim -> repete até uma data escolhida
 //   - Por parcelas -> repete um número exato de vezes (ex: 12x)
+//
+// Os campos ficam agrupados em cards ("Valor", "Detalhes", "Repetição",
+// "Observações") em vez de uma lista solta de inputs — deixa mais fácil
+// escanear a tela e entender o que pertence a cada etapa do lançamento.
+// A categoria usa um bottom sheet (SeletorCategoriaModal) que também permite
+// criar (com emoji à escolha), renomear e excluir categorias sem sair da tela
+// — a mesma tela de gerenciamento completa fica em /financeiro/categorias.
 // ============================================================================
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import type {
   TipoLancamento,
@@ -21,7 +29,16 @@ import type {
 import { LABEL_PERIODICIDADE, LABEL_TIPO_FIM } from "../../../lib/financeiro";
 import BotaoVoltar from "../../../components/BotaoVoltar";
 import { useToast } from "../../../components/ToastProvider";
-import { IconWallet, IconReceipt, IconUser, IconBuilding, IconRepeat, IconPlus } from "../../../components/Icons";
+import SeletorCategoriaModal from "../../../components/SeletorCategoriaModal";
+import {
+  IconWallet,
+  IconReceipt,
+  IconUser,
+  IconBuilding,
+  IconRepeat,
+  IconPlus,
+  IconChevronDown,
+} from "../../../components/Icons";
 
 type Categoria = { id: string; nome: string; icone: string; tipo: TipoLancamento };
 type Conta = { id: string; nome: string; icone: string };
@@ -59,6 +76,7 @@ function NovoLancamentoConteudo() {
   // --- Categoria e conta ------------------------------------------------------
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [categoriaId, setCategoriaId] = useState("");
+  const [categoriaModalAberta, setCategoriaModalAberta] = useState(false);
   const [contas, setContas] = useState<Conta[]>([]);
   const [contaId, setContaId] = useState("");
 
@@ -71,6 +89,8 @@ function NovoLancamentoConteudo() {
 
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState("");
+
+  const categoriaAtual = categorias.find((c) => c.id === categoriaId);
 
   // Recarrega as categorias sempre que o tipo (receita/despesa) muda.
   useEffect(() => {
@@ -95,21 +115,6 @@ function NovoLancamentoConteudo() {
     setDataAtalho(atalho);
     if (atalho === "hoje") setDataVencimento(isoHoje());
     if (atalho === "ontem") setDataVencimento(isoHoje(-1));
-  }
-
-  async function criarCategoria() {
-    const nome = window.prompt(`Nome da nova categoria de ${tipo === "receita" ? "receita" : "despesa"}:`);
-    if (!nome) return;
-    const res = await fetch("/api/categorias", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ nome, tipo }),
-    });
-    if (res.ok) {
-      const nova = await res.json();
-      setCategorias((c) => [...c, nova]);
-      setCategoriaId(nova.id);
-    }
   }
 
   async function criarConta() {
@@ -176,141 +181,176 @@ function NovoLancamentoConteudo() {
     <div>
       <div className="header-gradient flex items-center gap-3">
         <BotaoVoltar href="/financeiro" />
-        <h1 className="text-2xl font-bold">Novo lançamento</h1>
+        <div>
+          <h1 className="text-2xl font-bold">Novo lançamento</h1>
+          <p className="text-sm text-muted mt-0.5">Registre uma entrada ou saída financeira</p>
+        </div>
       </div>
 
-      <div className="px-5 mt-6 space-y-5">
-        {/* --- Alternador Receita / Despesa, no topo do formulário --------- */}
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            onClick={() => setTipo("receita")}
-            className={`flex items-center justify-center gap-2 ${tipo === "receita" ? "btn-primary !py-3.5" : "btn-outline !py-3.5"}`}
-          >
-            <IconWallet size={18} /> Receita
-          </button>
-          <button
-            type="button"
-            onClick={() => setTipo("despesa")}
-            className={`flex items-center justify-center gap-2 ${tipo === "despesa" ? "btn-danger !py-3.5" : "btn-outline !py-3.5"}`}
-          >
-            <IconReceipt size={18} /> Despesa
-          </button>
-        </div>
-
-        {/* --- Valor ---------------------------------------------------------- */}
-        <div>
-          <p className="text-xs font-semibold tracking-wide text-muted mb-2">
-            VALOR D{tipo === "receita" ? "A RECEITA" : "A DESPESA"} (R$)
-          </p>
-          <input
-            value={valor}
-            onChange={(e) => setValor(e.target.value)}
-            placeholder="0,00"
-            inputMode="decimal"
-            className={`w-full rounded-md border border-border px-4 py-3.5 outline-none text-2xl font-extrabold ${
-              tipo === "receita" ? "focus:border-primary" : "focus:border-error"
-            }`}
-          />
-        </div>
-
-        {/* --- Descrição -------------------------------------------------------- */}
-        <div>
-          <p className="text-xs font-semibold tracking-wide text-muted mb-2">DESCRIÇÃO</p>
-          <input
-            value={descricao}
-            onChange={(e) => setDescricao(e.target.value)}
-            placeholder={tipo === "receita" ? "Ex: Salário, Bonificação..." : "Ex: Aluguel, Mercado..."}
-            className="w-full rounded-md border border-border px-4 py-3.5 outline-none focus:border-primary"
-          />
-        </div>
-
-        {/* --- Pessoal / Empresarial --------------------------------------------- */}
-        <div>
-          <p className="text-xs font-semibold tracking-wide text-muted mb-2">ORIGEM</p>
+      <div className="px-5 mt-6 space-y-4 pb-4">
+        {/* ============================================================ */}
+        {/* CARD: Tipo + Valor + Descrição                                */}
+        {/* ============================================================ */}
+        <div className="card space-y-5">
           <div className="grid grid-cols-2 gap-2">
-            <BotaoToggle ativo={origem === "pessoal"} onClick={() => setOrigem("pessoal")}>
-              <span className="inline-flex items-center gap-2"><IconUser size={16} /> Pessoal</span>
-            </BotaoToggle>
-            <BotaoToggle ativo={origem === "empresarial"} onClick={() => setOrigem("empresarial")}>
-              <span className="inline-flex items-center gap-2"><IconBuilding size={16} /> Empresarial</span>
-            </BotaoToggle>
+            <button
+              type="button"
+              onClick={() => setTipo("receita")}
+              className={`flex items-center justify-center gap-2 ${tipo === "receita" ? "btn-primary !py-3.5" : "btn-outline !py-3.5"}`}
+            >
+              <IconWallet size={18} /> Receita
+            </button>
+            <button
+              type="button"
+              onClick={() => setTipo("despesa")}
+              className={`flex items-center justify-center gap-2 ${tipo === "despesa" ? "btn-danger !py-3.5" : "btn-outline !py-3.5"}`}
+            >
+              <IconReceipt size={18} /> Despesa
+            </button>
           </div>
-        </div>
 
-        {/* --- Data ------------------------------------------------------------- */}
-        <div>
-          <p className="text-xs font-semibold tracking-wide text-muted mb-2">DATA</p>
-          <div className="grid grid-cols-3 gap-2">
-            <BotaoToggle ativo={dataAtalho === "hoje"} onClick={() => escolherAtalhoData("hoje")}>
-              Hoje
-            </BotaoToggle>
-            <BotaoToggle ativo={dataAtalho === "ontem"} onClick={() => escolherAtalhoData("ontem")}>
-              Ontem
-            </BotaoToggle>
-            <BotaoToggle ativo={dataAtalho === "outros"} onClick={() => escolherAtalhoData("outros")}>
-              Outros
-            </BotaoToggle>
+          {/* --- Valor ---------------------------------------------------------- */}
+          <div>
+            <p className="text-xs font-semibold tracking-wide text-muted mb-2">
+              VALOR D{tipo === "receita" ? "A RECEITA" : "A DESPESA"}
+            </p>
+            <div className="relative">
+              <span
+                className={`pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-xl font-extrabold ${
+                  tipo === "receita" ? "text-primary" : "text-error"
+                }`}
+              >
+                R$
+              </span>
+              <input
+                value={valor}
+                onChange={(e) => setValor(e.target.value)}
+                placeholder="0,00"
+                inputMode="decimal"
+                className={`w-full rounded-md border-2 border-transparent pl-14 pr-4 py-4 outline-none text-3xl font-extrabold bg-background ${
+                  tipo === "receita" ? "focus:border-primary text-primary" : "focus:border-error text-error"
+                }`}
+              />
+            </div>
           </div>
-          {dataAtalho === "outros" && (
+
+          {/* --- Descrição -------------------------------------------------------- */}
+          <div>
+            <p className="text-xs font-semibold tracking-wide text-muted mb-2">DESCRIÇÃO</p>
             <input
-              type="date"
-              value={dataVencimento}
-              onChange={(e) => setDataVencimento(e.target.value)}
-              className="w-full rounded-md border border-border px-4 py-3.5 outline-none focus:border-primary mt-2"
+              value={descricao}
+              onChange={(e) => setDescricao(e.target.value)}
+              placeholder={tipo === "receita" ? "Ex: Salário, Bonificação..." : "Ex: Aluguel, Mercado..."}
+              className="w-full rounded-md border border-border px-4 py-3.5 outline-none focus:border-primary"
             />
-          )}
-        </div>
-
-        {/* --- Categoria ---------------------------------------------------------- */}
-        <div>
-          <p className="text-xs font-semibold tracking-wide text-muted mb-2">CATEGORIA</p>
-          <div className="flex gap-2">
-            <select
-              value={categoriaId}
-              onChange={(e) => setCategoriaId(e.target.value)}
-              className="flex-1 rounded-md border border-border px-4 py-3.5 outline-none focus:border-primary bg-card"
-            >
-              {categorias.length === 0 && <option value="">Nenhuma categoria ainda</option>}
-              {categorias.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.icone} {c.nome}
-                </option>
-              ))}
-            </select>
-            <button type="button" onClick={criarCategoria} className="w-14 rounded-md border border-border flex items-center justify-center text-muted">
-              <IconPlus size={18} />
-            </button>
           </div>
         </div>
 
-        {/* --- Conta/Carteira ------------------------------------------------------ */}
-        <div>
-          <p className="text-xs font-semibold tracking-wide text-muted mb-2">CONTA / CARTEIRA</p>
-          <div className="flex gap-2">
-            <select
-              value={contaId}
-              onChange={(e) => setContaId(e.target.value)}
-              className="flex-1 rounded-md border border-border px-4 py-3.5 outline-none focus:border-primary bg-card"
+        {/* ============================================================ */}
+        {/* CARD: Detalhes do lançamento                                  */}
+        {/* ============================================================ */}
+        <div className="card space-y-5">
+          {/* --- Pessoal / Empresarial --------------------------------------------- */}
+          <div>
+            <p className="text-xs font-semibold tracking-wide text-muted mb-2">ORIGEM</p>
+            <div className="grid grid-cols-2 gap-2">
+              <BotaoToggle ativo={origem === "pessoal"} onClick={() => setOrigem("pessoal")}>
+                <span className="inline-flex items-center gap-2"><IconUser size={16} /> Pessoal</span>
+              </BotaoToggle>
+              <BotaoToggle ativo={origem === "empresarial"} onClick={() => setOrigem("empresarial")}>
+                <span className="inline-flex items-center gap-2"><IconBuilding size={16} /> Empresarial</span>
+              </BotaoToggle>
+            </div>
+          </div>
+
+          {/* --- Data ------------------------------------------------------------- */}
+          <div>
+            <p className="text-xs font-semibold tracking-wide text-muted mb-2">DATA</p>
+            <div className="grid grid-cols-3 gap-2">
+              <BotaoToggle ativo={dataAtalho === "hoje"} onClick={() => escolherAtalhoData("hoje")}>
+                Hoje
+              </BotaoToggle>
+              <BotaoToggle ativo={dataAtalho === "ontem"} onClick={() => escolherAtalhoData("ontem")}>
+                Ontem
+              </BotaoToggle>
+              <BotaoToggle ativo={dataAtalho === "outros"} onClick={() => escolherAtalhoData("outros")}>
+                Outros
+              </BotaoToggle>
+            </div>
+            {dataAtalho === "outros" && (
+              <input
+                type="date"
+                value={dataVencimento}
+                onChange={(e) => setDataVencimento(e.target.value)}
+                className="w-full rounded-md border border-border px-4 py-3.5 outline-none focus:border-primary mt-2"
+              />
+            )}
+          </div>
+
+          {/* --- Categoria: abre o bottom sheet de escolher/criar/editar ----------- */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-semibold tracking-wide text-muted">CATEGORIA</p>
+              <Link href="/financeiro/categorias" className="text-xs font-semibold text-primary-dark flex items-center gap-1">
+                <IconPlus size={12} /> Gerenciar
+              </Link>
+            </div>
+            <button
+              type="button"
+              onClick={() => setCategoriaModalAberta(true)}
+              className="w-full flex items-center gap-3 rounded-md border border-border px-4 py-3 bg-card text-left"
             >
-              {contas.length === 0 && <option value="">Nenhuma conta ainda</option>}
-              {contas.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.icone} {c.nome}
-                </option>
-              ))}
-            </select>
-            <button type="button" onClick={criarConta} className="w-14 rounded-md border border-border flex items-center justify-center text-muted">
-              <IconPlus size={18} />
+              {categoriaAtual ? (
+                <>
+                  <span className="w-9 h-9 rounded-md bg-primary-subtle flex items-center justify-center text-lg shrink-0">
+                    {categoriaAtual.icone}
+                  </span>
+                  <span className="font-semibold flex-1 truncate">{categoriaAtual.nome}</span>
+                </>
+              ) : (
+                <span className="flex-1 text-muted">Nenhuma categoria ainda — toque para criar</span>
+              )}
+              <IconChevronDown size={18} className="text-muted shrink-0" />
             </button>
           </div>
-        </div>
 
-        {/* --- Status: recebido/pago já ou pendente --------------------------------- */}
-        <label className="card flex items-center justify-between cursor-pointer">
-          <span className="font-semibold">{tipo === "receita" ? "Já recebido" : "Já pago"}</span>
-          <input type="checkbox" checked={pago} onChange={(e) => setPago(e.target.checked)} className="w-6 h-6 accent-primary" />
-        </label>
+          {/* --- Conta/Carteira ------------------------------------------------------ */}
+          <div>
+            <p className="text-xs font-semibold tracking-wide text-muted mb-2">CONTA / CARTEIRA</p>
+            <div className="flex gap-2">
+              <select
+                value={contaId}
+                onChange={(e) => setContaId(e.target.value)}
+                className="flex-1 rounded-md border border-border px-4 py-3.5 outline-none focus:border-primary bg-card"
+              >
+                {contas.length === 0 && <option value="">Nenhuma conta ainda</option>}
+                {contas.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.icone} {c.nome}
+                  </option>
+                ))}
+              </select>
+              <button type="button" onClick={criarConta} className="w-14 rounded-md border border-border flex items-center justify-center text-muted shrink-0">
+                <IconPlus size={18} />
+              </button>
+            </div>
+          </div>
+
+          {/* --- Status: recebido/pago já ou pendente --------------------------------- */}
+          <label className="flex items-center justify-between cursor-pointer pt-1">
+            <span className="font-semibold">{tipo === "receita" ? "Já recebido" : "Já pago"}</span>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={pago}
+              data-on={pago}
+              onClick={() => setPago(!pago)}
+              className="switch"
+            >
+              <span className="switch-knob" />
+            </button>
+          </label>
+        </div>
 
         {/* --- Recorrência: única, fixa sem fim, com data fim, ou parcelada ---------- */}
         <div>
@@ -383,7 +423,7 @@ function NovoLancamentoConteudo() {
         )}
 
         {/* --- Observações ------------------------------------------------------------ */}
-        <div>
+        <div className="card">
           <p className="text-xs font-semibold tracking-wide text-muted mb-2">OBSERVAÇÕES (OPCIONAL)</p>
           <textarea
             value={observacoes}
@@ -399,6 +439,16 @@ function NovoLancamentoConteudo() {
           {salvando ? "Salvando..." : `Salvar ${tipo === "receita" ? "receita" : "despesa"}`}
         </button>
       </div>
+
+      <SeletorCategoriaModal
+        aberto={categoriaModalAberta}
+        tipo={tipo}
+        categorias={categorias}
+        categoriaSelecionadaId={categoriaId}
+        onFechar={() => setCategoriaModalAberta(false)}
+        onSelecionar={setCategoriaId}
+        onCategoriasAtualizadas={setCategorias}
+      />
     </div>
   );
 }

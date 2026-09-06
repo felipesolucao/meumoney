@@ -4,6 +4,7 @@
 // GET  -> lista lançamentos (receitas e despesas), com filtros por query string:
 //         ?tipo=receita|despesa   ?origem=pessoal|empresarial
 //         ?status=pendente|pago|atrasado    ?de=YYYY-MM-DD&ate=YYYY-MM-DD
+//         ?categoriaId=...       (usado pela tela de detalhe de categoria)
 //
 // POST -> cria um lançamento. Se "recorrente" vier true, cria a regra em
 //         LancamentoRecorrente e gera todas as ocorrências (parceladas ou
@@ -26,10 +27,12 @@ export async function GET(req: NextRequest) {
   const status = params.get("status");
   const de = params.get("de");
   const ate = params.get("ate");
+  const categoriaId = params.get("categoriaId");
 
   const where: Record<string, unknown> = { usuarioId: sessao.id };
   if (tipo) where.tipo = tipo;
   if (origem) where.origem = origem;
+  if (categoriaId) where.categoriaId = categoriaId;
   if (de || ate) {
     where.dataVencimento = {
       ...(de ? { gte: new Date(`${de}T00:00:00`) } : {}),

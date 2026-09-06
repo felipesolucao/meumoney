@@ -31,6 +31,23 @@ export function IconChevronRight({ size = 20, className, strokeWidth = 2 }: Icon
   );
 }
 
+export function IconTag({ size = 20, className, strokeWidth = 1.8 }: IconProps) {
+  return (
+    <svg {...base(size)} className={className}>
+      <path d="M11.5 3.5H6a2.5 2.5 0 00-2.5 2.5v5.5L13 21l7.5-7.5L11.5 3.5z" stroke="currentColor" strokeWidth={strokeWidth} strokeLinejoin="round" />
+      <circle cx="8" cy="8" r="1.4" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+export function IconChevronDown({ size = 20, className, strokeWidth = 2 }: IconProps) {
+  return (
+    <svg {...base(size)} className={className}>
+      <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 export function IconBell({ size = 20, className, strokeWidth = 1.8 }: IconProps) {
   return (
     <svg {...base(size)} className={className}>

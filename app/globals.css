@@ -328,6 +328,48 @@ h6 {
   white-space: nowrap;
 }
 
+/* Sheet (bottom sheet) que desliza de baixo pra cima — usado no seletor de
+   categorias e em outros modais que seguem o mesmo padrão visual. */
+@keyframes slideUp {
+  from {
+    transform: translateY(24px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Interruptor (toggle switch) — substitui o checkbox simples em opções do
+   tipo "já pago/recebido", mais fácil de ler/tocar num formulário mobile. */
+.switch {
+  width: 50px;
+  height: 30px;
+  border-radius: var(--radius-pill);
+  background: var(--color-muted-surface);
+  position: relative;
+  flex-shrink: 0;
+  transition: background 0.15s ease;
+}
+.switch[data-on="true"] {
+  background: var(--color-primary);
+}
+.switch .switch-knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-pill);
+  background: var(--color-card);
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.15s ease;
+}
+.switch[data-on="true"] .switch-knob {
+  transform: translateX(20px);
+}
+
 .avatar {
   width: 52px;
   height: 52px;
