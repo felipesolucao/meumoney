@@ -104,7 +104,7 @@ function corIcone(ativo: boolean) {
 
 function IconInicio({ ativo }: { ativo: boolean }) {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className={corIcone(ativo)}>
+    <svg width="25" height="25" viewBox="0 0 24 24" fill="none" className={corIcone(ativo)}>
       <path d="M4 11.5L12 4l8 7.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
       <path d="M6 10v9a1 1 0 001 1h10a1 1 0 001-1v-9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
@@ -115,7 +115,7 @@ function IconInicio({ ativo }: { ativo: boolean }) {
 // "Financeiro" (a carteira) mesmo os dois lidando com dinheiro.
 function IconEmprestimos({ ativo }: { ativo: boolean }) {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className={corIcone(ativo)}>
+    <svg width="25" height="25" viewBox="0 0 24 24" fill="none" className={corIcone(ativo)}>
       <circle cx="12" cy="12" r="8.5" stroke="currentColor" strokeWidth="2" />
       <path d="M9 15l6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
       <circle cx="9.6" cy="9.6" r="1.1" fill="currentColor" stroke="none" />
@@ -126,7 +126,7 @@ function IconEmprestimos({ ativo }: { ativo: boolean }) {
 
 function IconFinanceiro({ ativo }: { ativo: boolean }) {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className={corIcone(ativo)}>
+    <svg width="25" height="25" viewBox="0 0 24 24" fill="none" className={corIcone(ativo)}>
       <circle cx="12" cy="12" r="8.5" stroke="currentColor" strokeWidth="2" />
       <path d="M12 7.5v9M9.5 9.8c0-1.1 1.1-2 2.5-2s2.5.7 2.5 1.8-1.1 1.6-2.5 1.9c-1.4.3-2.5.8-2.5 1.9s1.1 1.8 2.5 1.8 2.5-.9 2.5-2" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
     </svg>
@@ -135,7 +135,7 @@ function IconFinanceiro({ ativo }: { ativo: boolean }) {
 
 function IconClientes({ ativo }: { ativo: boolean }) {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className={corIcone(ativo)}>
+    <svg width="25" height="25" viewBox="0 0 24 24" fill="none" className={corIcone(ativo)}>
       <circle cx="9" cy="8" r="3" stroke="currentColor" strokeWidth="2" />
       <path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
       <circle cx="17" cy="9" r="2.2" stroke="currentColor" strokeWidth="2" />
@@ -146,7 +146,7 @@ function IconClientes({ ativo }: { ativo: boolean }) {
 
 function IconMenu({ ativo }: { ativo: boolean }) {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className={corIcone(ativo)}>
+    <svg width="25" height="25" viewBox="0 0 24 24" fill="none" className={corIcone(ativo)}>
       <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
     </svg>
   );
