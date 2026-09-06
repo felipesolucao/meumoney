@@ -77,7 +77,7 @@ export default function CadastroPage() {
             onChange={(e) => setEmail(e.target.value)}
             placeholder="voce@exemplo.com"
             autoCapitalize="none"
-            className="w-full rounded-2xl border border-gray-200 px-4 py-3.5 outline-none focus:border-primary"
+            className="w-full rounded-md border border-border px-4 py-3.5 outline-none focus:border-primary"
           />
         </div>
 
@@ -88,7 +88,7 @@ export default function CadastroPage() {
             onChange={(e) => setTelefone(e.target.value)}
             placeholder="(62) 99999-9999"
             inputMode="tel"
-            className="w-full rounded-2xl border border-gray-200 px-4 py-3.5 outline-none focus:border-primary"
+            className="w-full rounded-md border border-border px-4 py-3.5 outline-none focus:border-primary"
           />
         </div>
 
@@ -101,7 +101,7 @@ export default function CadastroPage() {
             value={senha}
             onChange={(e) => setSenha(e.target.value.replace(/\D/g, ""))}
             placeholder="••••••"
-            className="w-full rounded-2xl border border-gray-200 px-4 py-3.5 outline-none focus:border-primary text-center text-2xl tracking-[0.5em]"
+            className="w-full rounded-md border border-border px-4 py-3.5 outline-none focus:border-primary text-center text-2xl tracking-[0.5em]"
           />
         </div>
 
@@ -114,12 +114,12 @@ export default function CadastroPage() {
             value={confirmarSenha}
             onChange={(e) => setConfirmarSenha(e.target.value.replace(/\D/g, ""))}
             placeholder="••••••"
-            className="w-full rounded-2xl border border-gray-200 px-4 py-3.5 outline-none focus:border-primary text-center text-2xl tracking-[0.5em]"
+            className="w-full rounded-md border border-border px-4 py-3.5 outline-none focus:border-primary text-center text-2xl tracking-[0.5em]"
             onKeyDown={(e) => e.key === "Enter" && cadastrar()}
           />
         </div>
 
-        {erro && <p className="text-danger text-sm font-medium">{erro}</p>}
+        {erro && <p className="text-error text-sm font-medium">{erro}</p>}
 
         <button onClick={cadastrar} disabled={salvando} className="btn-primary">
           {salvando ? "Criando conta..." : "Criar conta"}

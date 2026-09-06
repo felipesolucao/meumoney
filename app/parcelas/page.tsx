@@ -84,7 +84,7 @@ export default function Parcelas() {
               key={a.valor}
               onClick={() => setAba(a.valor)}
               className={`px-4 py-2 rounded-pill text-sm font-semibold whitespace-nowrap ${
-                aba === a.valor ? "bg-primary text-white" : "bg-white border border-gray-200 text-ink"
+                aba === a.valor ? "bg-primary text-white" : "bg-card border border-border text-foreground"
               }`}
             >
               {a.label}
@@ -100,7 +100,7 @@ export default function Parcelas() {
           </div>
         )}
 
-        <div className="card" style={{ background: "#eafaf0" }}>
+        <div className="card" style={{ background: "var(--color-primary-surface)" }}>
           <p className="text-xs font-semibold tracking-wide text-muted">TOTAL A RECEBER</p>
           <p className="text-3xl font-extrabold text-primary mt-1">{formatarMoeda(totalAReceber)}</p>
           <p className="text-sm text-muted mt-0.5">{pendentes.length} parcela(s)</p>
@@ -118,8 +118,8 @@ export default function Parcelas() {
             return (
               <div key={p.id} className="card flex items-center gap-3">
                 <div
-                  className="w-11 h-11 rounded-xl flex items-center justify-center font-bold text-white flex-shrink-0"
-                  style={{ background: p.status === "pago" ? "#2FA85A" : "#f3d9a4" }}
+                  className="w-11 h-11 rounded-sm flex items-center justify-center font-bold text-white flex-shrink-0"
+                  style={{ background: p.status === "pago" ? "var(--color-success)" : "var(--color-accent-strong)" }}
                 >
                   {p.numero}
                 </div>
@@ -133,7 +133,7 @@ export default function Parcelas() {
                 </div>
                 <Link
                   href={`/contratos/${p.contrato.id}`}
-                  className="w-9 h-9 rounded-full bg-surface flex items-center justify-center flex-shrink-0 text-muted"
+                  className="w-9 h-9 rounded-pill bg-background flex items-center justify-center flex-shrink-0 text-muted"
                 >
                   <IconChevronRight size={16} />
                 </Link>

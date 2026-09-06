@@ -28,19 +28,19 @@ export default function CardSaldo({
   const [oculto, setOculto] = useState(false);
 
   return (
-    <div className="rounded-card p-5 relative overflow-hidden" style={{ background: "linear-gradient(160deg,#eafaf0,#f6faf7)" }}>
+    <div className="rounded-lg p-5 relative overflow-hidden" style={{ background: "var(--gradient-surface)" }}>
       {/* Padrão decorativo — linhas onduladas sutis no canto do card */}
       <svg
-        className="absolute -top-2 -right-6 pointer-events-none"
+        className="absolute -top-2 -right-6 pointer-events-none text-primary"
         width="180"
         height="140"
         viewBox="0 0 180 140"
         fill="none"
         aria-hidden="true"
       >
-        <path d="M-10 40C20 20 40 60 70 40S120 20 150 40s40 20 60 0" stroke="#2FA85A" strokeOpacity="0.12" strokeWidth="2" />
-        <path d="M-10 70C20 50 40 90 70 70S120 50 150 70s40 20 60 0" stroke="#2FA85A" strokeOpacity="0.1" strokeWidth="2" />
-        <path d="M-10 100C20 80 40 120 70 100S120 80 150 100s40 20 60 0" stroke="#2FA85A" strokeOpacity="0.08" strokeWidth="2" />
+        <path d="M-10 40C20 20 40 60 70 40S120 20 150 40s40 20 60 0" stroke="currentColor" strokeOpacity="0.12" strokeWidth="2" />
+        <path d="M-10 70C20 50 40 90 70 70S120 50 150 70s40 20 60 0" stroke="currentColor" strokeOpacity="0.1" strokeWidth="2" />
+        <path d="M-10 100C20 80 40 120 70 100S120 80 150 100s40 20 60 0" stroke="currentColor" strokeOpacity="0.08" strokeWidth="2" />
       </svg>
 
       <div className="relative flex items-start justify-between">

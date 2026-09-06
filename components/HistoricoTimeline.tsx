@@ -77,20 +77,20 @@ export default function HistoricoTimeline({ itens }: { itens: HistoricoItem[] })
   return (
     <div className="relative">
       {/* Linha vertical da timeline */}
-      <div className="absolute left-[19px] top-2 bottom-2 w-px bg-gray-200" aria-hidden="true" />
+      <div className="absolute left-[19px] top-2 bottom-2 w-px bg-border" aria-hidden="true" />
 
       <div className="space-y-4">
         {lista.map((item) => {
           const revertido = Boolean(item.revertidoEm);
           const valorNum = item.valor !== null ? Number(item.valor) : null;
-          const corValor = valorNum === null ? "" : valorNum >= 0 ? "text-primary" : "text-danger";
+          const corValor = valorNum === null ? "" : valorNum >= 0 ? "text-primary" : "text-error";
           const ocupado = processandoId === item.id;
 
           return (
             <div key={item.id} className="relative flex gap-3">
               <div
-                className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 z-10 ${
-                  revertido ? "bg-gray-100 text-muted" : "bg-surface text-primary"
+                className={`w-10 h-10 rounded-pill flex items-center justify-center flex-shrink-0 z-10 ${
+                  revertido ? "bg-muted-bg text-muted" : "bg-background text-primary"
                 }`}
               >
                 {iconePorEntidade(item.entidade)}
@@ -118,7 +118,7 @@ export default function HistoricoTimeline({ itens }: { itens: HistoricoItem[] })
                     onClick={() => reverter(item)}
                     disabled={ocupado}
                     className="btn-chip mt-3"
-                    style={{ background: "#FDECC8", color: "#C98A1D" }}
+                    style={{ background: "var(--color-warning-subtle)", color: "var(--color-warning)" }}
                   >
                     <IconUndo size={14} /> {ocupado ? "Revertendo..." : "Reverter"}
                   </button>

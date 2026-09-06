@@ -111,13 +111,13 @@ export default function LancamentosLista({ lancamentos }: { lancamentos: Lancame
             {grupo.itens.map((item) => {
               const efetivo = statusEfetivoLancamento(item.status, item.dataVencimento);
               const { tom, texto } = tomEStatusLancamento(efetivo);
-              const corValor = item.tipo === "receita" ? "text-primary" : "text-danger";
+              const corValor = item.tipo === "receita" ? "text-primary" : "text-error";
               const ocupado = carregandoId === item.id;
 
               return (
                 <div key={item.id} className="card space-y-3">
                   <div className="flex items-start gap-3">
-                    <div className="w-12 h-12 rounded-2xl bg-surface flex items-center justify-center text-xl flex-shrink-0">
+                    <div className="w-12 h-12 rounded-md bg-background flex items-center justify-center text-xl flex-shrink-0">
                       {item.categoria?.icone || (
                         <span className="text-primary">
                           {item.tipo === "receita" ? <IconWallet size={20} /> : <IconReceipt size={20} />}
@@ -144,7 +144,7 @@ export default function LancamentosLista({ lancamentos }: { lancamentos: Lancame
                     <Link
                       href={`/financeiro/${item.id}/editar`}
                       className="btn-chip"
-                      style={{ background: "#EEF1F0", color: "#172033" }}
+                      style={{ background: "var(--color-muted-surface)", color: "var(--color-foreground)" }}
                     >
                       <IconEdit size={14} /> Editar
                     </Link>
@@ -166,8 +166,8 @@ export default function LancamentosLista({ lancamentos }: { lancamentos: Lancame
                     <button
                       onClick={() => excluir(item)}
                       disabled={ocupado}
-                      className="btn-chip text-danger"
-                      style={{ background: "#FBE4E2" }}
+                      className="btn-chip text-error"
+                      style={{ background: "var(--color-error-subtle)" }}
                     >
                       <IconTrash size={14} /> Excluir
                     </button>

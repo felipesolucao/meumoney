@@ -8,10 +8,10 @@
 type Tom = "verde" | "amber" | "vermelho" | "neutro";
 
 const TONS: Record<Tom, { bg: string; texto: string }> = {
-  verde: { bg: "#E3F5E9", texto: "#2FA85A" },
-  amber: { bg: "#FDECC8", texto: "#C98A1D" },
-  vermelho: { bg: "#FBE4E2", texto: "#E4544A" },
-  neutro: { bg: "#EEF1F0", texto: "#6B7280" },
+  verde: { bg: "var(--color-success-subtle)", texto: "var(--color-success)" },
+  amber: { bg: "var(--color-warning-subtle)", texto: "var(--color-warning)" },
+  vermelho: { bg: "var(--color-error-subtle)", texto: "var(--color-error)" },
+  neutro: { bg: "var(--color-muted-surface)", texto: "var(--color-muted)" },
 };
 
 export default function Badge({ tom, children }: { tom: Tom; children: React.ReactNode }) {

@@ -30,7 +30,7 @@ export default function ErrorBoundary({
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center">
-      <div className="w-16 h-16 rounded-full bg-danger-bg flex items-center justify-center mb-4">
+      <div className="w-16 h-16 rounded-pill bg-error-subtle flex items-center justify-center mb-4">
         <span className="text-3xl">⚠️</span>
       </div>
       <h1 className="text-xl font-bold mb-2">Algo deu errado</h1>
@@ -44,14 +44,14 @@ export default function ErrorBoundary({
         </button>
         <button
           onClick={() => (window.location.href = "/")}
-          className="w-full rounded-2xl border border-gray-200 px-4 py-3.5 font-semibold"
+          className="w-full rounded-md border border-border px-4 py-3.5 font-semibold"
         >
           Voltar para o início
         </button>
       </div>
 
       {process.env.NODE_ENV !== "production" && (
-        <pre className="mt-6 text-left text-xs bg-gray-100 rounded-lg p-3 w-full overflow-auto text-red-600">
+        <pre className="mt-6 text-left text-xs bg-muted-bg rounded-xs p-3 w-full overflow-auto text-error">
           {error.message}
           {error.digest ? `\n\ndigest: ${error.digest}` : ""}
         </pre>

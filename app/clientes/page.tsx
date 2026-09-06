@@ -26,7 +26,7 @@ export default async function Clientes() {
           <h1 className="text-2xl font-bold">Clientes</h1>
           <p className="text-muted text-sm">{clientes.length} cadastrado(s)</p>
         </div>
-        <div className="icon-btn text-ink">
+        <div className="icon-btn text-foreground">
           <IconBell size={19} />
         </div>
       </div>

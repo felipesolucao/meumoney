@@ -49,7 +49,7 @@ export default async function Inicio() {
             <p className="text-muted text-sm">Olá,</p>
             <h1 className="text-2xl font-bold">Seu painel</h1>
           </div>
-          <div className="icon-btn text-ink">
+          <div className="icon-btn text-foreground">
             <IconBell size={19} />
           </div>
         </div>
@@ -59,19 +59,19 @@ export default async function Inicio() {
           <CardSaldo label="TOTAL EMPRESTADO" valor={formatarMoeda(totalEmprestado)}>
             <span
               className="badge mt-3"
-              style={{ background: tudoEmDia ? "#E3F5E9" : "#FBE4E2", color: tudoEmDia ? "#2FA85A" : "#E4544A" }}
+              style={{ background: tudoEmDia ? "var(--color-success-subtle)" : "var(--color-error-subtle)", color: tudoEmDia ? "var(--color-success)" : "var(--color-error)" }}
             >
               <span className="badge-dot" />
               {tudoEmDia ? "Tudo em dia" : "Existem parcelas atrasadas"}
             </span>
 
             <div className="grid grid-cols-2 gap-3 mt-4">
-              <div className="rounded-2xl border p-3 bg-white/60" style={{ borderColor: "#cdeedb" }}>
+              <div className="rounded-md border p-3 bg-white/60" style={{ borderColor: "var(--color-primary-border)" }}>
                 <p className="text-primary text-xs font-semibold">RECEBIDO</p>
                 <p className="font-bold mt-1">{formatarMoeda(recebido)}</p>
               </div>
-              <div className="rounded-2xl border p-3 bg-white/60" style={{ borderColor: "#f7e3ba" }}>
-                <p className="text-amber-text text-xs font-semibold">A RECEBER</p>
+              <div className="rounded-md border p-3 bg-white/60" style={{ borderColor: "var(--color-accent-border)" }}>
+                <p className="text-warning text-xs font-semibold">A RECEBER</p>
                 <p className="font-bold mt-1">{formatarMoeda(aReceber)}</p>
               </div>
             </div>
@@ -82,7 +82,7 @@ export default async function Inicio() {
       <div className="px-5 mt-5 space-y-5">
         {/* Parcelas de hoje */}
         <div className="card flex items-center gap-3">
-          <div className="w-12 h-12 rounded-2xl bg-surface flex items-center justify-center text-primary">
+          <div className="w-12 h-12 rounded-md bg-background flex items-center justify-center text-primary">
             <IconReceipt size={22} />
           </div>
           <div>
@@ -135,8 +135,8 @@ export default async function Inicio() {
                     <p className="text-sm text-muted">
                       {formatarMoeda(c.valorTotal)} · {c.numeroParcelas}x
                     </p>
-                    <div className="h-1.5 rounded-full bg-gray-100 mt-2 overflow-hidden">
-                      <div className="h-full bg-primary rounded-full" style={{ width: `${progresso}%` }} />
+                    <div className="h-1.5 rounded-pill bg-muted-bg mt-2 overflow-hidden">
+                      <div className="h-full bg-primary rounded-pill" style={{ width: `${progresso}%` }} />
                     </div>
                     <p className="text-xs text-muted mt-1">
                       {pagas} de {c.parcelas.length} parcelas pagas

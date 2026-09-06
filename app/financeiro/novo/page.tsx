@@ -208,8 +208,8 @@ function NovoLancamentoConteudo() {
             onChange={(e) => setValor(e.target.value)}
             placeholder="0,00"
             inputMode="decimal"
-            className={`w-full rounded-2xl border border-gray-200 px-4 py-3.5 outline-none text-2xl font-extrabold ${
-              tipo === "receita" ? "focus:border-primary" : "focus:border-danger"
+            className={`w-full rounded-md border border-border px-4 py-3.5 outline-none text-2xl font-extrabold ${
+              tipo === "receita" ? "focus:border-primary" : "focus:border-error"
             }`}
           />
         </div>
@@ -221,7 +221,7 @@ function NovoLancamentoConteudo() {
             value={descricao}
             onChange={(e) => setDescricao(e.target.value)}
             placeholder={tipo === "receita" ? "Ex: Salário, Bonificação..." : "Ex: Aluguel, Mercado..."}
-            className="w-full rounded-2xl border border-gray-200 px-4 py-3.5 outline-none focus:border-primary"
+            className="w-full rounded-md border border-border px-4 py-3.5 outline-none focus:border-primary"
           />
         </div>
 
@@ -257,7 +257,7 @@ function NovoLancamentoConteudo() {
               type="date"
               value={dataVencimento}
               onChange={(e) => setDataVencimento(e.target.value)}
-              className="w-full rounded-2xl border border-gray-200 px-4 py-3.5 outline-none focus:border-primary mt-2"
+              className="w-full rounded-md border border-border px-4 py-3.5 outline-none focus:border-primary mt-2"
             />
           )}
         </div>
@@ -269,7 +269,7 @@ function NovoLancamentoConteudo() {
             <select
               value={categoriaId}
               onChange={(e) => setCategoriaId(e.target.value)}
-              className="flex-1 rounded-2xl border border-gray-200 px-4 py-3.5 outline-none focus:border-primary bg-white"
+              className="flex-1 rounded-md border border-border px-4 py-3.5 outline-none focus:border-primary bg-card"
             >
               {categorias.length === 0 && <option value="">Nenhuma categoria ainda</option>}
               {categorias.map((c) => (
@@ -278,7 +278,7 @@ function NovoLancamentoConteudo() {
                 </option>
               ))}
             </select>
-            <button type="button" onClick={criarCategoria} className="w-14 rounded-2xl border border-gray-200 flex items-center justify-center text-muted">
+            <button type="button" onClick={criarCategoria} className="w-14 rounded-md border border-border flex items-center justify-center text-muted">
               <IconPlus size={18} />
             </button>
           </div>
@@ -291,7 +291,7 @@ function NovoLancamentoConteudo() {
             <select
               value={contaId}
               onChange={(e) => setContaId(e.target.value)}
-              className="flex-1 rounded-2xl border border-gray-200 px-4 py-3.5 outline-none focus:border-primary bg-white"
+              className="flex-1 rounded-md border border-border px-4 py-3.5 outline-none focus:border-primary bg-card"
             >
               {contas.length === 0 && <option value="">Nenhuma conta ainda</option>}
               {contas.map((c) => (
@@ -300,7 +300,7 @@ function NovoLancamentoConteudo() {
                 </option>
               ))}
             </select>
-            <button type="button" onClick={criarConta} className="w-14 rounded-2xl border border-gray-200 flex items-center justify-center text-muted">
+            <button type="button" onClick={criarConta} className="w-14 rounded-md border border-border flex items-center justify-center text-muted">
               <IconPlus size={18} />
             </button>
           </div>
@@ -326,7 +326,7 @@ function NovoLancamentoConteudo() {
         </div>
 
         {recorrente && (
-          <div className="card space-y-4" style={{ background: "#F6FAF7" }}>
+          <div className="card space-y-4" style={{ background: "var(--color-background)" }}>
             <div>
               <p className="text-xs font-semibold tracking-wide text-muted mb-2">FREQUÊNCIA</p>
               <div className="grid grid-cols-3 gap-2">
@@ -342,7 +342,7 @@ function NovoLancamentoConteudo() {
               <p className="text-xs font-semibold tracking-wide text-muted mb-2">DURAÇÃO</p>
               <div className="space-y-2">
                 {(Object.keys(LABEL_TIPO_FIM) as TipoFimRecorrencia[]).map((opt) => (
-                  <label key={opt} className="flex items-center gap-3 bg-white rounded-2xl px-4 py-3 cursor-pointer border border-gray-200">
+                  <label key={opt} className="flex items-center gap-3 bg-card rounded-md px-4 py-3 cursor-pointer border border-border">
                     <input
                       type="radio"
                       name="tipoFim"
@@ -363,7 +363,7 @@ function NovoLancamentoConteudo() {
                   type="date"
                   value={dataFim}
                   onChange={(e) => setDataFim(e.target.value)}
-                  className="w-full rounded-2xl border border-gray-200 px-4 py-3.5 outline-none focus:border-primary bg-white"
+                  className="w-full rounded-md border border-border px-4 py-3.5 outline-none focus:border-primary bg-card"
                 />
               </div>
             )}
@@ -375,7 +375,7 @@ function NovoLancamentoConteudo() {
                   value={numeroParcelas}
                   onChange={(e) => setNumeroParcelas(e.target.value)}
                   inputMode="numeric"
-                  className="w-full rounded-2xl border border-gray-200 px-4 py-3.5 outline-none focus:border-primary bg-white"
+                  className="w-full rounded-md border border-border px-4 py-3.5 outline-none focus:border-primary bg-card"
                 />
               </div>
             )}
@@ -389,11 +389,11 @@ function NovoLancamentoConteudo() {
             value={observacoes}
             onChange={(e) => setObservacoes(e.target.value)}
             rows={3}
-            className="w-full rounded-2xl border border-gray-200 px-4 py-3.5 outline-none focus:border-primary"
+            className="w-full rounded-md border border-border px-4 py-3.5 outline-none focus:border-primary"
           />
         </div>
 
-        {erro && <p className="text-danger text-sm font-medium">{erro}</p>}
+        {erro && <p className="text-error text-sm font-medium">{erro}</p>}
 
         <button onClick={salvar} disabled={salvando} className="btn-primary">
           {salvando ? "Salvando..." : `Salvar ${tipo === "receita" ? "receita" : "despesa"}`}

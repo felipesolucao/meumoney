@@ -74,7 +74,7 @@ export default function NovoCliente() {
           </div>
         </div>
 
-        {erro && <p className="text-danger text-sm font-medium">{erro}</p>}
+        {erro && <p className="text-error text-sm font-medium">{erro}</p>}
 
         <button onClick={salvar} disabled={salvando} className="btn-primary">
           {salvando ? "Salvando..." : "Salvar cliente"}
@@ -102,7 +102,7 @@ function Campo({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full rounded-2xl border border-gray-200 px-4 py-3.5 outline-none focus:border-primary"
+        className="w-full rounded-md border border-border px-4 py-3.5 outline-none focus:border-primary"
       />
     </div>
   );

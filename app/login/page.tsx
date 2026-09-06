@@ -70,7 +70,7 @@ export default function LoginPage() {
             onChange={(e) => setEmail(e.target.value)}
             placeholder="voce@exemplo.com"
             autoCapitalize="none"
-            className="w-full rounded-2xl border border-gray-200 px-4 py-3.5 outline-none focus:border-primary"
+            className="w-full rounded-md border border-border px-4 py-3.5 outline-none focus:border-primary"
           />
         </div>
 
@@ -83,12 +83,12 @@ export default function LoginPage() {
             value={senha}
             onChange={(e) => setSenha(e.target.value.replace(/\D/g, ""))}
             placeholder="••••••"
-            className="w-full rounded-2xl border border-gray-200 px-4 py-3.5 outline-none focus:border-primary text-center text-2xl tracking-[0.5em]"
+            className="w-full rounded-md border border-border px-4 py-3.5 outline-none focus:border-primary text-center text-2xl tracking-[0.5em]"
             onKeyDown={(e) => e.key === "Enter" && entrar()}
           />
         </div>
 
-        {erro && <p className="text-danger text-sm font-medium">{erro}</p>}
+        {erro && <p className="text-error text-sm font-medium">{erro}</p>}
 
         <button onClick={entrar} disabled={entrando} className="btn-primary">
           {entrando ? "Entrando..." : "Entrar"}

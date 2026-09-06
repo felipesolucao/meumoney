@@ -68,7 +68,7 @@ export default function ContasAReceber() {
           <h1 className="text-2xl font-bold">Contas a receber</h1>
           <p className="text-muted text-sm">Histórico de receitas</p>
         </div>
-        <Link href="/historico?entidade=Lancamento&voltar=/financeiro/receber" className="icon-btn text-ink">
+        <Link href="/historico?entidade=Lancamento&voltar=/financeiro/receber" className="icon-btn text-foreground">
           <IconHistory size={18} />
         </Link>
       </div>
@@ -80,7 +80,7 @@ export default function ContasAReceber() {
           </div>
         )}
 
-        <div className="card" style={{ background: "#eafaf0" }}>
+        <div className="card" style={{ background: "var(--color-primary-surface)" }}>
           <p className="text-xs font-semibold tracking-wide text-primary">TOTAL A RECEBER</p>
           <p className="text-3xl font-extrabold mt-1 text-primary">{formatarMoeda(totalPendente)}</p>
         </div>

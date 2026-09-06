@@ -206,12 +206,12 @@ export default function EditarClientePage() {
               onChange={(e) => set("observacoes", e.target.value)}
               rows={4}
               placeholder="Notas privadas — não aparecem em PDF nem WhatsApp"
-              className="w-full rounded-2xl border border-gray-200 px-4 py-3.5 outline-none focus:border-primary"
+              className="w-full rounded-md border border-border px-4 py-3.5 outline-none focus:border-primary"
             />
           </div>
         </Secao>
 
-        {erro && <p className="text-danger text-sm font-medium">{erro}</p>}
+        {erro && <p className="text-error text-sm font-medium">{erro}</p>}
 
         <button onClick={salvar} disabled={salvando} className="btn-primary">
           {salvando ? "Salvando..." : "Salvar alterações"}
@@ -219,8 +219,8 @@ export default function EditarClientePage() {
         <button
           onClick={excluir}
           disabled={excluindo}
-          className="btn-outline text-danger flex items-center justify-center gap-2"
-          style={{ borderColor: "#f4c7c2" }}
+          className="btn-outline text-error flex items-center justify-center gap-2"
+          style={{ borderColor: "var(--color-border-error)" }}
         >
           <IconTrash size={16} /> {excluindo ? "Excluindo..." : "Excluir cliente"}
         </button>
@@ -231,7 +231,7 @@ export default function EditarClientePage() {
 
 function Secao({ titulo, children }: { titulo: string; children: React.ReactNode }) {
   return (
-    <div className="card space-y-4" style={{ background: "#F6FAF7" }}>
+    <div className="card space-y-4" style={{ background: "var(--color-background)" }}>
       <p className="text-xs font-semibold tracking-wide text-muted">{titulo}</p>
       {children}
     </div>
@@ -259,7 +259,7 @@ function Campo({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full rounded-2xl border border-gray-200 px-4 py-3.5 outline-none focus:border-primary bg-white"
+        className="w-full rounded-md border border-border px-4 py-3.5 outline-none focus:border-primary bg-card"
       />
     </div>
   );

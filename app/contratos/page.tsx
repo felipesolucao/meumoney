@@ -58,7 +58,7 @@ export default function Contratos() {
           <h1 className="text-2xl font-bold">Contratos</h1>
           <p className="text-muted text-sm">{contratos.length} contrato(s)</p>
         </div>
-        <Link href="/historico?entidade=Contrato&voltar=/contratos" className="icon-btn text-ink">
+        <Link href="/historico?entidade=Contrato&voltar=/contratos" className="icon-btn text-foreground">
           <IconHistory size={18} />
         </Link>
       </div>
@@ -72,7 +72,7 @@ export default function Contratos() {
           value={busca}
           onChange={(e) => setBusca(e.target.value)}
           placeholder="Pesquisar por nome do cliente..."
-          className="w-full rounded-2xl border border-gray-200 px-4 py-3.5 outline-none focus:border-primary"
+          className="w-full rounded-md border border-border px-4 py-3.5 outline-none focus:border-primary"
         />
 
         <div className="flex gap-2 overflow-x-auto pb-1">
@@ -81,7 +81,7 @@ export default function Contratos() {
               key={a.valor}
               onClick={() => setAba(a.valor)}
               className={`px-4 py-2 rounded-pill text-sm font-semibold whitespace-nowrap ${
-                aba === a.valor ? "bg-primary text-white" : "bg-white border border-gray-200 text-ink"
+                aba === a.valor ? "bg-primary text-white" : "bg-card border border-border text-foreground"
               }`}
             >
               {a.label}
@@ -113,9 +113,9 @@ export default function Contratos() {
                   <p className="text-2xl font-extrabold text-primary">{formatarMoeda(c.valorTotal)}</p>
                   <p className="text-sm text-muted">{c.numeroParcelas}x</p>
                 </div>
-                <div className="h-1.5 rounded-full bg-gray-100 mt-2 overflow-hidden">
+                <div className="h-1.5 rounded-pill bg-muted-bg mt-2 overflow-hidden">
                   <div
-                    className="h-full bg-primary rounded-full"
+                    className="h-full bg-primary rounded-pill"
                     style={{ width: `${c.parcelas.length ? (pagas / c.parcelas.length) * 100 : 0}%` }}
                   />
                 </div>

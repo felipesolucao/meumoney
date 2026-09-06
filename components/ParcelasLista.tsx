@@ -113,12 +113,12 @@ export default function ParcelasLista({
           <div
             key={p.id}
             className="card"
-            style={p.status === "pago" ? { borderLeft: "4px solid #2FA85A" } : undefined}
+            style={p.status === "pago" ? { borderLeft: "4px solid var(--color-success)" } : undefined}
           >
             <div className="flex items-center gap-3">
               <div
-                className="w-11 h-11 rounded-xl flex items-center justify-center font-bold text-white flex-shrink-0"
-                style={{ background: p.status === "pago" ? "#2FA85A" : "#f3d9a4" }}
+                className="w-11 h-11 rounded-sm flex items-center justify-center font-bold text-white flex-shrink-0"
+                style={{ background: p.status === "pago" ? "var(--color-success)" : "var(--color-accent-strong)" }}
               >
                 {p.numero}
               </div>
@@ -131,7 +131,7 @@ export default function ParcelasLista({
                 onClick={() => editar(p)}
                 disabled={carregandoId === p.id}
                 aria-label="Editar parcela"
-                className="w-9 h-9 rounded-full bg-surface flex items-center justify-center flex-shrink-0 text-muted"
+                className="w-9 h-9 rounded-pill bg-background flex items-center justify-center flex-shrink-0 text-muted"
               >
                 <IconEdit size={15} />
               </button>
@@ -143,7 +143,7 @@ export default function ParcelasLista({
                   onClick={() => cobrar(p)}
                   disabled={desabilitado}
                   className="btn-chip"
-                  style={{ background: "#E3F5E9", color: "#2FA85A" }}
+                  style={{ background: "var(--color-success-subtle)", color: "var(--color-success)" }}
                 >
                   <IconChat size={15} /> Cobrar
                 </button>
@@ -151,7 +151,7 @@ export default function ParcelasLista({
                   onClick={() => renegociar(p.id, p.vencimento)}
                   disabled={desabilitado}
                   className="btn-chip"
-                  style={{ background: "#FDECC8", color: "#C98A1D" }}
+                  style={{ background: "var(--color-warning-subtle)", color: "var(--color-warning)" }}
                 >
                   <IconRefresh size={15} /> Renegociar
                 </button>
@@ -159,7 +159,7 @@ export default function ParcelasLista({
                   onClick={() => pagar(p.id)}
                   disabled={desabilitado}
                   className="btn-chip text-white"
-                  style={{ background: "linear-gradient(180deg,#45bd70,#268a4c)" }}
+                  style={{ background: "var(--gradient-primary)" }}
                 >
                   <IconCash size={15} /> Pagar
                 </button>

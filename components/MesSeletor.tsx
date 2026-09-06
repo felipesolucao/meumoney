@@ -32,7 +32,7 @@ export default function MesSeletor({
         type="button"
         onClick={() => irPara(-1)}
         aria-label="Mês anterior"
-        className="icon-btn text-ink"
+        className="icon-btn text-foreground"
       >
         <IconChevronLeft size={18} />
       </button>
@@ -41,7 +41,7 @@ export default function MesSeletor({
         type="button"
         onClick={() => irPara(1)}
         aria-label="Próximo mês"
-        className="icon-btn text-ink"
+        className="icon-btn text-foreground"
       >
         <IconChevronRight size={18} />
       </button>

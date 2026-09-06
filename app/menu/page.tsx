@@ -41,8 +41,8 @@ export default async function Menu() {
 
       <div className="px-5 mt-5 space-y-3">
         {sessao.papel === "admin" && (
-          <Link href="/admin" className="card flex items-center gap-3 block" style={{ background: "#eafaf0" }}>
-            <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center text-primary flex-shrink-0">
+          <Link href="/admin" className="card flex items-center gap-3 block" style={{ background: "var(--color-primary-surface)" }}>
+            <div className="w-12 h-12 rounded-md bg-card flex items-center justify-center text-primary flex-shrink-0">
               <IconUsers size={20} />
             </div>
             <div>
@@ -56,7 +56,7 @@ export default async function Menu() {
           const Icon = item.icon;
           return (
             <Link key={item.href} href={item.href} className="card flex items-center gap-3 block">
-              <div className="w-12 h-12 rounded-2xl bg-surface flex items-center justify-center text-primary flex-shrink-0">
+              <div className="w-12 h-12 rounded-md bg-background flex items-center justify-center text-primary flex-shrink-0">
                 <Icon size={20} />
               </div>
               <div>

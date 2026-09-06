@@ -49,7 +49,7 @@ export default async function DetalheCliente({ params }: { params: { id: string 
       <div className="header-gradient flex items-center gap-3">
         <BotaoVoltar href="/clientes" />
         <h1 className="text-xl font-bold truncate flex-1">{cliente.nome}</h1>
-        <Link href={`/clientes/${cliente.id}/editar`} className="icon-btn text-ink">
+        <Link href={`/clientes/${cliente.id}/editar`} className="icon-btn text-foreground">
           <IconEdit size={17} />
         </Link>
       </div>
@@ -69,11 +69,11 @@ export default async function DetalheCliente({ params }: { params: { id: string 
           </div>
 
           <div className="grid grid-cols-2 gap-3 mt-4">
-            <div className="rounded-2xl bg-surface p-3">
+            <div className="rounded-md bg-background p-3">
               <p className="text-xs text-muted font-semibold">TOTAL EMPRESTADO</p>
               <p className="font-bold mt-1">{formatarMoeda(totalEmprestado)}</p>
             </div>
-            <div className="rounded-2xl bg-surface p-3">
+            <div className="rounded-md bg-background p-3">
               <p className="text-xs text-muted font-semibold">A RECEBER</p>
               <p className="font-bold mt-1">{formatarMoeda(totalAReceber)}</p>
             </div>
@@ -82,7 +82,7 @@ export default async function DetalheCliente({ params }: { params: { id: string 
 
         {/* --- Dados de contato ------------------------------------------------ */}
         <div className="card flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-surface flex items-center justify-center text-primary flex-shrink-0">
+          <div className="w-10 h-10 rounded-md bg-background flex items-center justify-center text-primary flex-shrink-0">
             <IconPhone size={18} />
           </div>
           <div>
@@ -93,7 +93,7 @@ export default async function DetalheCliente({ params }: { params: { id: string 
         </div>
 
         <div className="card flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-surface flex items-center justify-center text-primary flex-shrink-0">
+          <div className="w-10 h-10 rounded-md bg-background flex items-center justify-center text-primary flex-shrink-0">
             <IconMail size={18} />
           </div>
           <div>
@@ -103,7 +103,7 @@ export default async function DetalheCliente({ params }: { params: { id: string 
         </div>
 
         <div className="card flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-surface flex items-center justify-center text-primary flex-shrink-0">
+          <div className="w-10 h-10 rounded-md bg-background flex items-center justify-center text-primary flex-shrink-0">
             <IconMapPin size={18} />
           </div>
           <div>
@@ -172,8 +172,8 @@ export default async function DetalheCliente({ params }: { params: { id: string 
                     <Badge tom={statusInfo.tom}>{statusInfo.texto}</Badge>
                   </div>
                   <p className="text-2xl font-extrabold text-primary mt-1">{formatarMoeda(c.valorTotal)}</p>
-                  <div className="h-1.5 rounded-full bg-gray-100 mt-2 overflow-hidden">
-                    <div className="h-full bg-primary rounded-full" style={{ width: `${progresso}%` }} />
+                  <div className="h-1.5 rounded-pill bg-muted-bg mt-2 overflow-hidden">
+                    <div className="h-full bg-primary rounded-pill" style={{ width: `${progresso}%` }} />
                   </div>
                   <p className="text-xs text-muted mt-1">
                     {pagas} de {c.parcelas.length} pagas · {c.numeroParcelas}x

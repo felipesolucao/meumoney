@@ -47,7 +47,7 @@ export default async function DetalheContrato({ params }: { params: { id: string
     <div>
       <div className="header-gradient flex items-center gap-3">
         <BotaoVoltar href="/contratos" />
-        <Link href="/" className="icon-btn text-ink">
+        <Link href="/" className="icon-btn text-foreground">
           <IconHome size={19} />
         </Link>
         <div>
@@ -57,7 +57,7 @@ export default async function DetalheContrato({ params }: { params: { id: string
       </div>
 
       <div className="px-5 mt-5 space-y-5">
-        <div className="card" style={{ background: "#eafaf0" }}>
+        <div className="card" style={{ background: "var(--color-primary-surface)" }}>
           <div className="flex items-center justify-between">
             <p className="text-xs font-semibold tracking-wide text-muted">VALOR DO CONTRATO</p>
             <Badge tom={statusInfo.tom}>{statusInfo.texto}</Badge>
@@ -74,8 +74,8 @@ export default async function DetalheContrato({ params }: { params: { id: string
             <span className="text-muted">Progresso</span>
             <span className="font-bold text-primary">{Math.round(progresso)}%</span>
           </div>
-          <div className="h-1.5 rounded-full bg-white mt-1 overflow-hidden">
-            <div className="h-full bg-primary rounded-full" style={{ width: `${progresso}%` }} />
+          <div className="h-1.5 rounded-pill bg-card mt-1 overflow-hidden">
+            <div className="h-full bg-primary rounded-pill" style={{ width: `${progresso}%` }} />
           </div>
           <div className="flex justify-between mt-1 text-xs text-muted">
             <span>
@@ -100,7 +100,7 @@ export default async function DetalheContrato({ params }: { params: { id: string
 
           <div className="grid grid-cols-2 gap-2 mt-4 text-xs text-muted">
             <p>
-              Lucro estimado: <strong style={{ color: "#2FA85A" }}>{formatarMoeda(contrato.valorLucro)}</strong>
+              Lucro estimado: <strong style={{ color: "var(--color-primary)" }}>{formatarMoeda(contrato.valorLucro)}</strong>
             </p>
             <p>Início: {formatarData(contrato.dataPrimeiraParcela)}</p>
           </div>
@@ -132,7 +132,7 @@ export default async function DetalheContrato({ params }: { params: { id: string
 
 function MiniCampo({ label, valor }: { label: string; valor: string }) {
   return (
-    <div className="rounded-2xl border border-white bg-white/60 p-2.5 text-center">
+    <div className="rounded-md border border-card bg-white/60 p-2.5 text-center">
       <p className="text-[10px] font-semibold tracking-wide text-muted">{label}</p>
       <p className="font-bold text-sm mt-0.5">{valor}</p>
     </div>

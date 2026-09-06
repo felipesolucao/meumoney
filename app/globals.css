@@ -1,19 +1,182 @@
 /* ============================================================================
-   GLOBAL STYLES
+   DESIGN TOKENS + GLOBAL STYLES
    ----------------------------------------------------------------------------
-   Fundo levemente esverdeado, cartões brancos com sombra suave, cabeçalho em
-   degradê verde — replicando o visual das telas de referência do app.
+   Todo valor de cor, tipografia, borda, sombra e espaçamento do app nasce no
+   bloco :root abaixo. Para trocar a identidade visual, edite SÓ este bloco —
+   nenhum componente carrega valor solto.
+
+   Os tokens são espelhados em tailwind.config.js, então as classes utilitárias
+   (bg-primary, text-muted, rounded-md, shadow-sm) leem as mesmas variáveis.
    ========================================================================== */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  /* --------------------------------------------------------------------------
+     COR — base
+     ------------------------------------------------------------------------ */
+  --color-background: #f6faf7; /* fundo da tela */
+  --color-foreground: #172033; /* texto principal */
+  --color-card: #ffffff; /* superfície de cartão / input */
+
+  /* --------------------------------------------------------------------------
+     COR — primary (verde da marca)
+     ------------------------------------------------------------------------ */
+  --color-primary: #2fa85a;
+  --color-primary-hover: #268a4c;
+  --color-primary-dark: #1f7a40;
+  --color-primary-subtle: #e3f5e9; /* fundo de badge verde */
+  --color-primary-surface: #eafaf0; /* fundo de card em destaque */
+  --color-primary-border: #cdeedb;
+  --color-primary-tint: #eaf8ef; /* topo do degradê do cabeçalho */
+
+  /* --------------------------------------------------------------------------
+     COR — secondary (verde escuro)
+     ------------------------------------------------------------------------ */
+  --color-secondary: #1f7a40;
+  --color-secondary-hover: #186234;
+
+  /* --------------------------------------------------------------------------
+     COR — accent (âmbar)
+     ------------------------------------------------------------------------ */
+  --color-accent: #c98a1d;
+  --color-accent-hover: #a97114;
+  --color-accent-subtle: #fdecc8; /* fundo de badge âmbar */
+  --color-accent-strong: #f3d9a4; /* marcador de parcela pendente */
+  --color-accent-border: #f7e3ba;
+
+  /* --------------------------------------------------------------------------
+     COR — muted (texto e fundos secundários)
+     ------------------------------------------------------------------------ */
+  --color-muted: #6b7280; /* texto secundário */
+  --color-muted-bg: #f3f4f6; /* fundo neutro (blocos de código, trilhas) */
+  --color-muted-surface: #eef1f0; /* fundo de badge neutro */
+
+  /* --------------------------------------------------------------------------
+     COR — bordas
+     ------------------------------------------------------------------------ */
+  --color-border: #e5e7eb; /* borda padrão de cartão/input */
+  --color-border-strong: #d8e6dc; /* borda do botão outline */
+  --color-border-error: #f4c7c2; /* borda de área destrutiva */
+
+  /* --------------------------------------------------------------------------
+     COR — estado
+     ------------------------------------------------------------------------ */
+  --color-success: #2fa85a;
+  --color-success-hover: #268a4c;
+  --color-success-subtle: #e3f5e9;
+  --color-success-strong: #1f7a40; /* superficie escura (toast) */
+
+  --color-warning: #c98a1d;
+  --color-warning-hover: #a97114;
+  --color-warning-subtle: #fdecc8;
+
+  --color-error: #e4544a;
+  --color-error-hover: #c9433a;
+  --color-error-subtle: #fbe4e2;
+  --color-error-strong: #c9433a; /* superficie escura (toast) */
+
+  /* --------------------------------------------------------------------------
+     COR — degradês
+     Compostos a partir dos tokens acima: mudar a cor muda o degradê.
+     ------------------------------------------------------------------------ */
+  --gradient-from-primary: #45bd70; /* topo do degradê do botão primário */
+  --gradient-from-secondary: #4fbf76; /* topo do degradê do avatar */
+  --gradient-to-secondary: #2c8f52;
+  --gradient-from-error: #ef6a60;
+
+  --gradient-primary: linear-gradient(
+    180deg,
+    var(--gradient-from-primary) 0%,
+    var(--color-primary-hover) 100%
+  );
+  --gradient-error: linear-gradient(
+    180deg,
+    var(--gradient-from-error) 0%,
+    var(--color-error-hover) 100%
+  );
+  --gradient-avatar: linear-gradient(
+    160deg,
+    var(--gradient-from-secondary) 0%,
+    var(--gradient-to-secondary) 100%
+  );
+  --gradient-header: linear-gradient(
+    180deg,
+    var(--color-primary-tint) 0%,
+    var(--color-background) 100%
+  );
+  --gradient-surface: linear-gradient(
+    160deg,
+    var(--color-primary-surface),
+    var(--color-background)
+  );
+
+  /* --------------------------------------------------------------------------
+     TIPOGRAFIA
+     Hoje as duas famílias são a mesma stack de sistema. Para dar uma fonte
+     própria aos títulos, troque só --font-heading.
+     ------------------------------------------------------------------------ */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  --font-heading: var(--font-sans);
+
+  /* --------------------------------------------------------------------------
+     FORMA — border-radius
+     ------------------------------------------------------------------------ */
+  --radius-xs: 8px; /* blocos de código */
+  --radius-sm: 12px; /* marcadores quadrados pequenos */
+  --radius-md: 16px; /* raio padrão de cartão/botão/input */
+  --radius-lg: 22px; /* cartão principal (.card) */
+  --radius-tile: 18px; /* azulejo de acesso rápido */
+  --radius-xl: 28px; /* cantos inferiores do cabeçalho */
+  --radius-pill: 999px; /* botões e badges totalmente arredondados */
+
+  /* --------------------------------------------------------------------------
+     FORMA — box-shadow
+     A cor da sombra é um triplete RGB para poder receber opacidade em cada
+     camada; trocar --shadow-color recolore todas as sombras neutras.
+     ------------------------------------------------------------------------ */
+  --shadow-color: 23 32 51;
+  --shadow-color-primary: 38 138 76;
+  --shadow-color-error: 201 67 58;
+
+  --shadow-sm: 0 1px 2px rgb(var(--shadow-color) / 0.04),
+    0 8px 18px -10px rgb(var(--shadow-color) / 0.18);
+  --shadow-md: 0 1px 2px rgb(var(--shadow-color) / 0.04),
+    0 12px 28px -14px rgb(var(--shadow-color) / 0.16);
+  --shadow-tile: 0 1px 2px rgb(var(--shadow-color) / 0.04),
+    0 10px 22px -12px rgb(var(--shadow-color) / 0.18);
+  --shadow-overlay: 0 10px 15px -3px rgb(0 0 0 / 0.1),
+    0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-primary: 0 10px 20px -10px rgb(var(--shadow-color-primary) / 0.45);
+  --shadow-error: 0 10px 20px -10px rgb(var(--shadow-color-error) / 0.45);
+
+  /* --------------------------------------------------------------------------
+     ESPAÇAMENTO / LAYOUT
+     ------------------------------------------------------------------------ */
+  --space-card: 20px; /* padding interno do cartão */
+  --space-list-gap: 14px; /* respiro entre cartões empilhados */
+  --shell-max-width: 480px; /* largura útil (formato de app mobile) */
+  --shell-bottom-space: 96px; /* espaço para a barra inferior fixa */
+}
+
 html,
 body {
   padding: 0;
   margin: 0;
-  background: #f6faf7;
-  color: #172033;
+  background: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-sans);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-heading);
 }
 
 * {
@@ -22,35 +185,35 @@ body {
 
 /* Área útil central, imitando a largura de um app mobile mesmo no desktop */
 .app-shell {
-  max-width: 480px;
+  max-width: var(--shell-max-width);
   margin: 0 auto;
   min-height: 100vh;
-  background: #f6faf7;
+  background: var(--color-background);
   position: relative;
-  padding-bottom: 96px; /* espaço para a barra inferior fixa */
+  padding-bottom: var(--shell-bottom-space);
 }
 
 /* Cabeçalho em degradê verde-claro, usado no topo de cada tela */
 .header-gradient {
-  background: linear-gradient(180deg, #eaf8ef 0%, #f6faf7 100%);
+  background: var(--gradient-header);
   padding: 20px 20px 16px;
-  border-bottom-left-radius: 28px;
-  border-bottom-right-radius: 28px;
+  border-bottom-left-radius: var(--radius-xl);
+  border-bottom-right-radius: var(--radius-xl);
 }
 
 /* Cartão branco padrão usado em listas (clientes, contratos, parcelas) */
 .card {
-  background: #ffffff;
-  border-radius: 22px;
-  box-shadow: 0 1px 2px rgba(23, 32, 51, 0.04), 0 12px 28px -14px rgba(23, 32, 51, 0.16);
-  padding: 20px;
+  background: var(--color-card);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  padding: var(--space-card);
 }
 
 /* Espaçamento vertical padrão entre cards empilhados (listas de transações,
    parcelas, histórico) — usar no lugar de "space-y-3" quando a lista tiver
    ações/botões dentro do card, para não parecer apertado. */
 .list-gap > * + * {
-  margin-top: 14px;
+  margin-top: var(--space-list-gap);
 }
 
 /* Azulejo do "Acesso rápido" — ícone dentro de um quadrado com sombra suave,
@@ -58,9 +221,9 @@ body {
 .quick-tile {
   width: 56px;
   height: 56px;
-  border-radius: 18px;
-  background: #ffffff;
-  box-shadow: 0 1px 2px rgba(23, 32, 51, 0.04), 0 10px 22px -12px rgba(23, 32, 51, 0.18);
+  border-radius: var(--radius-tile);
+  background: var(--color-card);
+  box-shadow: var(--shadow-tile);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -70,9 +233,9 @@ body {
 .icon-btn {
   width: 40px;
   height: 40px;
-  border-radius: 999px;
-  background: #ffffff;
-  box-shadow: 0 1px 2px rgba(23, 32, 51, 0.04), 0 8px 18px -10px rgba(23, 32, 51, 0.18);
+  border-radius: var(--radius-pill);
+  background: var(--color-card);
+  box-shadow: var(--shadow-sm);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -85,7 +248,7 @@ body {
   align-items: center;
   gap: 6px;
   padding: 6px 14px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   font-weight: 600;
   font-size: 13px;
   white-space: nowrap;
@@ -94,23 +257,23 @@ body {
 .badge-dot {
   width: 7px;
   height: 7px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: currentColor;
 }
 
 /* Botões — altura mínima de 52px (padding 18px + line-height do texto),
    confortável para toque em mobile. Todos usam a mesma "pill" (border-radius). */
 .btn-primary {
-  background: linear-gradient(180deg, #45bd70 0%, #268a4c 100%);
+  background: var(--gradient-primary);
   color: white;
   font-weight: 700;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   padding: 18px 24px;
   min-height: 52px;
   text-align: center;
   width: 100%;
   display: block;
-  box-shadow: 0 10px 20px -10px rgba(38, 138, 76, 0.45);
+  box-shadow: var(--shadow-primary);
   transition: transform 0.05s ease;
 }
 .btn-primary:active {
@@ -118,16 +281,16 @@ body {
 }
 
 .btn-outline {
-  border: 1.5px solid #d8e6dc;
-  color: #172033;
+  border: 1.5px solid var(--color-border-strong);
+  color: var(--color-foreground);
   font-weight: 600;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   padding: 16px 24px;
   min-height: 52px;
   text-align: center;
   width: 100%;
   display: block;
-  background: white;
+  background: var(--color-card);
   transition: transform 0.05s ease;
 }
 .btn-outline:active {
@@ -137,16 +300,16 @@ body {
 /* Variante destrutiva (excluir) — usada em vários formulários que já
    referenciam a classe "btn-danger" sem ela estar definida até aqui. */
 .btn-danger {
-  background: linear-gradient(180deg, #ef6a60 0%, #c9433a 100%);
+  background: var(--gradient-error);
   color: white;
   font-weight: 700;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   padding: 18px 24px;
   min-height: 52px;
   text-align: center;
   width: 100%;
   display: block;
-  box-shadow: 0 10px 20px -10px rgba(201, 67, 58, 0.45);
+  box-shadow: var(--shadow-error);
 }
 
 /* Botão pequeno (ícone + texto curto), usado em ações secundárias dentro de
@@ -157,7 +320,7 @@ body {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   padding: 12px 18px;
   min-height: 44px;
   font-weight: 600;
@@ -168,13 +331,13 @@ body {
 .avatar {
   width: 52px;
   height: 52px;
-  border-radius: 16px;
+  border-radius: var(--radius-md);
   display: flex;
   align-items: center;
   justify-content: center;
   color: white;
   font-weight: 700;
   font-size: 18px;
-  background: linear-gradient(160deg, #4fbf76 0%, #2c8f52 100%);
+  background: var(--gradient-avatar);
   flex-shrink: 0;
 }

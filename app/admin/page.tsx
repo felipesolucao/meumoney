@@ -39,8 +39,8 @@ export default async function PainelAdmin() {
       </div>
 
       <div className="px-5 mt-5 space-y-5">
-        <div className="card flex items-center gap-3" style={{ background: "#eafaf0" }}>
-          <div className="w-14 h-14 rounded-2xl bg-white flex items-center justify-center text-primary flex-shrink-0">
+        <div className="card flex items-center gap-3" style={{ background: "var(--color-primary-surface)" }}>
+          <div className="w-14 h-14 rounded-md bg-card flex items-center justify-center text-primary flex-shrink-0">
             <IconUsers size={24} />
           </div>
           <div>
@@ -58,7 +58,7 @@ export default async function PainelAdmin() {
                 <div className="flex items-center justify-between gap-2">
                   <p className="font-bold truncate">{u.email}</p>
                   {u.papel === "admin" && (
-                    <span className="badge" style={{ background: "#E3F5E9", color: "#2FA85A" }}>
+                    <span className="badge" style={{ background: "var(--color-success-subtle)", color: "var(--color-success)" }}>
                       <span className="badge-dot" />
                       Admin
                     </span>

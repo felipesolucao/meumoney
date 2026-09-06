@@ -56,9 +56,9 @@ export default function ToastProvider({ children }: { children: React.ReactNode 
         <div className="fixed bottom-0 left-0 right-0 flex justify-center pointer-events-none z-50">
           <div className="app-shell !min-h-0 !p-0 relative w-full">
             <div
-              className="pointer-events-auto mx-4 mb-28 rounded-2xl px-4 py-3.5 shadow-lg flex items-center gap-3"
+              className="pointer-events-auto mx-4 mb-28 rounded-md px-4 py-3.5 shadow-overlay flex items-center gap-3"
               style={{
-                background: toast.tipo === "sucesso" ? "#1F7A40" : "#c9433a",
+                background: toast.tipo === "sucesso" ? "var(--color-success-strong)" : "var(--color-error-strong)",
                 color: "white",
               }}
               role="status"

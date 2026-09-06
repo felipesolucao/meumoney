@@ -22,9 +22,9 @@ export default function BotaoSair() {
     <button
       onClick={sair}
       disabled={saindo}
-      className="card flex items-center gap-3 w-full text-left text-danger"
+      className="card flex items-center gap-3 w-full text-left text-error"
     >
-      <div className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0" style={{ background: "#FBE4E2" }}>
+      <div className="w-12 h-12 rounded-md flex items-center justify-center flex-shrink-0" style={{ background: "var(--color-error-subtle)" }}>
         <IconArrowLeft size={20} className="rotate-180" />
       </div>
       <p className="font-bold">{saindo ? "Saindo..." : "Sair da conta"}</p>

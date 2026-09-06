@@ -107,7 +107,7 @@ function NovoContrato() {
           <select
             value={clienteId}
             onChange={(e) => setClienteId(e.target.value)}
-            className="w-full rounded-2xl border border-gray-200 px-4 py-3.5 outline-none focus:border-primary bg-white"
+            className="w-full rounded-md border border-border px-4 py-3.5 outline-none focus:border-primary bg-card"
           >
             {clientes.length === 0 && <option value="">Nenhum cliente cadastrado</option>}
             {clientes.map((c) => (
@@ -130,7 +130,7 @@ function NovoContrato() {
             onChange={(e) => setValorEmprestado(e.target.value)}
             placeholder="0,00"
             inputMode="decimal"
-            className="w-full rounded-2xl border border-gray-200 px-4 py-3.5 outline-none focus:border-primary"
+            className="w-full rounded-md border border-border px-4 py-3.5 outline-none focus:border-primary"
           />
         </div>
 
@@ -154,7 +154,7 @@ function NovoContrato() {
               onChange={(e) => setJurosAoMes(e.target.value)}
               disabled={tipoEmprestimo === "fixo"}
               inputMode="decimal"
-              className="w-full rounded-2xl border border-gray-200 px-4 py-3.5 outline-none focus:border-primary disabled:bg-gray-100"
+              className="w-full rounded-md border border-border px-4 py-3.5 outline-none focus:border-primary disabled:bg-muted-bg"
             />
           </div>
           <div>
@@ -163,7 +163,7 @@ function NovoContrato() {
               value={numeroParcelas}
               onChange={(e) => setNumeroParcelas(e.target.value)}
               inputMode="numeric"
-              className="w-full rounded-2xl border border-gray-200 px-4 py-3.5 outline-none focus:border-primary"
+              className="w-full rounded-md border border-border px-4 py-3.5 outline-none focus:border-primary"
             />
           </div>
         </div>
@@ -202,13 +202,13 @@ function NovoContrato() {
             type="date"
             value={dataPrimeiraParcela}
             onChange={(e) => setDataPrimeiraParcela(e.target.value)}
-            className="w-full rounded-2xl border border-gray-200 px-4 py-3.5 outline-none focus:border-primary"
+            className="w-full rounded-md border border-border px-4 py-3.5 outline-none focus:border-primary"
           />
         </div>
 
         {/* Prévia do cálculo, atualizada em tempo real */}
         {simulacao && (
-          <div className="card space-y-1" style={{ background: "#eafaf0" }}>
+          <div className="card space-y-1" style={{ background: "var(--color-primary-surface)" }}>
             <p className="text-xs font-semibold tracking-wide text-muted">RESUMO DO CONTRATO</p>
             <div className="flex justify-between text-sm">
               <span className="text-muted">Valor total a receber</span>
@@ -225,7 +225,7 @@ function NovoContrato() {
           </div>
         )}
 
-        {erro && <p className="text-danger text-sm font-medium">{erro}</p>}
+        {erro && <p className="text-error text-sm font-medium">{erro}</p>}
 
         <button onClick={salvar} disabled={salvando} className="btn-primary">
           {salvando ? "Salvando..." : "Criar contrato"}

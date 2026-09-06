@@ -147,7 +147,7 @@ export default function EditarLancamentoPage() {
           <input
             value={descricao}
             onChange={(e) => setDescricao(e.target.value)}
-            className="w-full rounded-2xl border border-gray-200 px-4 py-3.5 outline-none focus:border-primary"
+            className="w-full rounded-md border border-border px-4 py-3.5 outline-none focus:border-primary"
           />
         </div>
 
@@ -159,7 +159,7 @@ export default function EditarLancamentoPage() {
             value={valor}
             onChange={(e) => setValor(e.target.value)}
             inputMode="decimal"
-            className="w-full rounded-2xl border border-gray-200 px-4 py-3.5 outline-none focus:border-primary"
+            className="w-full rounded-md border border-border px-4 py-3.5 outline-none focus:border-primary"
           />
         </div>
 
@@ -169,7 +169,7 @@ export default function EditarLancamentoPage() {
             type="date"
             value={dataVencimento}
             onChange={(e) => setDataVencimento(e.target.value)}
-            className="w-full rounded-2xl border border-gray-200 px-4 py-3.5 outline-none focus:border-primary"
+            className="w-full rounded-md border border-border px-4 py-3.5 outline-none focus:border-primary"
           />
         </div>
 
@@ -178,7 +178,7 @@ export default function EditarLancamentoPage() {
           <select
             value={categoriaId}
             onChange={(e) => setCategoriaId(e.target.value)}
-            className="w-full rounded-2xl border border-gray-200 px-4 py-3.5 outline-none focus:border-primary bg-white"
+            className="w-full rounded-md border border-border px-4 py-3.5 outline-none focus:border-primary bg-card"
           >
             <option value="">Sem categoria</option>
             {categorias.map((c) => (
@@ -194,7 +194,7 @@ export default function EditarLancamentoPage() {
           <select
             value={contaId}
             onChange={(e) => setContaId(e.target.value)}
-            className="w-full rounded-2xl border border-gray-200 px-4 py-3.5 outline-none focus:border-primary bg-white"
+            className="w-full rounded-md border border-border px-4 py-3.5 outline-none focus:border-primary bg-card"
           >
             <option value="">Sem conta</option>
             {contas.map((c) => (
@@ -211,11 +211,11 @@ export default function EditarLancamentoPage() {
             value={observacoes}
             onChange={(e) => setObservacoes(e.target.value)}
             rows={3}
-            className="w-full rounded-2xl border border-gray-200 px-4 py-3.5 outline-none focus:border-primary"
+            className="w-full rounded-md border border-border px-4 py-3.5 outline-none focus:border-primary"
           />
         </div>
 
-        {erro && <p className="text-danger text-sm font-medium">{erro}</p>}
+        {erro && <p className="text-error text-sm font-medium">{erro}</p>}
 
         <button onClick={salvar} disabled={salvando} className="btn-primary">
           {salvando ? "Salvando..." : "Salvar alterações"}
@@ -223,8 +223,8 @@ export default function EditarLancamentoPage() {
         <button
           onClick={excluir}
           disabled={excluindo}
-          className="btn-outline text-danger flex items-center justify-center gap-2"
-          style={{ borderColor: "#f4c7c2" }}
+          className="btn-outline text-error flex items-center justify-center gap-2"
+          style={{ borderColor: "var(--color-border-error)" }}
         >
           <IconTrash size={16} /> {excluindo ? "Excluindo..." : "Excluir lançamento"}
         </button>

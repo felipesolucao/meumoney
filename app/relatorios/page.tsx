@@ -46,16 +46,16 @@ export default async function Relatorios() {
 
         <div className="card">
           <p className="text-xs font-semibold tracking-wide text-muted mb-3">EM ATRASO</p>
-          <p className="text-3xl font-extrabold" style={{ color: "#E4544A" }}>
+          <p className="text-3xl font-extrabold" style={{ color: "var(--color-error)" }}>
             {formatarMoeda(atrasado)}
           </p>
         </div>
 
         <div className="card">
           <p className="text-xs font-semibold tracking-wide text-muted mb-3">CONTRATOS POR STATUS</p>
-          <LinhaBarra label="Em dia" valor={emDia} total={contratos.length} cor="#2FA85A" />
-          <LinhaBarra label="Atrasados" valor={atrasados} total={contratos.length} cor="#E4544A" />
-          <LinhaBarra label="Quitados" valor={quitados} total={contratos.length} cor="#6B7280" />
+          <LinhaBarra label="Em dia" valor={emDia} total={contratos.length} cor="var(--color-success)" />
+          <LinhaBarra label="Atrasados" valor={atrasados} total={contratos.length} cor="var(--color-error)" />
+          <LinhaBarra label="Quitados" valor={quitados} total={contratos.length} cor="var(--color-muted)" />
         </div>
       </div>
     </div>
@@ -79,8 +79,8 @@ function LinhaBarra({ label, valor, total, cor }: { label: string; valor: number
         <span>{label}</span>
         <span className="font-semibold">{valor}</span>
       </div>
-      <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
-        <div className="h-full rounded-full" style={{ width: `${pct}%`, background: cor }} />
+      <div className="h-2 rounded-pill bg-muted-bg overflow-hidden">
+        <div className="h-full rounded-pill" style={{ width: `${pct}%`, background: cor }} />
       </div>
     </div>
   );

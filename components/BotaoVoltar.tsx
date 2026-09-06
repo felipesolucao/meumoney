@@ -6,7 +6,7 @@ import { IconArrowLeft } from "./Icons";
 
 export default function BotaoVoltar({ href }: { href: string }) {
   return (
-    <Link href={href} className="icon-btn text-ink">
+    <Link href={href} className="icon-btn text-foreground">
       <IconArrowLeft size={19} />
     </Link>
   );

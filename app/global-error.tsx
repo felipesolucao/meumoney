@@ -11,6 +11,9 @@
 // ============================================================================
 "use client";
 
+// Este arquivo substitui o layout raiz inteiro, entao precisa importar a
+// folha de tokens por conta propria -- sem isso, var(--color-*) nao resolve.
+import "./globals.css";
 import { useEffect } from "react";
 
 export default function GlobalError({
@@ -26,7 +29,7 @@ export default function GlobalError({
 
   return (
     <html lang="pt-BR">
-      <body style={{ fontFamily: "sans-serif", background: "#f6faf7", margin: 0 }}>
+      <body style={{ fontFamily: "var(--font-sans)", background: "var(--color-background)", margin: 0 }}>
         <div
           style={{
             minHeight: "100vh",
@@ -41,16 +44,16 @@ export default function GlobalError({
           <h1 style={{ fontSize: "1.25rem", fontWeight: 700, marginBottom: "8px" }}>
             Não foi possível carregar o app
           </h1>
-          <p style={{ color: "#6B7280", fontSize: "0.875rem", marginBottom: "24px" }}>
+          <p style={{ color: "var(--color-muted)", fontSize: "0.875rem", marginBottom: "24px" }}>
             Ocorreu um erro crítico. Tente recarregar a página.
           </p>
           <button
             onClick={() => reset()}
             style={{
-              background: "#2FA85A",
+              background: "var(--color-primary)",
               color: "white",
               border: "none",
-              borderRadius: "16px",
+              borderRadius: "var(--radius-md)",
               padding: "14px 24px",
               fontWeight: 600,
               cursor: "pointer",

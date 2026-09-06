@@ -72,7 +72,7 @@ export default function ContasAPagar() {
           <h1 className="text-2xl font-bold">Contas a pagar</h1>
           <p className="text-muted text-sm">Histórico de despesas</p>
         </div>
-        <Link href="/historico?entidade=Lancamento&voltar=/financeiro/pagar" className="icon-btn text-ink">
+        <Link href="/historico?entidade=Lancamento&voltar=/financeiro/pagar" className="icon-btn text-foreground">
           <IconHistory size={18} />
         </Link>
       </div>
@@ -84,9 +84,9 @@ export default function ContasAPagar() {
           </div>
         )}
 
-        <div className="card" style={{ background: "#FBE4E2" }}>
-          <p className="text-xs font-semibold tracking-wide text-danger">TOTAL EM ABERTO</p>
-          <p className="text-3xl font-extrabold mt-1 text-danger">{formatarMoeda(totalPendente)}</p>
+        <div className="card" style={{ background: "var(--color-error-subtle)" }}>
+          <p className="text-xs font-semibold tracking-wide text-error">TOTAL EM ABERTO</p>
+          <p className="text-3xl font-extrabold mt-1 text-error">{formatarMoeda(totalPendente)}</p>
         </div>
 
         <div className="flex gap-2 overflow-x-auto pb-1">

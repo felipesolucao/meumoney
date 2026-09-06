@@ -117,14 +117,14 @@ export default function Financeiro() {
                 type="date"
                 value={dataDe}
                 onChange={(e) => setDataDe(e.target.value)}
-                className="flex-1 rounded-2xl border border-gray-200 px-3 py-2.5 text-sm outline-none focus:border-primary"
+                className="flex-1 rounded-md border border-border px-3 py-2.5 text-sm outline-none focus:border-primary"
               />
               <span className="text-muted text-sm">até</span>
               <input
                 type="date"
                 value={dataAte}
                 onChange={(e) => setDataAte(e.target.value)}
-                className="flex-1 rounded-2xl border border-gray-200 px-3 py-2.5 text-sm outline-none focus:border-primary"
+                className="flex-1 rounded-md border border-border px-3 py-2.5 text-sm outline-none focus:border-primary"
               />
             </div>
           ) : (
@@ -137,15 +137,15 @@ export default function Financeiro() {
           <CardSaldo
             label={periodoPersonalizado ? "BALANÇO DO PERÍODO" : "BALANÇO DO MÊS"}
             valor={carregando ? "R$ —" : formatarMoeda(resumo?.balanco ?? 0)}
-            corValor={(resumo?.balanco ?? 0) >= 0 ? "#2FA85A" : "#E4544A"}
+            corValor={(resumo?.balanco ?? 0) >= 0 ? "var(--color-success)" : "var(--color-error)"}
           >
             <div className="grid grid-cols-2 gap-3 mt-4">
-              <div className="rounded-2xl border p-3 bg-white/60" style={{ borderColor: "#cdeedb" }}>
+              <div className="rounded-md border p-3 bg-white/60" style={{ borderColor: "var(--color-primary-border)" }}>
                 <p className="text-primary text-xs font-semibold">RECEITAS</p>
                 <p className="font-bold mt-1">{carregando ? "—" : formatarMoeda(resumo?.receitasDoMes ?? 0)}</p>
               </div>
-              <div className="rounded-2xl border p-3 bg-white/60" style={{ borderColor: "#f4c7c2" }}>
-                <p className="text-danger text-xs font-semibold">DESPESAS</p>
+              <div className="rounded-md border p-3 bg-white/60" style={{ borderColor: "var(--color-border-error)" }}>
+                <p className="text-error text-xs font-semibold">DESPESAS</p>
                 <p className="font-bold mt-1">{carregando ? "—" : formatarMoeda(resumo?.despesasDoMes ?? 0)}</p>
               </div>
             </div>
@@ -173,7 +173,7 @@ export default function Financeiro() {
           <p className="text-xs font-semibold tracking-wide text-muted mb-3">PENDÊNCIAS E ALERTAS (GERAL)</p>
           <div className="grid grid-cols-2 gap-3">
             <Link href="/financeiro/pagar" className="card block">
-              <p className="text-xs font-semibold text-danger">A PAGAR</p>
+              <p className="text-xs font-semibold text-error">A PAGAR</p>
               <p className="font-bold mt-1">{carregando ? "—" : formatarMoeda(resumo?.totalAPagar ?? 0)}</p>
               <p className="text-xs text-muted mt-1">{resumo?.contasAPagar ?? 0} conta(s)</p>
             </Link>
@@ -184,9 +184,9 @@ export default function Financeiro() {
             </Link>
           </div>
           {(resumo?.atrasadas ?? 0) > 0 && (
-            <div className="card mt-3 flex items-center gap-2" style={{ background: "#FBE4E2" }}>
-              <IconAlert size={18} className="text-danger" />
-              <p className="text-sm font-semibold text-danger">{resumo?.atrasadas} lançamento(s) em atraso</p>
+            <div className="card mt-3 flex items-center gap-2" style={{ background: "var(--color-error-subtle)" }}>
+              <IconAlert size={18} className="text-error" />
+              <p className="text-sm font-semibold text-error">{resumo?.atrasadas} lançamento(s) em atraso</p>
             </div>
           )}
         </div>

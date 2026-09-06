@@ -62,8 +62,8 @@ export default function ContratoAcoes({
         <button
           onClick={excluir}
           disabled={excluindo}
-          className="btn-outline text-danger flex items-center justify-center gap-2"
-          style={{ borderColor: "#f4c7c2" }}
+          className="btn-outline text-error flex items-center justify-center gap-2"
+          style={{ borderColor: "var(--color-border-error)" }}
         >
           <IconTrash size={16} /> {excluindo ? "Excluindo..." : "Excluir"}
         </button>
