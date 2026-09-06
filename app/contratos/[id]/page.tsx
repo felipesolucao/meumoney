@@ -132,7 +132,7 @@ export default async function DetalheContrato({ params }: { params: { id: string
 
 function MiniCampo({ label, valor }: { label: string; valor: string }) {
   return (
-    <div className="rounded-md border border-card bg-white/60 p-2.5 text-center">
+    <div className="rounded-md border border-card p-2.5 text-center" style={{ background: "var(--color-surface-inset)" }}>
       <p className="text-[10px] font-semibold tracking-wide text-muted">{label}</p>
       <p className="font-bold text-sm mt-0.5">{valor}</p>
     </div>

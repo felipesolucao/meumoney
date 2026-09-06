@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { exigirSessao } from "../../lib/auth";
 import BotaoSair from "../../components/BotaoSair";
+import ThemeToggle from "../../components/ThemeToggle";
 import {
   IconPlus,
   IconReceipt,
@@ -68,6 +69,9 @@ export default async function Menu() {
             </Link>
           );
         })}
+
+        {/* Aparência — trocar entre tema claro e escuro (branco/preto) */}
+        <ThemeToggle />
 
         <div className="card">
           <p className="font-bold">Suporte</p>

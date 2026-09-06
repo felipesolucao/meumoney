@@ -140,11 +140,11 @@ export default function Financeiro() {
             corValor={(resumo?.balanco ?? 0) >= 0 ? "var(--color-success)" : "var(--color-error)"}
           >
             <div className="grid grid-cols-2 gap-3 mt-4">
-              <div className="rounded-md border p-3 bg-white/60" style={{ borderColor: "var(--color-primary-border)" }}>
+              <div className="rounded-md border p-3" style={{ background: "var(--color-surface-inset)", borderColor: "var(--color-primary-border)" }}>
                 <p className="text-primary text-xs font-semibold">RECEITAS</p>
                 <p className="font-bold mt-1">{carregando ? "—" : formatarMoeda(resumo?.receitasDoMes ?? 0)}</p>
               </div>
-              <div className="rounded-md border p-3 bg-white/60" style={{ borderColor: "var(--color-border-error)" }}>
+              <div className="rounded-md border p-3" style={{ background: "var(--color-surface-inset)", borderColor: "var(--color-border-error)" }}>
                 <p className="text-error text-xs font-semibold">DESPESAS</p>
                 <p className="font-bold mt-1">{carregando ? "—" : formatarMoeda(resumo?.despesasDoMes ?? 0)}</p>
               </div>

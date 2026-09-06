@@ -1,0 +1,1460 @@
+From 1d2860fe67160a43e240efc530a958a9fbb3b39a Mon Sep 17 00:00:00 2001
+From: "Felipe (via Claude)" <felipe@example.com>
+Date: Sun, 6 Sep 2026 12:19:22 +0000
+Subject: [PATCH] =?UTF-8?q?Adiciona=20gerenciador=20de=20categorias=20e=20?=
+ =?UTF-8?q?redesenha=20Novo=20lan=C3=A7amento?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+- /financeiro/categorias: lista categorias (aba despesa/receita), cria e exclui
+- /financeiro/categorias/[id]: troca emoji, renomeia e mostra lançamentos da
+  categoria filtrados por mês (reaproveita MesSeletor e LancamentosLista)
+- SeletorCategoriaModal: bottom sheet em /financeiro/novo para escolher,
+  criar, renomear e excluir categoria sem sair do formulário
+- API: PATCH/DELETE em /api/categorias/[id]; filtro ?categoriaId= em
+  /api/lancamentos
+- /financeiro/novo: campos agrupados em cards (valor, detalhes, repeticao),
+  campo de valor com prefixo R$ e cor por tipo, switch para status pago
+- Tudo ja usando os tokens de app/globals.css (bg-primary-subtle, text-error,
+  rounded-md etc.), sem hex solto
+---
+ app/api/categorias/[id]/route.ts        |  48 ++++
+ app/api/lancamentos/route.ts            |   3 +
+ app/financeiro/categorias/[id]/page.tsx | 263 +++++++++++++++++++
+ app/financeiro/categorias/page.tsx      | 217 ++++++++++++++++
+ app/financeiro/novo/page.tsx            | 318 +++++++++++++----------
+ app/globals.css                         |  42 ++++
+ app/menu/page.tsx                       |   2 +
+ components/Icons.tsx                    |  17 ++
+ components/SeletorCategoriaModal.tsx    | 320 ++++++++++++++++++++++++
+ lib/emojisCategorias.ts                 |  15 ++
+ 10 files changed, 1111 insertions(+), 134 deletions(-)
+ create mode 100644 app/api/categorias/[id]/route.ts
+ create mode 100644 app/financeiro/categorias/[id]/page.tsx
+ create mode 100644 app/financeiro/categorias/page.tsx
+ create mode 100644 components/SeletorCategoriaModal.tsx
+ create mode 100644 lib/emojisCategorias.ts
+
+diff --git a/app/api/categorias/[id]/route.ts b/app/api/categorias/[id]/route.ts
+new file mode 100644
+index 0000000..d083578
+--- /dev/null
++++ b/app/api/categorias/[id]/route.ts
+@@ -0,0 +1,48 @@
++// ============================================================================
++// API: /api/categorias/[id]
++// PATCH  -> renomeia a categoria e/ou troca o emoji (ícone)
++// DELETE -> exclui a categoria do usuário logado
++// ----------------------------------------------------------------------------
++// Lançamentos que já usam essa categoria NÃO são apagados: a coluna
++// categoriaId deles simplesmente vira NULL (ON DELETE SET NULL, ver schema),
++// então o histórico financeiro continua intacto, só sem categoria.
++// ============================================================================
++import { NextRequest, NextResponse } from "next/server";
++import { prisma } from "../../../../lib/prisma";
++import { obterSessao } from "../../../../lib/auth";
++
++export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
++  const sessao = await obterSessao();
++  if (!sessao) return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
++
++  const existente = await prisma.categoria.findFirst({ where: { id: params.id, usuarioId: sessao.id } });
++  if (!existente) return NextResponse.json({ error: "Categoria não encontrada." }, { status: 404 });
++
++  const body = await req.json();
++  const { nome, icone, cor } = body as { nome?: string; icone?: string; cor?: string };
++
++  if (nome !== undefined && !nome.trim()) {
++    return NextResponse.json({ error: "O nome da categoria não pode ficar em branco." }, { status: 400 });
++  }
++
++  const categoria = await prisma.categoria.update({
++    where: { id: params.id },
++    data: {
++      ...(nome !== undefined ? { nome: nome.trim() } : {}),
++      ...(icone !== undefined ? { icone } : {}),
++      ...(cor !== undefined ? { cor } : {}),
++    },
++  });
++  return NextResponse.json(categoria);
++}
++
++export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
++  const sessao = await obterSessao();
++  if (!sessao) return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
++
++  const existente = await prisma.categoria.findFirst({ where: { id: params.id, usuarioId: sessao.id } });
++  if (!existente) return NextResponse.json({ error: "Categoria não encontrada." }, { status: 404 });
++
++  await prisma.categoria.delete({ where: { id: params.id } });
++  return NextResponse.json({ ok: true });
++}
+diff --git a/app/api/lancamentos/route.ts b/app/api/lancamentos/route.ts
+index c00aac9..ea3885d 100644
+--- a/app/api/lancamentos/route.ts
++++ b/app/api/lancamentos/route.ts
+@@ -4,6 +4,7 @@
+ // GET  -> lista lançamentos (receitas e despesas), com filtros por query string:
+ //         ?tipo=receita|despesa   ?origem=pessoal|empresarial
+ //         ?status=pendente|pago|atrasado    ?de=YYYY-MM-DD&ate=YYYY-MM-DD
++//         ?categoriaId=...       (usado pela tela de detalhe de categoria)
+ //
+ // POST -> cria um lançamento. Se "recorrente" vier true, cria a regra em
+ //         LancamentoRecorrente e gera todas as ocorrências (parceladas ou
+@@ -26,10 +27,12 @@ export async function GET(req: NextRequest) {
+   const status = params.get("status");
+   const de = params.get("de");
+   const ate = params.get("ate");
++  const categoriaId = params.get("categoriaId");
+ 
+   const where: Record<string, unknown> = { usuarioId: sessao.id };
+   if (tipo) where.tipo = tipo;
+   if (origem) where.origem = origem;
++  if (categoriaId) where.categoriaId = categoriaId;
+   if (de || ate) {
+     where.dataVencimento = {
+       ...(de ? { gte: new Date(`${de}T00:00:00`) } : {}),
+diff --git a/app/financeiro/categorias/[id]/page.tsx b/app/financeiro/categorias/[id]/page.tsx
+new file mode 100644
+index 0000000..edf151b
+--- /dev/null
++++ b/app/financeiro/categorias/[id]/page.tsx
+@@ -0,0 +1,263 @@
++// ============================================================================
++// PÁGINA: Detalhe da categoria
++// ----------------------------------------------------------------------------
++// O "gerenciador" de uma categoria específica: trocar o emoji, renomear e ver
++// os lançamentos que caem nela, filtrados por mês (mesmo seletor usado em
++// Contas a pagar/receber). Excluir a categoria manda de volta pro índice.
++// ============================================================================
++"use client";
++
++import { useRouter } from "next/navigation";
++import { useEffect, useMemo, useState } from "react";
++import type { TipoLancamento } from "../../../../lib/financeiro";
++import { formatarMoeda } from "../../../../lib/financeiro";
++import { EMOJIS_CATEGORIA } from "../../../../lib/emojisCategorias";
++import BotaoVoltar from "../../../../components/BotaoVoltar";
++import MesSeletor from "../../../../components/MesSeletor";
++import LancamentosLista, { LancamentoItem } from "../../../../components/LancamentosLista";
++import { useToast } from "../../../../components/ToastProvider";
++import { IconEdit, IconTrash, IconCheck } from "../../../../components/Icons";
++
++type Categoria = { id: string; nome: string; icone: string; tipo: TipoLancamento };
++
++function pad(n: number) {
++  return String(n).padStart(2, "0");
++}
++
++export default function DetalheCategoriaPage({ params }: { params: { id: string } }) {
++  const router = useRouter();
++  const showToast = useToast();
++  const hoje = new Date();
++
++  const [categoria, setCategoria] = useState<Categoria | null>(null);
++  const [carregandoCategoria, setCarregandoCategoria] = useState(true);
++
++  const [editando, setEditando] = useState(false);
++  const [nomeForm, setNomeForm] = useState("");
++  const [iconeForm, setIconeForm] = useState("💰");
++  const [salvandoCategoria, setSalvandoCategoria] = useState(false);
++  const [erroCategoria, setErroCategoria] = useState("");
++  const [confirmarExclusao, setConfirmarExclusao] = useState(false);
++
++  const [ano, setAno] = useState(hoje.getFullYear());
++  const [mes, setMes] = useState(hoje.getMonth());
++  const [lancamentos, setLancamentos] = useState<LancamentoItem[]>([]);
++  const [carregandoLancamentos, setCarregandoLancamentos] = useState(true);
++
++  // A categoria em si não tem um GET individual — busca a lista completa (sem
++  // filtro de tipo) e encontra pelo id, o mesmo que a tela de índice já usa.
++  useEffect(() => {
++    fetch("/api/categorias")
++      .then((r) => r.json())
++      .then((data: Categoria[]) => {
++        const encontrada = data.find((c) => c.id === params.id) || null;
++        setCategoria(encontrada);
++        if (encontrada) {
++          setNomeForm(encontrada.nome);
++          setIconeForm(encontrada.icone);
++        }
++        setCarregandoCategoria(false);
++      });
++  }, [params.id]);
++
++  useEffect(() => {
++    setCarregandoLancamentos(true);
++    const inicio = new Date(ano, mes, 1);
++    const fim = new Date(ano, mes + 1, 0);
++    const de = `${inicio.getFullYear()}-${pad(inicio.getMonth() + 1)}-${pad(inicio.getDate())}`;
++    const ate = `${fim.getFullYear()}-${pad(fim.getMonth() + 1)}-${pad(fim.getDate())}`;
++
++    fetch(`/api/lancamentos?categoriaId=${params.id}&de=${de}&ate=${ate}`)
++      .then((r) => r.json())
++      .then((data: LancamentoItem[]) => {
++        const ordenado = [...data].sort(
++          (a, b) => new Date(b.dataVencimento).getTime() - new Date(a.dataVencimento).getTime()
++        );
++        setLancamentos(ordenado);
++        setCarregandoLancamentos(false);
++      });
++  }, [params.id, ano, mes]);
++
++  const totalMes = useMemo(() => lancamentos.reduce((s, l) => s + Number(l.valor), 0), [lancamentos]);
++
++  function iniciarEdicao() {
++    if (!categoria) return;
++    setNomeForm(categoria.nome);
++    setIconeForm(categoria.icone);
++    setEditando(true);
++    setErroCategoria("");
++  }
++
++  async function salvarCategoria() {
++    if (!categoria) return;
++    if (!nomeForm.trim()) return setErroCategoria("Dê um nome para a categoria.");
++    setSalvandoCategoria(true);
++    const res = await fetch(`/api/categorias/${categoria.id}`, {
++      method: "PATCH",
++      headers: { "Content-Type": "application/json" },
++      body: JSON.stringify({ nome: nomeForm.trim(), icone: iconeForm }),
++    });
++    setSalvandoCategoria(false);
++    if (!res.ok) {
++      const data = await res.json();
++      return setErroCategoria(data.error || "Não foi possível salvar.");
++    }
++    const atualizada: Categoria = await res.json();
++    setCategoria(atualizada);
++    setEditando(false);
++    showToast("Categoria atualizada!");
++  }
++
++  async function excluirCategoria() {
++    if (!categoria) return;
++    setSalvandoCategoria(true);
++    const res = await fetch(`/api/categorias/${categoria.id}`, { method: "DELETE" });
++    setSalvandoCategoria(false);
++    if (!res.ok) {
++      const data = await res.json();
++      showToast(data.error || "Não foi possível excluir a categoria.", "erro");
++      return;
++    }
++    showToast("Categoria excluída.");
++    router.push("/financeiro/categorias");
++  }
++
++  if (carregandoCategoria) {
++    return (
++      <div>
++        <div className="header-gradient flex items-center gap-3">
++          <BotaoVoltar href="/financeiro/categorias" />
++          <h1 className="text-2xl font-bold">Categoria</h1>
++        </div>
++        <p className="text-center text-muted text-sm py-10">Carregando...</p>
++      </div>
++    );
++  }
++
++  if (!categoria) {
++    return (
++      <div>
++        <div className="header-gradient flex items-center gap-3">
++          <BotaoVoltar href="/financeiro/categorias" />
++          <h1 className="text-2xl font-bold">Categoria</h1>
++        </div>
++        <p className="text-center text-muted text-sm py-10">Categoria não encontrada.</p>
++      </div>
++    );
++  }
++
++  const corTotal = categoria.tipo === "receita" ? "var(--color-primary)" : "var(--color-error)";
++
++  return (
++    <div>
++      <div className="header-gradient flex items-center gap-3">
++        <BotaoVoltar href="/financeiro/categorias" />
++        <div className="flex-1">
++          <h1 className="text-2xl font-bold">Categoria</h1>
++          <p className="text-sm text-muted mt-0.5">{categoria.tipo === "receita" ? "Receita" : "Despesa"}</p>
++        </div>
++      </div>
++
++      <div className="px-5 mt-6 space-y-4 pb-4">
++        {/* --- Cabeçalho da categoria: emoji, nome, editar/excluir --------------- */}
++        <div className="card space-y-4">
++          {confirmarExclusao ? (
++            <div className="flex items-center justify-between gap-3">
++              <span className="text-sm font-medium text-error">Excluir “{categoria.nome}”? Os lançamentos ficam sem categoria.</span>
++              <div className="flex gap-2 shrink-0">
++                <button type="button" onClick={() => setConfirmarExclusao(false)} className="btn-chip bg-background text-foreground">
++                  Cancelar
++                </button>
++                <button type="button" disabled={salvandoCategoria} onClick={excluirCategoria} className="btn-chip btn-danger !min-h-0">
++                  Excluir
++                </button>
++              </div>
++            </div>
++          ) : editando ? (
++            <div className="space-y-4">
++              <div>
++                <p className="text-xs font-semibold tracking-wide text-muted mb-2">EMOJI</p>
++                <div className="flex items-center gap-3 mb-3">
++                  <span className="w-14 h-14 rounded-md bg-primary-subtle flex items-center justify-center text-2xl shrink-0">
++                    {iconeForm}
++                  </span>
++                  <input
++                    value={iconeForm}
++                    onChange={(e) => setIconeForm(e.target.value.slice(-2) || iconeForm)}
++                    className="w-20 rounded-md border border-border px-3 py-3 text-center text-xl outline-none focus:border-primary"
++                    aria-label="Emoji personalizado"
++                  />
++                </div>
++                <div className="grid grid-cols-8 gap-1.5 bg-background rounded-md p-2 max-h-40 overflow-y-auto">
++                  {EMOJIS_CATEGORIA.map((e) => (
++                    <button
++                      type="button"
++                      key={e}
++                      onClick={() => setIconeForm(e)}
++                      className={`aspect-square rounded-sm flex items-center justify-center text-lg ${
++                        iconeForm === e ? "bg-primary-subtle ring-2 ring-primary" : "hover:bg-card"
++                      }`}
++                    >
++                      {e}
++                    </button>
++                  ))}
++                </div>
++              </div>
++              <div>
++                <p className="text-xs font-semibold tracking-wide text-muted mb-2">NOME</p>
++                <input
++                  value={nomeForm}
++                  onChange={(e) => setNomeForm(e.target.value)}
++                  className="w-full rounded-md border border-border px-4 py-3.5 outline-none focus:border-primary"
++                  autoFocus
++                />
++              </div>
++              {erroCategoria && <p className="text-error text-sm font-medium">{erroCategoria}</p>}
++              <div className="grid grid-cols-2 gap-2">
++                <button type="button" onClick={() => setEditando(false)} className="btn-outline">
++                  Cancelar
++                </button>
++                <button type="button" onClick={salvarCategoria} disabled={salvandoCategoria} className="btn-primary flex items-center justify-center gap-2">
++                  <IconCheck size={16} /> {salvandoCategoria ? "Salvando..." : "Salvar"}
++                </button>
++              </div>
++            </div>
++          ) : (
++            <div className="flex items-center gap-3">
++              <span className="w-14 h-14 rounded-md bg-primary-subtle flex items-center justify-center text-2xl shrink-0">
++                {categoria.icone}
++              </span>
++              <span className="font-bold text-lg flex-1 truncate">{categoria.nome}</span>
++              <button type="button" onClick={iniciarEdicao} className="icon-btn text-muted shrink-0" aria-label="Editar categoria">
++                <IconEdit size={16} />
++              </button>
++              <button type="button" onClick={() => setConfirmarExclusao(true)} className="icon-btn text-error shrink-0" aria-label="Excluir categoria">
++                <IconTrash size={16} />
++              </button>
++            </div>
++          )}
++        </div>
++
++        {/* --- Mês + total ------------------------------------------------------- */}
++        <div className="card">
++          <MesSeletor ano={ano} mes={mes} onMudar={(a, m) => { setAno(a); setMes(m); }} />
++        </div>
++
++        <div className="card">
++          <p className="text-xs font-semibold tracking-wide text-muted">TOTAL NO MÊS</p>
++          <p className="text-3xl font-extrabold mt-1" style={{ color: corTotal }}>
++            {carregandoLancamentos ? "—" : formatarMoeda(totalMes)}
++          </p>
++          <p className="text-xs text-muted mt-1">{lancamentos.length} lançamento(s)</p>
++        </div>
++
++        {/* --- Lançamentos do mês nesta categoria --------------------------------- */}
++        {carregandoLancamentos ? (
++          <p className="text-center text-muted text-sm py-6">Carregando...</p>
++        ) : (
++          <LancamentosLista lancamentos={lancamentos} />
++        )}
++      </div>
++    </div>
++  );
++}
+diff --git a/app/financeiro/categorias/page.tsx b/app/financeiro/categorias/page.tsx
+new file mode 100644
+index 0000000..6058a22
+--- /dev/null
++++ b/app/financeiro/categorias/page.tsx
+@@ -0,0 +1,217 @@
++// ============================================================================
++// PÁGINA: Categorias (índice)
++// ----------------------------------------------------------------------------
++// Lista as categorias de receita ou despesa (abas no topo). Cada linha leva
++// para /financeiro/categorias/[id], onde mora o "gerenciador" de fato: trocar
++// emoji, renomear e ver os lançamentos daquela categoria filtrados por mês.
++// Aqui na lista dá pra criar uma categoria nova ou excluir direto.
++// ============================================================================
++"use client";
++
++import Link from "next/link";
++import { useEffect, useState } from "react";
++import type { TipoLancamento } from "../../../lib/financeiro";
++import { EMOJIS_CATEGORIA } from "../../../lib/emojisCategorias";
++import BotaoVoltar from "../../../components/BotaoVoltar";
++import { useToast } from "../../../components/ToastProvider";
++import { IconPlus, IconTrash, IconCheck, IconChevronRight } from "../../../components/Icons";
++
++type Categoria = { id: string; nome: string; icone: string; tipo: TipoLancamento };
++
++export default function CategoriasPage() {
++  const showToast = useToast();
++  const [tipo, setTipo] = useState<TipoLancamento>("despesa");
++  const [categorias, setCategorias] = useState<Categoria[]>([]);
++  const [carregando, setCarregando] = useState(true);
++  const [criando, setCriando] = useState(false);
++  const [nomeForm, setNomeForm] = useState("");
++  const [iconeForm, setIconeForm] = useState("🧾");
++  const [confirmarExclusaoId, setConfirmarExclusaoId] = useState("");
++  const [salvando, setSalvando] = useState(false);
++  const [erro, setErro] = useState("");
++
++  useEffect(() => {
++    setCarregando(true);
++    setCriando(false);
++    fetch(`/api/categorias?tipo=${tipo}`)
++      .then((r) => r.json())
++      .then((data: Categoria[]) => {
++        setCategorias(data);
++        setCarregando(false);
++      });
++  }, [tipo]);
++
++  function iniciarCriacao() {
++    setCriando(true);
++    setNomeForm("");
++    setIconeForm(tipo === "receita" ? "💵" : "🧾");
++    setErro("");
++  }
++
++  async function criarCategoria() {
++    if (!nomeForm.trim()) return setErro("Dê um nome para a categoria.");
++    setSalvando(true);
++    const res = await fetch("/api/categorias", {
++      method: "POST",
++      headers: { "Content-Type": "application/json" },
++      body: JSON.stringify({ nome: nomeForm.trim(), tipo, icone: iconeForm }),
++    });
++    setSalvando(false);
++    if (!res.ok) {
++      const data = await res.json();
++      return setErro(data.error || "Não foi possível criar a categoria.");
++    }
++    const nova: Categoria = await res.json();
++    setCategorias((c) => [...c, nova].sort((a, b) => a.nome.localeCompare(b.nome)));
++    setCriando(false);
++    showToast("Categoria criada!");
++  }
++
++  async function excluirCategoria(id: string) {
++    setSalvando(true);
++    const res = await fetch(`/api/categorias/${id}`, { method: "DELETE" });
++    setSalvando(false);
++    if (!res.ok) {
++      const data = await res.json();
++      showToast(data.error || "Não foi possível excluir a categoria.", "erro");
++      return;
++    }
++    setCategorias((c) => c.filter((cat) => cat.id !== id));
++    setConfirmarExclusaoId("");
++    showToast("Categoria excluída.");
++  }
++
++  return (
++    <div>
++      <div className="header-gradient flex items-center gap-3">
++        <BotaoVoltar href="/financeiro" />
++        <div>
++          <h1 className="text-2xl font-bold">Categorias</h1>
++          <p className="text-sm text-muted mt-0.5">Emoji, nome e histórico por categoria</p>
++        </div>
++      </div>
++
++      <div className="px-5 mt-6 space-y-4 pb-4">
++        <div className="grid grid-cols-2 gap-2">
++          <button
++            type="button"
++            onClick={() => setTipo("despesa")}
++            className={tipo === "despesa" ? "btn-danger !py-3.5" : "btn-outline !py-3.5"}
++          >
++            Despesa
++          </button>
++          <button
++            type="button"
++            onClick={() => setTipo("receita")}
++            className={tipo === "receita" ? "btn-primary !py-3.5" : "btn-outline !py-3.5"}
++          >
++            Receita
++          </button>
++        </div>
++
++        {carregando ? (
++          <p className="text-center text-muted text-sm py-6">Carregando...</p>
++        ) : (
++          <div className="list-gap">
++            {categorias.length === 0 && !criando && (
++              <div className="card text-center text-muted text-sm">Nenhuma categoria ainda.</div>
++            )}
++            {categorias.map((cat) =>
++              confirmarExclusaoId === cat.id ? (
++                <div
++                  key={cat.id}
++                  className="card !py-3 flex items-center justify-between gap-3"
++                  style={{ background: "var(--color-error-subtle)" }}
++                >
++                  <span className="text-sm font-medium text-error">Excluir “{cat.nome}”?</span>
++                  <div className="flex gap-2 shrink-0">
++                    <button type="button" onClick={() => setConfirmarExclusaoId("")} className="btn-chip bg-card text-foreground">
++                      Cancelar
++                    </button>
++                    <button type="button" disabled={salvando} onClick={() => excluirCategoria(cat.id)} className="btn-chip btn-danger !min-h-0">
++                      Excluir
++                    </button>
++                  </div>
++                </div>
++              ) : (
++                <div key={cat.id} className="card !py-2.5 flex items-center gap-3">
++                  <Link href={`/financeiro/categorias/${cat.id}`} className="flex-1 flex items-center gap-3 min-w-0">
++                    <span className="w-10 h-10 rounded-md bg-primary-subtle flex items-center justify-center text-lg shrink-0">
++                      {cat.icone}
++                    </span>
++                    <span className="font-semibold truncate">{cat.nome}</span>
++                  </Link>
++                  <IconChevronRight size={16} className="text-muted shrink-0" />
++                  <button
++                    type="button"
++                    onClick={() => setConfirmarExclusaoId(cat.id)}
++                    className="icon-btn !w-9 !h-9 text-error shrink-0"
++                    aria-label={`Excluir ${cat.nome}`}
++                  >
++                    <IconTrash size={16} />
++                  </button>
++                </div>
++              )
++            )}
++          </div>
++        )}
++
++        {criando ? (
++          <div className="card space-y-4">
++            <div>
++              <p className="text-xs font-semibold tracking-wide text-muted mb-2">EMOJI</p>
++              <div className="flex items-center gap-3 mb-3">
++                <span className="w-14 h-14 rounded-md bg-primary-subtle flex items-center justify-center text-2xl shrink-0">
++                  {iconeForm}
++                </span>
++                <input
++                  value={iconeForm}
++                  onChange={(e) => setIconeForm(e.target.value.slice(-2) || iconeForm)}
++                  className="w-20 rounded-md border border-border px-3 py-3 text-center text-xl outline-none focus:border-primary"
++                  aria-label="Emoji personalizado"
++                />
++              </div>
++              <div className="grid grid-cols-8 gap-1.5 bg-background rounded-md p-2 max-h-40 overflow-y-auto">
++                {EMOJIS_CATEGORIA.map((e) => (
++                  <button
++                    type="button"
++                    key={e}
++                    onClick={() => setIconeForm(e)}
++                    className={`aspect-square rounded-sm flex items-center justify-center text-lg ${
++                      iconeForm === e ? "bg-primary-subtle ring-2 ring-primary" : "hover:bg-card"
++                    }`}
++                  >
++                    {e}
++                  </button>
++                ))}
++              </div>
++            </div>
++            <div>
++              <p className="text-xs font-semibold tracking-wide text-muted mb-2">NOME</p>
++              <input
++                value={nomeForm}
++                onChange={(e) => setNomeForm(e.target.value)}
++                placeholder={tipo === "receita" ? "Ex: Salário" : "Ex: Mercado"}
++                className="w-full rounded-md border border-border px-4 py-3.5 outline-none focus:border-primary"
++                autoFocus
++              />
++            </div>
++            {erro && <p className="text-error text-sm font-medium">{erro}</p>}
++            <div className="grid grid-cols-2 gap-2">
++              <button type="button" onClick={() => setCriando(false)} className="btn-outline">
++                Cancelar
++              </button>
++              <button type="button" onClick={criarCategoria} disabled={salvando} className="btn-primary flex items-center justify-center gap-2">
++                <IconCheck size={16} /> {salvando ? "Salvando..." : "Salvar"}
++              </button>
++            </div>
++          </div>
++        ) : (
++          <button type="button" onClick={iniciarCriacao} className="btn-outline flex items-center justify-center gap-2">
++            <IconPlus size={18} /> Nova categoria
++          </button>
++        )}
++      </div>
++    </div>
++  );
++}
+diff --git a/app/financeiro/novo/page.tsx b/app/financeiro/novo/page.tsx
+index c170a9a..f553102 100644
+--- a/app/financeiro/novo/page.tsx
++++ b/app/financeiro/novo/page.tsx
+@@ -7,10 +7,18 @@
+ //   - Fixo/sem fim -> repete indefinidamente (ex: salário, aluguel)
+ //   - Com data fim -> repete até uma data escolhida
+ //   - Por parcelas -> repete um número exato de vezes (ex: 12x)
++//
++// Os campos ficam agrupados em cards ("Valor", "Detalhes", "Repetição",
++// "Observações") em vez de uma lista solta de inputs — deixa mais fácil
++// escanear a tela e entender o que pertence a cada etapa do lançamento.
++// A categoria usa um bottom sheet (SeletorCategoriaModal) que também permite
++// criar (com emoji à escolha), renomear e excluir categorias sem sair da tela
++// — a mesma tela de gerenciamento completa fica em /financeiro/categorias.
+ // ============================================================================
+ "use client";
+ 
+ import { Suspense, useEffect, useState } from "react";
++import Link from "next/link";
+ import { useRouter, useSearchParams } from "next/navigation";
+ import type {
+   TipoLancamento,
+@@ -21,7 +29,16 @@ import type {
+ import { LABEL_PERIODICIDADE, LABEL_TIPO_FIM } from "../../../lib/financeiro";
+ import BotaoVoltar from "../../../components/BotaoVoltar";
+ import { useToast } from "../../../components/ToastProvider";
+-import { IconWallet, IconReceipt, IconUser, IconBuilding, IconRepeat, IconPlus } from "../../../components/Icons";
++import SeletorCategoriaModal from "../../../components/SeletorCategoriaModal";
++import {
++  IconWallet,
++  IconReceipt,
++  IconUser,
++  IconBuilding,
++  IconRepeat,
++  IconPlus,
++  IconChevronDown,
++} from "../../../components/Icons";
+ 
+ type Categoria = { id: string; nome: string; icone: string; tipo: TipoLancamento };
+ type Conta = { id: string; nome: string; icone: string };
+@@ -59,6 +76,7 @@ function NovoLancamentoConteudo() {
+   // --- Categoria e conta ------------------------------------------------------
+   const [categorias, setCategorias] = useState<Categoria[]>([]);
+   const [categoriaId, setCategoriaId] = useState("");
++  const [categoriaModalAberta, setCategoriaModalAberta] = useState(false);
+   const [contas, setContas] = useState<Conta[]>([]);
+   const [contaId, setContaId] = useState("");
+ 
+@@ -72,6 +90,8 @@ function NovoLancamentoConteudo() {
+   const [salvando, setSalvando] = useState(false);
+   const [erro, setErro] = useState("");
+ 
++  const categoriaAtual = categorias.find((c) => c.id === categoriaId);
++
+   // Recarrega as categorias sempre que o tipo (receita/despesa) muda.
+   useEffect(() => {
+     fetch(`/api/categorias?tipo=${tipo}`)
+@@ -97,21 +117,6 @@ function NovoLancamentoConteudo() {
+     if (atalho === "ontem") setDataVencimento(isoHoje(-1));
+   }
+ 
+-  async function criarCategoria() {
+-    const nome = window.prompt(`Nome da nova categoria de ${tipo === "receita" ? "receita" : "despesa"}:`);
+-    if (!nome) return;
+-    const res = await fetch("/api/categorias", {
+-      method: "POST",
+-      headers: { "Content-Type": "application/json" },
+-      body: JSON.stringify({ nome, tipo }),
+-    });
+-    if (res.ok) {
+-      const nova = await res.json();
+-      setCategorias((c) => [...c, nova]);
+-      setCategoriaId(nova.id);
+-    }
+-  }
+-
+   async function criarConta() {
+     const nome = window.prompt("Nome da nova conta/carteira (ex: Nubank, Dinheiro):");
+     if (!nome) return;
+@@ -176,142 +181,177 @@ function NovoLancamentoConteudo() {
+     <div>
+       <div className="header-gradient flex items-center gap-3">
+         <BotaoVoltar href="/financeiro" />
+-        <h1 className="text-2xl font-bold">Novo lançamento</h1>
+-      </div>
+-
+-      <div className="px-5 mt-6 space-y-5">
+-        {/* --- Alternador Receita / Despesa, no topo do formulário --------- */}
+-        <div className="grid grid-cols-2 gap-2">
+-          <button
+-            type="button"
+-            onClick={() => setTipo("receita")}
+-            className={`flex items-center justify-center gap-2 ${tipo === "receita" ? "btn-primary !py-3.5" : "btn-outline !py-3.5"}`}
+-          >
+-            <IconWallet size={18} /> Receita
+-          </button>
+-          <button
+-            type="button"
+-            onClick={() => setTipo("despesa")}
+-            className={`flex items-center justify-center gap-2 ${tipo === "despesa" ? "btn-danger !py-3.5" : "btn-outline !py-3.5"}`}
+-          >
+-            <IconReceipt size={18} /> Despesa
+-          </button>
+-        </div>
+-
+-        {/* --- Valor ---------------------------------------------------------- */}
+         <div>
+-          <p className="text-xs font-semibold tracking-wide text-muted mb-2">
+-            VALOR D{tipo === "receita" ? "A RECEITA" : "A DESPESA"} (R$)
+-          </p>
+-          <input
+-            value={valor}
+-            onChange={(e) => setValor(e.target.value)}
+-            placeholder="0,00"
+-            inputMode="decimal"
+-            className={`w-full rounded-md border border-border px-4 py-3.5 outline-none text-2xl font-extrabold ${
+-              tipo === "receita" ? "focus:border-primary" : "focus:border-error"
+-            }`}
+-          />
+-        </div>
+-
+-        {/* --- Descrição -------------------------------------------------------- */}
+-        <div>
+-          <p className="text-xs font-semibold tracking-wide text-muted mb-2">DESCRIÇÃO</p>
+-          <input
+-            value={descricao}
+-            onChange={(e) => setDescricao(e.target.value)}
+-            placeholder={tipo === "receita" ? "Ex: Salário, Bonificação..." : "Ex: Aluguel, Mercado..."}
+-            className="w-full rounded-md border border-border px-4 py-3.5 outline-none focus:border-primary"
+-          />
++          <h1 className="text-2xl font-bold">Novo lançamento</h1>
++          <p className="text-sm text-muted mt-0.5">Registre uma entrada ou saída financeira</p>
+         </div>
++      </div>
+ 
+-        {/* --- Pessoal / Empresarial --------------------------------------------- */}
+-        <div>
+-          <p className="text-xs font-semibold tracking-wide text-muted mb-2">ORIGEM</p>
++      <div className="px-5 mt-6 space-y-4 pb-4">
++        {/* ============================================================ */}
++        {/* CARD: Tipo + Valor + Descrição                                */}
++        {/* ============================================================ */}
++        <div className="card space-y-5">
+           <div className="grid grid-cols-2 gap-2">
+-            <BotaoToggle ativo={origem === "pessoal"} onClick={() => setOrigem("pessoal")}>
+-              <span className="inline-flex items-center gap-2"><IconUser size={16} /> Pessoal</span>
+-            </BotaoToggle>
+-            <BotaoToggle ativo={origem === "empresarial"} onClick={() => setOrigem("empresarial")}>
+-              <span className="inline-flex items-center gap-2"><IconBuilding size={16} /> Empresarial</span>
+-            </BotaoToggle>
++            <button
++              type="button"
++              onClick={() => setTipo("receita")}
++              className={`flex items-center justify-center gap-2 ${tipo === "receita" ? "btn-primary !py-3.5" : "btn-outline !py-3.5"}`}
++            >
++              <IconWallet size={18} /> Receita
++            </button>
++            <button
++              type="button"
++              onClick={() => setTipo("despesa")}
++              className={`flex items-center justify-center gap-2 ${tipo === "despesa" ? "btn-danger !py-3.5" : "btn-outline !py-3.5"}`}
++            >
++              <IconReceipt size={18} /> Despesa
++            </button>
+           </div>
+-        </div>
+ 
+-        {/* --- Data ------------------------------------------------------------- */}
+-        <div>
+-          <p className="text-xs font-semibold tracking-wide text-muted mb-2">DATA</p>
+-          <div className="grid grid-cols-3 gap-2">
+-            <BotaoToggle ativo={dataAtalho === "hoje"} onClick={() => escolherAtalhoData("hoje")}>
+-              Hoje
+-            </BotaoToggle>
+-            <BotaoToggle ativo={dataAtalho === "ontem"} onClick={() => escolherAtalhoData("ontem")}>
+-              Ontem
+-            </BotaoToggle>
+-            <BotaoToggle ativo={dataAtalho === "outros"} onClick={() => escolherAtalhoData("outros")}>
+-              Outros
+-            </BotaoToggle>
++          {/* --- Valor ---------------------------------------------------------- */}
++          <div>
++            <p className="text-xs font-semibold tracking-wide text-muted mb-2">
++              VALOR D{tipo === "receita" ? "A RECEITA" : "A DESPESA"}
++            </p>
++            <div className="relative">
++              <span
++                className={`pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-xl font-extrabold ${
++                  tipo === "receita" ? "text-primary" : "text-error"
++                }`}
++              >
++                R$
++              </span>
++              <input
++                value={valor}
++                onChange={(e) => setValor(e.target.value)}
++                placeholder="0,00"
++                inputMode="decimal"
++                className={`w-full rounded-md border-2 border-transparent pl-14 pr-4 py-4 outline-none text-3xl font-extrabold bg-background ${
++                  tipo === "receita" ? "focus:border-primary text-primary" : "focus:border-error text-error"
++                }`}
++              />
++            </div>
+           </div>
+-          {dataAtalho === "outros" && (
++
++          {/* --- Descrição -------------------------------------------------------- */}
++          <div>
++            <p className="text-xs font-semibold tracking-wide text-muted mb-2">DESCRIÇÃO</p>
+             <input
+-              type="date"
+-              value={dataVencimento}
+-              onChange={(e) => setDataVencimento(e.target.value)}
+-              className="w-full rounded-md border border-border px-4 py-3.5 outline-none focus:border-primary mt-2"
++              value={descricao}
++              onChange={(e) => setDescricao(e.target.value)}
++              placeholder={tipo === "receita" ? "Ex: Salário, Bonificação..." : "Ex: Aluguel, Mercado..."}
++              className="w-full rounded-md border border-border px-4 py-3.5 outline-none focus:border-primary"
+             />
+-          )}
++          </div>
+         </div>
+ 
+-        {/* --- Categoria ---------------------------------------------------------- */}
+-        <div>
+-          <p className="text-xs font-semibold tracking-wide text-muted mb-2">CATEGORIA</p>
+-          <div className="flex gap-2">
+-            <select
+-              value={categoriaId}
+-              onChange={(e) => setCategoriaId(e.target.value)}
+-              className="flex-1 rounded-md border border-border px-4 py-3.5 outline-none focus:border-primary bg-card"
++        {/* ============================================================ */}
++        {/* CARD: Detalhes do lançamento                                  */}
++        {/* ============================================================ */}
++        <div className="card space-y-5">
++          {/* --- Pessoal / Empresarial --------------------------------------------- */}
++          <div>
++            <p className="text-xs font-semibold tracking-wide text-muted mb-2">ORIGEM</p>
++            <div className="grid grid-cols-2 gap-2">
++              <BotaoToggle ativo={origem === "pessoal"} onClick={() => setOrigem("pessoal")}>
++                <span className="inline-flex items-center gap-2"><IconUser size={16} /> Pessoal</span>
++              </BotaoToggle>
++              <BotaoToggle ativo={origem === "empresarial"} onClick={() => setOrigem("empresarial")}>
++                <span className="inline-flex items-center gap-2"><IconBuilding size={16} /> Empresarial</span>
++              </BotaoToggle>
++            </div>
++          </div>
++
++          {/* --- Data ------------------------------------------------------------- */}
++          <div>
++            <p className="text-xs font-semibold tracking-wide text-muted mb-2">DATA</p>
++            <div className="grid grid-cols-3 gap-2">
++              <BotaoToggle ativo={dataAtalho === "hoje"} onClick={() => escolherAtalhoData("hoje")}>
++                Hoje
++              </BotaoToggle>
++              <BotaoToggle ativo={dataAtalho === "ontem"} onClick={() => escolherAtalhoData("ontem")}>
++                Ontem
++              </BotaoToggle>
++              <BotaoToggle ativo={dataAtalho === "outros"} onClick={() => escolherAtalhoData("outros")}>
++                Outros
++              </BotaoToggle>
++            </div>
++            {dataAtalho === "outros" && (
++              <input
++                type="date"
++                value={dataVencimento}
++                onChange={(e) => setDataVencimento(e.target.value)}
++                className="w-full rounded-md border border-border px-4 py-3.5 outline-none focus:border-primary mt-2"
++              />
++            )}
++          </div>
++
++          {/* --- Categoria: abre o bottom sheet de escolher/criar/editar ----------- */}
++          <div>
++            <div className="flex items-center justify-between mb-2">
++              <p className="text-xs font-semibold tracking-wide text-muted">CATEGORIA</p>
++              <Link href="/financeiro/categorias" className="text-xs font-semibold text-primary-dark flex items-center gap-1">
++                <IconPlus size={12} /> Gerenciar
++              </Link>
++            </div>
++            <button
++              type="button"
++              onClick={() => setCategoriaModalAberta(true)}
++              className="w-full flex items-center gap-3 rounded-md border border-border px-4 py-3 bg-card text-left"
+             >
+-              {categorias.length === 0 && <option value="">Nenhuma categoria ainda</option>}
+-              {categorias.map((c) => (
+-                <option key={c.id} value={c.id}>
+-                  {c.icone} {c.nome}
+-                </option>
+-              ))}
+-            </select>
+-            <button type="button" onClick={criarCategoria} className="w-14 rounded-md border border-border flex items-center justify-center text-muted">
+-              <IconPlus size={18} />
++              {categoriaAtual ? (
++                <>
++                  <span className="w-9 h-9 rounded-md bg-primary-subtle flex items-center justify-center text-lg shrink-0">
++                    {categoriaAtual.icone}
++                  </span>
++                  <span className="font-semibold flex-1 truncate">{categoriaAtual.nome}</span>
++                </>
++              ) : (
++                <span className="flex-1 text-muted">Nenhuma categoria ainda — toque para criar</span>
++              )}
++              <IconChevronDown size={18} className="text-muted shrink-0" />
+             </button>
+           </div>
+-        </div>
+ 
+-        {/* --- Conta/Carteira ------------------------------------------------------ */}
+-        <div>
+-          <p className="text-xs font-semibold tracking-wide text-muted mb-2">CONTA / CARTEIRA</p>
+-          <div className="flex gap-2">
+-            <select
+-              value={contaId}
+-              onChange={(e) => setContaId(e.target.value)}
+-              className="flex-1 rounded-md border border-border px-4 py-3.5 outline-none focus:border-primary bg-card"
++          {/* --- Conta/Carteira ------------------------------------------------------ */}
++          <div>
++            <p className="text-xs font-semibold tracking-wide text-muted mb-2">CONTA / CARTEIRA</p>
++            <div className="flex gap-2">
++              <select
++                value={contaId}
++                onChange={(e) => setContaId(e.target.value)}
++                className="flex-1 rounded-md border border-border px-4 py-3.5 outline-none focus:border-primary bg-card"
++              >
++                {contas.length === 0 && <option value="">Nenhuma conta ainda</option>}
++                {contas.map((c) => (
++                  <option key={c.id} value={c.id}>
++                    {c.icone} {c.nome}
++                  </option>
++                ))}
++              </select>
++              <button type="button" onClick={criarConta} className="w-14 rounded-md border border-border flex items-center justify-center text-muted shrink-0">
++                <IconPlus size={18} />
++              </button>
++            </div>
++          </div>
++
++          {/* --- Status: recebido/pago já ou pendente --------------------------------- */}
++          <label className="flex items-center justify-between cursor-pointer pt-1">
++            <span className="font-semibold">{tipo === "receita" ? "Já recebido" : "Já pago"}</span>
++            <button
++              type="button"
++              role="switch"
++              aria-checked={pago}
++              data-on={pago}
++              onClick={() => setPago(!pago)}
++              className="switch"
+             >
+-              {contas.length === 0 && <option value="">Nenhuma conta ainda</option>}
+-              {contas.map((c) => (
+-                <option key={c.id} value={c.id}>
+-                  {c.icone} {c.nome}
+-                </option>
+-              ))}
+-            </select>
+-            <button type="button" onClick={criarConta} className="w-14 rounded-md border border-border flex items-center justify-center text-muted">
+-              <IconPlus size={18} />
++              <span className="switch-knob" />
+             </button>
+-          </div>
++          </label>
+         </div>
+ 
+-        {/* --- Status: recebido/pago já ou pendente --------------------------------- */}
+-        <label className="card flex items-center justify-between cursor-pointer">
+-          <span className="font-semibold">{tipo === "receita" ? "Já recebido" : "Já pago"}</span>
+-          <input type="checkbox" checked={pago} onChange={(e) => setPago(e.target.checked)} className="w-6 h-6 accent-primary" />
+-        </label>
+-
+         {/* --- Recorrência: única, fixa sem fim, com data fim, ou parcelada ---------- */}
+         <div>
+           <p className="text-xs font-semibold tracking-wide text-muted mb-2">REPETIÇÃO</p>
+@@ -383,7 +423,7 @@ function NovoLancamentoConteudo() {
+         )}
+ 
+         {/* --- Observações ------------------------------------------------------------ */}
+-        <div>
++        <div className="card">
+           <p className="text-xs font-semibold tracking-wide text-muted mb-2">OBSERVAÇÕES (OPCIONAL)</p>
+           <textarea
+             value={observacoes}
+@@ -399,6 +439,16 @@ function NovoLancamentoConteudo() {
+           {salvando ? "Salvando..." : `Salvar ${tipo === "receita" ? "receita" : "despesa"}`}
+         </button>
+       </div>
++
++      <SeletorCategoriaModal
++        aberto={categoriaModalAberta}
++        tipo={tipo}
++        categorias={categorias}
++        categoriaSelecionadaId={categoriaId}
++        onFechar={() => setCategoriaModalAberta(false)}
++        onSelecionar={setCategoriaId}
++        onCategoriasAtualizadas={setCategorias}
++      />
+     </div>
+   );
+ }
+diff --git a/app/globals.css b/app/globals.css
+index 72e5a05..640bcc0 100644
+--- a/app/globals.css
++++ b/app/globals.css
+@@ -328,6 +328,48 @@ h6 {
+   white-space: nowrap;
+ }
+ 
++/* Sheet (bottom sheet) que desliza de baixo pra cima — usado no seletor de
++   categorias e em outros modais que seguem o mesmo padrão visual. */
++@keyframes slideUp {
++  from {
++    transform: translateY(24px);
++    opacity: 0;
++  }
++  to {
++    transform: translateY(0);
++    opacity: 1;
++  }
++}
++
++/* Interruptor (toggle switch) — substitui o checkbox simples em opções do
++   tipo "já pago/recebido", mais fácil de ler/tocar num formulário mobile. */
++.switch {
++  width: 50px;
++  height: 30px;
++  border-radius: var(--radius-pill);
++  background: var(--color-muted-surface);
++  position: relative;
++  flex-shrink: 0;
++  transition: background 0.15s ease;
++}
++.switch[data-on="true"] {
++  background: var(--color-primary);
++}
++.switch .switch-knob {
++  position: absolute;
++  top: 3px;
++  left: 3px;
++  width: 24px;
++  height: 24px;
++  border-radius: var(--radius-pill);
++  background: var(--color-card);
++  box-shadow: var(--shadow-sm);
++  transition: transform 0.15s ease;
++}
++.switch[data-on="true"] .switch-knob {
++  transform: translateX(20px);
++}
++
+ .avatar {
+   width: 52px;
+   height: 52px;
+diff --git a/app/menu/page.tsx b/app/menu/page.tsx
+index 2c449c7..4ae7af4 100644
+--- a/app/menu/page.tsx
++++ b/app/menu/page.tsx
+@@ -14,12 +14,14 @@ import {
+   IconDocument,
+   IconChart,
+   IconUsers,
++  IconTag,
+ } from "../../components/Icons";
+ 
+ const ITENS = [
+   { href: "/financeiro/novo", icon: IconPlus, label: "Novo lançamento", desc: "Cadastrar uma receita ou despesa" },
+   { href: "/financeiro/pagar", icon: IconReceipt, label: "Contas a pagar", desc: "Histórico de despesas" },
+   { href: "/financeiro/receber", icon: IconWallet, label: "Contas a receber", desc: "Histórico de receitas" },
++  { href: "/financeiro/categorias", icon: IconTag, label: "Categorias", desc: "Emoji, nome e histórico por categoria" },
+   { href: "/parcelas", icon: IconCalendar, label: "Parcelas", desc: "Ver todas as parcelas por período" },
+   { href: "/clientes/novo", icon: IconUser, label: "Novo cliente", desc: "Cadastrar um novo cliente" },
+   { href: "/contratos/novo", icon: IconDocument, label: "Novo contrato", desc: "Criar um novo empréstimo" },
+diff --git a/components/Icons.tsx b/components/Icons.tsx
+index 0afea80..3c1a4ff 100644
+--- a/components/Icons.tsx
++++ b/components/Icons.tsx
+@@ -31,6 +31,23 @@ export function IconChevronRight({ size = 20, className, strokeWidth = 2 }: Icon
+   );
+ }
+ 
++export function IconTag({ size = 20, className, strokeWidth = 1.8 }: IconProps) {
++  return (
++    <svg {...base(size)} className={className}>
++      <path d="M11.5 3.5H6a2.5 2.5 0 00-2.5 2.5v5.5L13 21l7.5-7.5L11.5 3.5z" stroke="currentColor" strokeWidth={strokeWidth} strokeLinejoin="round" />
++      <circle cx="8" cy="8" r="1.4" fill="currentColor" stroke="none" />
++    </svg>
++  );
++}
++
++export function IconChevronDown({ size = 20, className, strokeWidth = 2 }: IconProps) {
++  return (
++    <svg {...base(size)} className={className}>
++      <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />
++    </svg>
++  );
++}
++
+ export function IconBell({ size = 20, className, strokeWidth = 1.8 }: IconProps) {
+   return (
+     <svg {...base(size)} className={className}>
+diff --git a/components/SeletorCategoriaModal.tsx b/components/SeletorCategoriaModal.tsx
+new file mode 100644
+index 0000000..ae51594
+--- /dev/null
++++ b/components/SeletorCategoriaModal.tsx
+@@ -0,0 +1,320 @@
++// ============================================================================
++// COMPONENTE: SeletorCategoriaModal
++// ----------------------------------------------------------------------------
++// Bottom sheet único que resolve as 3 necessidades da tela "Novo lançamento":
++//   1) Escolher uma categoria existente (toca no ícone/nome da linha)
++//   2) Criar uma categoria nova, com emoji à escolha, direto de um grid
++//   3) Renomear ou excluir uma categoria já existente (ícone lápis/lixeira)
++//
++// Fica todo autocontido: o pai só passa a lista de categorias e recebe de
++// volta a lista atualizada (onCategoriasAtualizadas) + a nova seleção
++// (onSelecionar) — sem precisar saber como o CRUD funciona por baixo.
++// ============================================================================
++"use client";
++
++import { useEffect, useState } from "react";
++import type { TipoLancamento } from "../lib/financeiro";
++import { EMOJIS_CATEGORIA } from "../lib/emojisCategorias";
++import { useToast } from "./ToastProvider";
++import { IconPlus, IconEdit, IconTrash, IconClose, IconCheck } from "./Icons";
++
++type Categoria = { id: string; nome: string; icone: string; tipo: TipoLancamento };
++
++interface Props {
++  aberto: boolean;
++  tipo: TipoLancamento;
++  categorias: Categoria[];
++  categoriaSelecionadaId: string;
++  onFechar: () => void;
++  onSelecionar: (id: string) => void;
++  onCategoriasAtualizadas: (categorias: Categoria[]) => void;
++}
++
++type Modo = "lista" | "criar" | "editar";
++
++export default function SeletorCategoriaModal({
++  aberto,
++  tipo,
++  categorias,
++  categoriaSelecionadaId,
++  onFechar,
++  onSelecionar,
++  onCategoriasAtualizadas,
++}: Props) {
++  const showToast = useToast();
++  const [modo, setModo] = useState<Modo>("lista");
++  const [categoriaEditandoId, setCategoriaEditandoId] = useState("");
++  const [confirmarExclusaoId, setConfirmarExclusaoId] = useState("");
++  const [nomeForm, setNomeForm] = useState("");
++  const [iconeForm, setIconeForm] = useState("💰");
++  const [salvando, setSalvando] = useState(false);
++  const [erro, setErro] = useState("");
++
++  // Toda vez que o sheet abre, volta para a lista (não deixa "vazado" um
++  // formulário de edição de uma vez anterior).
++  useEffect(() => {
++    if (aberto) {
++      setModo("lista");
++      setConfirmarExclusaoId("");
++      setErro("");
++    }
++  }, [aberto]);
++
++  if (!aberto) return null;
++
++  function iniciarCriacao() {
++    setModo("criar");
++    setNomeForm("");
++    setIconeForm(tipo === "receita" ? "💵" : "🧾");
++    setErro("");
++  }
++
++  function iniciarEdicao(cat: Categoria) {
++    setModo("editar");
++    setCategoriaEditandoId(cat.id);
++    setNomeForm(cat.nome);
++    setIconeForm(cat.icone);
++    setErro("");
++  }
++
++  function voltarParaLista() {
++    setModo("lista");
++    setErro("");
++  }
++
++  async function salvarForm() {
++    if (!nomeForm.trim()) return setErro("Dê um nome para a categoria.");
++    setSalvando(true);
++    setErro("");
++
++    if (modo === "criar") {
++      const res = await fetch("/api/categorias", {
++        method: "POST",
++        headers: { "Content-Type": "application/json" },
++        body: JSON.stringify({ nome: nomeForm.trim(), tipo, icone: iconeForm }),
++      });
++      setSalvando(false);
++      if (!res.ok) {
++        const data = await res.json();
++        return setErro(data.error || "Não foi possível criar a categoria.");
++      }
++      const nova: Categoria = await res.json();
++      onCategoriasAtualizadas([...categorias, nova].sort((a, b) => a.nome.localeCompare(b.nome)));
++      onSelecionar(nova.id);
++      showToast("Categoria criada!");
++      setModo("lista");
++    } else if (modo === "editar") {
++      const res = await fetch(`/api/categorias/${categoriaEditandoId}`, {
++        method: "PATCH",
++        headers: { "Content-Type": "application/json" },
++        body: JSON.stringify({ nome: nomeForm.trim(), icone: iconeForm }),
++      });
++      setSalvando(false);
++      if (!res.ok) {
++        const data = await res.json();
++        return setErro(data.error || "Não foi possível salvar a categoria.");
++      }
++      const atualizada: Categoria = await res.json();
++      onCategoriasAtualizadas(
++        categorias
++          .map((c) => (c.id === atualizada.id ? atualizada : c))
++          .sort((a, b) => a.nome.localeCompare(b.nome))
++      );
++      showToast("Categoria atualizada!");
++      setModo("lista");
++    }
++  }
++
++  async function excluirCategoria(id: string) {
++    setSalvando(true);
++    const res = await fetch(`/api/categorias/${id}`, { method: "DELETE" });
++    setSalvando(false);
++    if (!res.ok) {
++      const data = await res.json();
++      showToast(data.error || "Não foi possível excluir a categoria.", "erro");
++      return;
++    }
++    const restante = categorias.filter((c) => c.id !== id);
++    onCategoriasAtualizadas(restante);
++    if (id === categoriaSelecionadaId) onSelecionar(restante[0]?.id || "");
++    setConfirmarExclusaoId("");
++    showToast("Categoria excluída.");
++  }
++
++  const tituloForm = modo === "criar" ? "Nova categoria" : "Editar categoria";
++
++  return (
++    <div className="fixed inset-0 z-50 flex items-end justify-center">
++      {/* Fundo escurecido — toca fora do sheet pra fechar */}
++      <div
++        className="absolute inset-0"
++        style={{ background: "rgb(var(--shadow-color) / 0.45)" }}
++        onClick={onFechar}
++      />
++
++      <div className="relative w-full max-w-shell max-h-[85vh] bg-card rounded-t-xl shadow-overlay flex flex-col animate-[slideUp_0.18s_ease-out]">
++        <div className="mx-auto mt-3 h-1.5 w-10 rounded-pill bg-muted-surface" />
++
++        <div className="flex items-center justify-between px-5 pt-3 pb-2">
++          <h2 className="text-lg font-bold">
++            {modo === "lista" ? `Categorias de ${tipo === "receita" ? "receita" : "despesa"}` : tituloForm}
++          </h2>
++          <button
++            type="button"
++            onClick={modo === "lista" ? onFechar : voltarParaLista}
++            className="icon-btn"
++            aria-label="Fechar"
++          >
++            <IconClose size={18} />
++          </button>
++        </div>
++
++        <div className="overflow-y-auto px-5 pb-6">
++          {modo === "lista" && (
++            <>
++              {categorias.length === 0 && (
++                <p className="text-sm text-muted py-6 text-center">Nenhuma categoria ainda. Crie a primeira abaixo.</p>
++              )}
++              <div className="list-gap">
++                {categorias.map((cat) => (
++                  <div key={cat.id}>
++                    {confirmarExclusaoId === cat.id ? (
++                      <div
++                        className="card !py-3 flex items-center justify-between gap-3"
++                        style={{ background: "var(--color-error-subtle)" }}
++                      >
++                        <span className="text-sm font-medium text-error">Excluir “{cat.nome}”?</span>
++                        <div className="flex gap-2 shrink-0">
++                          <button
++                            type="button"
++                            onClick={() => setConfirmarExclusaoId("")}
++                            className="btn-chip bg-card text-foreground"
++                          >
++                            Cancelar
++                          </button>
++                          <button
++                            type="button"
++                            disabled={salvando}
++                            onClick={() => excluirCategoria(cat.id)}
++                            className="btn-chip btn-danger !min-h-0"
++                          >
++                            Excluir
++                          </button>
++                        </div>
++                      </div>
++                    ) : (
++                      <div
++                        className={`card !py-2.5 flex items-center gap-3 ${
++                          cat.id === categoriaSelecionadaId ? "ring-2 ring-primary" : ""
++                        }`}
++                      >
++                        <button
++                          type="button"
++                          onClick={() => {
++                            onSelecionar(cat.id);
++                            onFechar();
++                          }}
++                          className="flex-1 flex items-center gap-3 text-left min-w-0"
++                        >
++                          <span className="w-10 h-10 rounded-md bg-primary-subtle flex items-center justify-center text-lg shrink-0">
++                            {cat.icone}
++                          </span>
++                          <span className="font-semibold truncate">{cat.nome}</span>
++                        </button>
++                        <button
++                          type="button"
++                          onClick={() => iniciarEdicao(cat)}
++                          className="icon-btn !w-9 !h-9 text-muted shrink-0"
++                          aria-label={`Editar ${cat.nome}`}
++                        >
++                          <IconEdit size={16} />
++                        </button>
++                        <button
++                          type="button"
++                          onClick={() => setConfirmarExclusaoId(cat.id)}
++                          className="icon-btn !w-9 !h-9 text-error shrink-0"
++                          aria-label={`Excluir ${cat.nome}`}
++                        >
++                          <IconTrash size={16} />
++                        </button>
++                      </div>
++                    )}
++                  </div>
++                ))}
++              </div>
++
++              <button
++                type="button"
++                onClick={iniciarCriacao}
++                className="btn-outline mt-4 flex items-center justify-center gap-2"
++              >
++                <IconPlus size={18} /> Nova categoria
++              </button>
++            </>
++          )}
++
++          {(modo === "criar" || modo === "editar") && (
++            <div className="space-y-4 pt-1">
++              <div>
++                <p className="text-xs font-semibold tracking-wide text-muted mb-2">EMOJI</p>
++                <div className="flex items-center gap-3 mb-3">
++                  <span className="w-14 h-14 rounded-md bg-primary-subtle flex items-center justify-center text-2xl shrink-0">
++                    {iconeForm}
++                  </span>
++                  <input
++                    value={iconeForm}
++                    onChange={(e) => setIconeForm(e.target.value.slice(-2) || iconeForm)}
++                    className="w-20 rounded-md border border-border px-3 py-3 text-center text-xl outline-none focus:border-primary"
++                    aria-label="Emoji personalizado"
++                  />
++                  <span className="text-xs text-muted">Ou escolha um da lista abaixo</span>
++                </div>
++                <div className="grid grid-cols-8 gap-1.5 bg-background rounded-md p-2 max-h-40 overflow-y-auto">
++                  {EMOJIS_CATEGORIA.map((e) => (
++                    <button
++                      type="button"
++                      key={e}
++                      onClick={() => setIconeForm(e)}
++                      className={`aspect-square rounded-sm flex items-center justify-center text-lg ${
++                        iconeForm === e ? "bg-primary-subtle ring-2 ring-primary" : "hover:bg-card"
++                      }`}
++                    >
++                      {e}
++                    </button>
++                  ))}
++                </div>
++              </div>
++
++              <div>
++                <p className="text-xs font-semibold tracking-wide text-muted mb-2">NOME</p>
++                <input
++                  value={nomeForm}
++                  onChange={(e) => setNomeForm(e.target.value)}
++                  placeholder={tipo === "receita" ? "Ex: Salário" : "Ex: Mercado"}
++                  className="w-full rounded-md border border-border px-4 py-3.5 outline-none focus:border-primary"
++                  autoFocus
++                />
++              </div>
++
++              {erro && <p className="text-error text-sm font-medium">{erro}</p>}
++
++              <div className="grid grid-cols-2 gap-2 pt-1">
++                <button type="button" onClick={voltarParaLista} className="btn-outline">
++                  Cancelar
++                </button>
++                <button
++                  type="button"
++                  onClick={salvarForm}
++                  disabled={salvando}
++                  className="btn-primary flex items-center justify-center gap-2"
++                >
++                  <IconCheck size={16} /> {salvando ? "Salvando..." : "Salvar"}
++                </button>
++              </div>
++            </div>
++          )}
++        </div>
++      </div>
++    </div>
++  );
++}
+diff --git a/lib/emojisCategorias.ts b/lib/emojisCategorias.ts
+new file mode 100644
+index 0000000..3e5f4ca
+--- /dev/null
++++ b/lib/emojisCategorias.ts
+@@ -0,0 +1,15 @@
++// ============================================================================
++// Lista de emojis usados nos seletores de categoria (modal de "Novo
++// lançamento", tela de gerenciar categorias). Fica num arquivo só pra não
++// duplicar a lista nos dois lugares.
++// ============================================================================
++export const EMOJIS_CATEGORIA = [
++  "💰", "💵", "💳", "🧾", "🏦", "📈", "📉", "💼",
++  "🏠", "🏢", "🛒", "🍔", "🍕", "☕", "🍺", "🥗",
++  "🚗", "⛽", "🚌", "✈️", "🛵", "🅿️", "🔧", "🧰",
++  "💡", "💧", "🔥", "📶", "📱", "💻", "🖨️", "🛠️",
++  "💊", "🏥", "🩺", "🦷", "🎓", "📚", "✏️", "🎒",
++  "🎬", "🎮", "🎵", "⚽", "🏋️", "🎁", "👕", "👟",
++  "🐾", "🐶", "🧴", "🧹", "📦", "🔒", "📄", "🤝",
++  "💎", "🪙", "📊", "🧮", "🧑‍💼", "🏗️", "🌱", "⭐",
++];
+-- 
+2.43.0
+

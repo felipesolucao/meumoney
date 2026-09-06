@@ -1,45 +1,45 @@
 // ============================================================================
-// PÁGINA: Início (Dashboard)
+// PÁGINA: Início (visão geral)
 // ----------------------------------------------------------------------------
-// Mostra o resumo financeiro (total emprestado, recebido, a receber), as
-// parcelas que vencem hoje, atalhos rápidos e a lista de contratos ativos.
+// Antes esta rota era o painel de empréstimos — esse conteúdo virou a aba
+// "Empréstimos" (ver app/emprestimos/page.tsx). Esta nova "Início" é o
+// dashboard geral pedido: junta os dois módulos do app (Financeiro pessoal e
+// Empréstimos) numa única tela, com saldo financeiro, saldo de empréstimos,
+// recebíveis/pendências dos dois módulos e as últimas movimentações.
+//
+// A conta em si (somas, filtros, o merge das movimentações) mora em
+// lib/resumoGeral.ts — esta página só busca os dados e desenha o layout.
 // ============================================================================
 import Link from "next/link";
 import { prisma } from "../lib/prisma";
-import { formatarMoeda, iniciais, statusDoContrato } from "../lib/calculos";
 import { exigirSessao } from "../lib/auth";
+import { formatarMoeda } from "../lib/calculos";
+import { calcularResumoGeral } from "../lib/resumoGeral";
+import { tonCss } from "../lib/estiloCard";
 import CardSaldo from "../components/CardSaldo";
-import { IconBell, IconWallet, IconDocument, IconReceipt, IconChart } from "../components/Icons";
+import {
+  IconBell,
+  IconWallet,
+  IconTrendUp,
+  IconTrendDown,
+  IconAlert,
+  IconReceipt,
+} from "../components/Icons";
 
 export const dynamic = "force-dynamic";
 
 export default async function Inicio() {
   const sessao = await exigirSessao();
 
-  const contratos = await prisma.contrato.findMany({
-    where: { usuarioId: sessao.id },
-    include: { cliente: true, parcelas: true },
-    orderBy: { criadoEm: "desc" },
-  });
+  const [contratos, lancamentos] = await Promise.all([
+    prisma.contrato.findMany({
+      where: { usuarioId: sessao.id },
+      include: { cliente: true, parcelas: true },
+    }),
+    prisma.lancamento.findMany({ where: { usuarioId: sessao.id } }),
+  ]);
 
-  const todasParcelas = contratos.flatMap((c) => c.parcelas);
-
-  const totalEmprestado = contratos.reduce((soma, c) => soma + Number(c.valorEmprestado), 0);
-  const recebido = todasParcelas
-    .filter((p) => p.status === "pago")
-    .reduce((soma, p) => soma + Number(p.valorPago ?? p.valor), 0);
-  const aReceber = todasParcelas
-    .filter((p) => p.status !== "pago")
-    .reduce((soma, p) => soma + Number(p.valor), 0);
-
-  const hojeStr = new Date().toDateString();
-  const parcelasHoje = todasParcelas.filter(
-    (p) => p.status !== "pago" && new Date(p.vencimento).toDateString() === hojeStr
-  );
-
-  const statusPorContrato = new Map(contratos.map((c) => [c.id, statusDoContrato(c.parcelas)]));
-  const contratosAtivos = contratos.filter((c) => statusPorContrato.get(c.id) !== "quitado").slice(0, 5);
-  const tudoEmDia = ![...statusPorContrato.values()].some((s) => s === "atrasado");
+  const resumo = calcularResumoGeral(contratos, lancamentos);
 
   return (
     <div>
@@ -47,32 +47,28 @@ export default async function Inicio() {
         <div className="flex items-center justify-between">
           <div>
             <p className="text-muted text-sm">Olá,</p>
-            <h1 className="text-2xl font-bold">Seu painel</h1>
+            <h1 className="text-2xl font-bold">Visão geral</h1>
           </div>
           <div className="icon-btn text-foreground">
             <IconBell size={19} />
           </div>
         </div>
 
-        {/* Cartão de resumo financeiro, com fundo decorativo e opção de ocultar valor */}
+        {/* Saldo financeiro — receitas pagas menos despesas pagas, no geral */}
         <div className="mt-5">
-          <CardSaldo label="TOTAL EMPRESTADO" valor={formatarMoeda(totalEmprestado)}>
-            <span
-              className="badge mt-3"
-              style={{ background: tudoEmDia ? "var(--color-success-subtle)" : "var(--color-error-subtle)", color: tudoEmDia ? "var(--color-success)" : "var(--color-error)" }}
-            >
-              <span className="badge-dot" />
-              {tudoEmDia ? "Tudo em dia" : "Existem parcelas atrasadas"}
-            </span>
-
+          <CardSaldo
+            label="SALDO FINANCEIRO"
+            valor={formatarMoeda(resumo.saldoFinanceiro)}
+            corValor={resumo.saldoFinanceiro >= 0 ? "var(--color-success)" : "var(--color-error)"}
+          >
             <div className="grid grid-cols-2 gap-3 mt-4">
-              <div className="rounded-md border p-3 bg-white/60" style={{ borderColor: "var(--color-primary-border)" }}>
-                <p className="text-primary text-xs font-semibold">RECEBIDO</p>
-                <p className="font-bold mt-1">{formatarMoeda(recebido)}</p>
+              <div className="rounded-md border p-3" style={{ background: "var(--color-surface-inset)", borderColor: "var(--color-primary-border)" }}>
+                <p className="text-primary text-xs font-semibold">RECEITAS</p>
+                <p className="font-bold mt-1">{formatarMoeda(resumo.totalReceitas)}</p>
               </div>
-              <div className="rounded-md border p-3 bg-white/60" style={{ borderColor: "var(--color-accent-border)" }}>
-                <p className="text-warning text-xs font-semibold">A RECEBER</p>
-                <p className="font-bold mt-1">{formatarMoeda(aReceber)}</p>
+              <div className="rounded-md border p-3" style={{ background: "var(--color-surface-inset)", borderColor: "var(--color-border-error)" }}>
+                <p className="text-error text-xs font-semibold">DESPESAS</p>
+                <p className="font-bold mt-1">{formatarMoeda(resumo.totalDespesas)}</p>
               </div>
             </div>
           </CardSaldo>
@@ -80,83 +76,100 @@ export default async function Inicio() {
       </div>
 
       <div className="px-5 mt-5 space-y-5">
-        {/* Parcelas de hoje */}
-        <div className="card flex items-center gap-3">
-          <div className="w-12 h-12 rounded-md bg-background flex items-center justify-center text-primary">
-            <IconReceipt size={22} />
+        {/* Saldo de empréstimos — o outro módulo, resumido numa única linha */}
+        <Link href="/emprestimos" className="card stat-card flex items-center gap-3 block" style={tonCss("var(--color-primary)", "var(--color-primary-subtle)")}>
+          <div className="stat-icon">
+            <IconWallet size={20} />
           </div>
-          <div>
-            <p className="text-xs font-semibold tracking-wide text-muted">PARCELAS DE HOJE</p>
-            {parcelasHoje.length === 0 ? (
-              <>
-                <p className="font-bold">Não temos parcelas hoje</p>
-                <p className="text-sm text-muted">Nenhum vencimento para hoje</p>
-              </>
-            ) : (
-              <p className="font-bold">
-                {parcelasHoje.length} parcela(s) — {formatarMoeda(parcelasHoje.reduce((s, p) => s + Number(p.valor), 0))}
-              </p>
-            )}
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-semibold tracking-wide text-muted">SALDO DE EMPRÉSTIMOS</p>
+            <p className="font-bold text-lg">{formatarMoeda(resumo.totalEmprestado)}</p>
+            <p className="text-xs text-muted mt-0.5">
+              {formatarMoeda(resumo.recebidoEmprestimos)} recebido · {formatarMoeda(resumo.aReceberEmprestimos)} a receber
+            </p>
           </div>
-        </div>
+        </Link>
 
-        {/* Acesso rápido */}
+        {/* Recebíveis e pendências — geral, juntando os dois módulos */}
         <div>
-          <p className="text-xs font-semibold tracking-wide text-muted mb-3">ACESSO RÁPIDO</p>
-          <div className="grid grid-cols-4 gap-3 text-center">
-            <AtalhoRapido href="/financeiro" icon={<IconWallet size={22} />} label="Financeiro" />
-            <AtalhoRapido href="/contratos" icon={<IconDocument size={22} />} label="Contratos" />
-            <AtalhoRapido href="/parcelas" icon={<IconReceipt size={22} />} label="Parcelas" />
-            <AtalhoRapido href="/relatorios" icon={<IconChart size={22} />} label="Histórico" />
+          <p className="text-xs font-semibold tracking-wide text-muted mb-3">RECEBÍVEIS E PENDÊNCIAS</p>
+          <div className="grid grid-cols-2 gap-3">
+            <Link href="/financeiro/receber" className="card stat-card" style={tonCss("var(--color-primary)", "var(--color-primary-subtle)")}>
+              <div className="stat-icon">
+                <IconTrendUp size={18} />
+              </div>
+              <p className="text-[11px] font-semibold tracking-wide text-muted">A RECEBER (FINANCEIRO)</p>
+              <p className="font-extrabold mt-1">{formatarMoeda(resumo.aReceberFinanceiro)}</p>
+            </Link>
+
+            <Link href="/financeiro/pagar" className="card stat-card" style={tonCss("var(--color-error)", "var(--color-error-subtle)")}>
+              <div className="stat-icon">
+                <IconTrendDown size={18} />
+              </div>
+              <p className="text-[11px] font-semibold tracking-wide text-muted">A PAGAR (FINANCEIRO)</p>
+              <p className="font-extrabold mt-1">{formatarMoeda(resumo.aPagarFinanceiro)}</p>
+            </Link>
+
+            <Link href="/emprestimos" className="card stat-card" style={tonCss("var(--color-warning)", "var(--color-warning-subtle)")}>
+              <div className="stat-icon">
+                <IconReceipt size={18} />
+              </div>
+              <p className="text-[11px] font-semibold tracking-wide text-muted">A RECEBER (EMPRÉSTIMOS)</p>
+              <p className="font-extrabold mt-1">{formatarMoeda(resumo.aReceberEmprestimos)}</p>
+            </Link>
+
+            <div
+              className="card stat-card"
+              style={tonCss(
+                resumo.totalAtrasados > 0 ? "var(--color-error)" : "var(--color-muted)",
+                resumo.totalAtrasados > 0 ? "var(--color-error-subtle)" : "var(--color-muted-surface)"
+              )}
+            >
+              <div className="stat-icon">
+                <IconAlert size={18} />
+              </div>
+              <p className="text-[11px] font-semibold tracking-wide text-muted">EM ATRASO (GERAL)</p>
+              <p className="font-extrabold mt-1">{resumo.totalAtrasados}</p>
+            </div>
           </div>
         </div>
 
-        {/* Contratos ativos */}
+        {/* Todas as movimentações — financeiro + empréstimos, por data */}
         <div>
           <div className="flex items-center justify-between mb-3">
-            <p className="text-xs font-semibold tracking-wide text-muted">CONTRATOS ATIVOS</p>
-            <Link href="/contratos" className="text-primary text-sm font-semibold">
-              Ver todos
+            <p className="text-xs font-semibold tracking-wide text-muted">MOVIMENTAÇÕES RECENTES</p>
+            <Link href="/historico" className="text-primary text-sm font-semibold">
+              Ver tudo
             </Link>
           </div>
 
           <div className="space-y-3">
-            {contratosAtivos.length === 0 && (
-              <div className="card text-center text-muted text-sm">Nenhum contrato ativo ainda.</div>
+            {resumo.movimentacoes.length === 0 && (
+              <div className="card text-center text-muted text-sm">Nenhuma movimentação registrada ainda.</div>
             )}
-            {contratosAtivos.map((c) => {
-              const pagas = c.parcelas.filter((p) => p.status === "pago").length;
-              const progresso = c.parcelas.length ? (pagas / c.parcelas.length) * 100 : 0;
-              return (
-                <Link key={c.id} href={`/contratos/${c.id}`} className="card flex items-center gap-3 block">
-                  <div className="avatar">{iniciais(c.cliente.nome)}</div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-bold truncate">{c.cliente.nome}</p>
-                    <p className="text-sm text-muted">
-                      {formatarMoeda(c.valorTotal)} · {c.numeroParcelas}x
-                    </p>
-                    <div className="h-1.5 rounded-pill bg-muted-bg mt-2 overflow-hidden">
-                      <div className="h-full bg-primary rounded-pill" style={{ width: `${progresso}%` }} />
-                    </div>
-                    <p className="text-xs text-muted mt-1">
-                      {pagas} de {c.parcelas.length} parcelas pagas
-                    </p>
-                  </div>
-                </Link>
-              );
-            })}
+            {resumo.movimentacoes.map((m) => (
+              <div key={m.id} className="card flex items-center gap-3">
+                <div
+                  className="w-11 h-11 rounded-md flex items-center justify-center flex-shrink-0"
+                  style={{
+                    background: m.entrada ? "var(--color-success-subtle)" : "var(--color-error-subtle)",
+                    color: m.entrada ? "var(--color-success)" : "var(--color-error)",
+                  }}
+                >
+                  {m.entrada ? <IconTrendUp size={18} /> : <IconTrendDown size={18} />}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold truncate">{m.descricao}</p>
+                  <p className="text-xs text-muted">{new Date(m.data).toLocaleDateString("pt-BR", { timeZone: "UTC" })}</p>
+                </div>
+                <p className="font-bold flex-shrink-0" style={{ color: m.entrada ? "var(--color-success)" : "var(--color-error)" }}>
+                  {m.entrada ? "+" : "−"} {formatarMoeda(m.valor)}
+                </p>
+              </div>
+            ))}
           </div>
         </div>
       </div>
     </div>
-  );
-}
-
-function AtalhoRapido({ href, icon, label }: { href: string; icon: React.ReactNode; label: string }) {
-  return (
-    <Link href={href} className="flex flex-col items-center gap-2">
-      <div className="quick-tile text-primary">{icon}</div>
-      <span className="text-xs font-medium">{label}</span>
-    </Link>
   );
 }

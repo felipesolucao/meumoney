@@ -4,6 +4,8 @@
 import { prisma } from "../../lib/prisma";
 import { formatarMoeda } from "../../lib/calculos";
 import { exigirSessao } from "../../lib/auth";
+import { tonCss } from "../../lib/estiloCard";
+import { IconWallet, IconTrendUp, IconTrendDown, IconChart } from "../../components/Icons";
 
 export const dynamic = "force-dynamic";
 
@@ -38,13 +40,19 @@ export default async function Relatorios() {
 
       <div className="px-5 mt-5 space-y-4">
         <div className="grid grid-cols-2 gap-3">
-          <Cartao label="TOTAL EMPRESTADO" valor={formatarMoeda(totalEmprestado)} />
-          <Cartao label="LUCRO PROJETADO" valor={formatarMoeda(lucroTotal)} destaque />
-          <Cartao label="RECEBIDO" valor={formatarMoeda(recebido)} />
-          <Cartao label="A RECEBER" valor={formatarMoeda(aReceber)} />
+          <Cartao label="EMPRESTADO" valor={formatarMoeda(totalEmprestado)} icone={<IconWallet size={18} />} tom="var(--color-foreground)" tomSubtle="var(--color-muted-surface)" />
+          <Cartao label="RECEBIDO" valor={formatarMoeda(recebido)} icone={<IconTrendUp size={18} />} tom="var(--color-success)" />
+          <Cartao label="PENDENTE" valor={formatarMoeda(aReceber)} icone={<IconTrendDown size={18} />} tom="var(--color-warning)" />
+          <Cartao
+            label="LUCRO PROJETADO"
+            valor={formatarMoeda(lucroTotal)}
+            icone={<IconChart size={18} />}
+            tom={lucroTotal >= 0 ? "var(--color-success)" : "var(--color-error)"}
+            destaque
+          />
         </div>
 
-        <div className="card">
+        <div className="card stat-card" style={tonCss("var(--color-error)", "var(--color-error-subtle)")}>
           <p className="text-xs font-semibold tracking-wide text-muted mb-3">EM ATRASO</p>
           <p className="text-3xl font-extrabold" style={{ color: "var(--color-error)" }}>
             {formatarMoeda(atrasado)}
@@ -62,11 +70,28 @@ export default async function Relatorios() {
   );
 }
 
-function Cartao({ label, valor, destaque }: { label: string; valor: string; destaque?: boolean }) {
+function Cartao({
+  label,
+  valor,
+  icone,
+  tom,
+  tomSubtle,
+  destaque,
+}: {
+  label: string;
+  valor: string;
+  icone: React.ReactNode;
+  tom: string;
+  tomSubtle?: string;
+  destaque?: boolean;
+}) {
   return (
-    <div className="card">
+    <div className="card stat-card" style={tonCss(tom, tomSubtle)}>
+      <div className="stat-icon">{icone}</div>
       <p className="text-[11px] font-semibold tracking-wide text-muted">{label}</p>
-      <p className={`font-extrabold mt-1 ${destaque ? "text-primary text-xl" : "text-lg"}`}>{valor}</p>
+      <p className={`font-extrabold mt-1 ${destaque ? "text-xl" : "text-lg"}`} style={{ color: destaque ? tom : undefined }}>
+        {valor}
+      </p>
     </div>
   );
 }

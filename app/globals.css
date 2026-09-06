@@ -16,9 +16,10 @@
   /* --------------------------------------------------------------------------
      COR — base
      ------------------------------------------------------------------------ */
-  --color-background: #f6faf7; /* fundo da tela */
+  --color-background: #f8fafb; /* fundo da tela (tema claro) */
   --color-foreground: #172033; /* texto principal */
   --color-card: #ffffff; /* superfície de cartão / input */
+  --color-surface-inset: rgba(255, 255, 255, 0.6); /* caixinhas "afundadas" dentro de um card (ex: RECEITAS/DESPESAS) */
 
   /* --------------------------------------------------------------------------
      COR — primary (verde da marca)
@@ -158,7 +159,82 @@
   --space-card: 20px; /* padding interno do cartão */
   --space-list-gap: 14px; /* respiro entre cartões empilhados */
   --shell-max-width: 480px; /* largura útil (formato de app mobile) */
-  --shell-bottom-space: 96px; /* espaço para a barra inferior fixa */
+  /* Espaço para a barra inferior fixa. Soma a safe-area do dispositivo
+     (iPhone com home indicator, notch, etc.) para o menu flutuante nunca
+     ficar sobreposto ao último card da tela nem colado na borda física. */
+  --shell-bottom-space: calc(96px + env(safe-area-inset-bottom, 0px));
+}
+
+/* ============================================================================
+   TEMA ESCURO
+   ----------------------------------------------------------------------------
+   Espelha 1:1 os tokens do :root acima, então nenhum componente precisa saber
+   se está no claro ou no escuro — eles só leem var(--color-*). A troca é feita
+   pelo atributo data-theme="dark" no <html> (ver components/ThemeProvider.tsx).
+   Fundo preto e cards em cinza-escuro, como pedido, com os tons de
+   sucesso/aviso/erro um pouco mais claros para manter contraste no escuro.
+   ========================================================================== */
+:root[data-theme="dark"] {
+  /* --- base --- */
+  --color-background: #0a0a0c;
+  --color-foreground: #f2f3f5;
+  --color-card: #18181b; /* cinza-escuro dos cards */
+  --color-surface-inset: rgba(255, 255, 255, 0.06);
+
+  /* --- primary (verde da marca, mais claro p/ contraste no fundo escuro) --- */
+  --color-primary: #3ecb80;
+  --color-primary-hover: #34b571;
+  --color-primary-dark: #2c9960;
+  --color-primary-subtle: rgba(62, 203, 128, 0.16);
+  --color-primary-surface: rgba(62, 203, 128, 0.1);
+  --color-primary-border: rgba(62, 203, 128, 0.28);
+  --color-primary-tint: rgba(62, 203, 128, 0.14);
+
+  /* --- secondary --- */
+  --color-secondary: #34b571;
+  --color-secondary-hover: #2c9960;
+
+  /* --- accent (âmbar) --- */
+  --color-accent: #e0a83a;
+  --color-accent-hover: #c99128;
+  --color-accent-subtle: rgba(224, 168, 58, 0.16);
+  --color-accent-strong: rgba(224, 168, 58, 0.32);
+  --color-accent-border: rgba(224, 168, 58, 0.3);
+
+  /* --- muted --- */
+  --color-muted: #9aa1ac;
+  --color-muted-bg: #1f1f23;
+  --color-muted-surface: #202024;
+
+  /* --- bordas --- */
+  --color-border: #27272b;
+  --color-border-strong: #313136;
+  --color-border-error: rgba(239, 106, 96, 0.35);
+
+  /* --- estado --- */
+  --color-success: #3ecb80;
+  --color-success-hover: #34b571;
+  --color-success-subtle: rgba(62, 203, 128, 0.16);
+  --color-success-strong: #2c9960;
+
+  --color-warning: #e0a83a;
+  --color-warning-hover: #c99128;
+  --color-warning-subtle: rgba(224, 168, 58, 0.16);
+
+  --color-error: #ef6a60;
+  --color-error-hover: #e2554a;
+  --color-error-subtle: rgba(239, 106, 96, 0.16);
+  --color-error-strong: #e2554a;
+
+  /* --- degradês (mesma composição do claro, só trocam os tons de origem) --- */
+  --gradient-from-primary: #3ecb80;
+  --gradient-from-secondary: #3ecb80;
+  --gradient-to-secondary: #22703f;
+  --gradient-from-error: #ef6a60;
+
+  /* --- sombras — quase invisíveis no fundo escuro; quem separa o card do
+     fundo aqui é o tom de cinza do card, não a sombra --- */
+  --shadow-color: 0 0 0;
 }
 
 html,
@@ -168,6 +244,8 @@ body {
   background: var(--color-background);
   color: var(--color-foreground);
   font-family: var(--font-sans);
+  /* Troca suave de cor ao alternar claro/escuro no menu, em vez de um "flash" */
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 h1,
@@ -382,4 +460,47 @@ h6 {
   font-size: 18px;
   background: var(--gradient-avatar);
   flex-shrink: 0;
+}
+
+/* ============================================================================
+   CARTÃO DE ESTATÍSTICA COM "GLOW"
+   ----------------------------------------------------------------------------
+   Usado nos cards de indicador (Relatórios, resumo do Início) para destacar
+   cada número com a cor da própria categoria "vazando" no fundo do card —
+   funciona igual nos dois temas porque o brilho é sempre um pouco translúcido.
+   Uso: <div className="card stat-card" style={{ "--tone": "var(--color-success)" }}>
+   ========================================================================== */
+.stat-card {
+  position: relative;
+  overflow: hidden;
+}
+.stat-card::before {
+  content: "";
+  position: absolute;
+  top: -34px;
+  right: -34px;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: var(--tone, var(--color-primary));
+  opacity: 0.16;
+  filter: blur(20px);
+  pointer-events: none;
+}
+:root[data-theme="dark"] .stat-card::before {
+  opacity: 0.28; /* no escuro precisa de mais opacidade pra "vazar" contra o preto */
+}
+
+/* Selo circular com o ícone do indicador, sentado sobre o glow do stat-card */
+.stat-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--tone-subtle, var(--color-primary-subtle));
+  color: var(--tone, var(--color-primary));
+  position: relative;
+  margin-bottom: 10px;
 }
