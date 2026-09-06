@@ -10,7 +10,7 @@
 // ============================================================================
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type {
   TipoLancamento,
@@ -23,10 +23,6 @@ import BotaoVoltar from "../../../components/BotaoVoltar";
 import { useToast } from "../../../components/ToastProvider";
 import { IconWallet, IconReceipt, IconUser, IconBuilding, IconRepeat, IconPlus } from "../../../components/Icons";
 
-// useSearchParams() exige que a página não seja pré-renderizada estaticamente
-// no build (mesmo ajuste feito em app/historico/page.tsx).
-export const dynamic = "force-dynamic";
-
 type Categoria = { id: string; nome: string; icone: string; tipo: TipoLancamento };
 type Conta = { id: string; nome: string; icone: string };
 
@@ -36,7 +32,10 @@ function isoHoje(offsetDias = 0) {
   return d.toISOString().slice(0, 10);
 }
 
-export default function NovoLancamentoPage() {
+// useSearchParams() só é seguro em build quando o componente que o chama
+// fica dentro de um <Suspense> (ver export default no fim do arquivo) —
+// por isso toda a lógica da tela mora aqui, e não na exportação padrão.
+function NovoLancamentoConteudo() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const showToast = useToast();
@@ -409,5 +408,23 @@ function BotaoToggle({ ativo, onClick, children }: { ativo: boolean; onClick: ()
     <button type="button" onClick={onClick} className={ativo ? "btn-primary !py-3.5" : "btn-outline !py-3.5"}>
       {children}
     </button>
+  );
+}
+
+export default function NovoLancamentoPage() {
+  return (
+    <Suspense
+      fallback={
+        <div>
+          <div className="header-gradient flex items-center gap-3">
+            <BotaoVoltar href="/financeiro" />
+            <h1 className="text-2xl font-bold">Novo lançamento</h1>
+          </div>
+          <p className="text-center text-muted text-sm py-10">Carregando...</p>
+        </div>
+      }
+    >
+      <NovoLancamentoConteudo />
+    </Suspense>
   );
 }
