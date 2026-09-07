@@ -741,3 +741,25 @@ a {
 .cobranca-modal-action svg {
   flex: 0 0 auto;
 }
+
+/* Campos do formulário de contrato: fundo controlado pelo tema, sem o branco
+   nativo do navegador, e data sem estourar a largura disponível no celular. */
+.form-input {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-card);
+  color: var(--color-foreground);
+  padding: 14px 16px;
+  outline: none;
+}
+.form-input:focus { border-color: var(--color-primary); }
+.form-date-input {
+  display: block;
+  max-width: 100%;
+  min-height: 52px;
+  font-size: 16px;
+  line-height: 1.25;
+}
+:root[data-theme="dark"] .form-date-input { color-scheme: dark; }

@@ -121,7 +121,7 @@ function NovoContrato() {
           <select
             value={clienteId}
             onChange={(e) => setClienteId(e.target.value)}
-            className="w-full rounded-md border border-border px-4 py-3.5 outline-none focus:border-primary bg-card"
+            className="form-input w-full"
           >
             {clientes.length === 0 && <option value="">Nenhum cliente cadastrado</option>}
             {clientes.map((c) => (
@@ -149,7 +149,7 @@ function NovoContrato() {
 
         {temEntrada && <div className="card space-y-4" style={{ background: "var(--color-primary-surface)" }}>
           <div><p className="text-xs font-semibold tracking-wide text-muted mb-2">VALOR DA ENTRADA</p><CampoMoeda value={valorEntrada} onChange={setValorEntrada} /></div>
-          <div><p className="text-xs font-semibold tracking-wide text-muted mb-2">DATA DA ENTRADA</p><input type="date" value={dataEntrada} onChange={(e) => setDataEntrada(e.target.value)} className="w-full rounded-md border border-border bg-card px-4 py-3.5 outline-none focus:border-primary" /></div>
+          <div><p className="text-xs font-semibold tracking-wide text-muted mb-2">DATA DA ENTRADA</p><input type="date" value={dataEntrada} onChange={(e) => setDataEntrada(e.target.value)} className="form-input form-date-input" /></div>
         </div>}
 
         <div>
@@ -172,7 +172,7 @@ function NovoContrato() {
               onChange={(e) => setJurosAoMes(e.target.value)}
               disabled={tipoEmprestimo === "fixo"}
               inputMode="decimal"
-              className="w-full rounded-md border border-border px-4 py-3.5 outline-none focus:border-primary disabled:bg-muted-bg"
+              className="form-input disabled:bg-muted-bg"
             />
           </div>
           <div>
@@ -181,7 +181,7 @@ function NovoContrato() {
               value={numeroParcelas}
               onChange={(e) => setNumeroParcelas(e.target.value)}
               inputMode="numeric"
-              className="w-full rounded-md border border-border px-4 py-3.5 outline-none focus:border-primary"
+              className="form-input"
             />
           </div>
         </div>
@@ -204,7 +204,7 @@ function NovoContrato() {
         {multaAtraso && <div className="card space-y-3" style={{ background: "var(--color-warning-subtle)" }}>
           <p className="text-xs font-semibold tracking-wide text-muted">TIPO E VALOR DA MULTA</p>
           <div className="grid grid-cols-2 gap-2"><BotaoToggle ativo={tipoMultaAtraso === "fixa"} onClick={() => setTipoMultaAtraso("fixa")}>Valor fixo</BotaoToggle><BotaoToggle ativo={tipoMultaAtraso === "percentual"} onClick={() => setTipoMultaAtraso("percentual")}>% do contrato</BotaoToggle></div>
-          {tipoMultaAtraso === "fixa" ? <CampoMoeda value={valorMultaAtraso} onChange={setValorMultaAtraso} /> : <input value={valorMultaAtraso} onChange={(e) => setValorMultaAtraso(e.target.value.replace(/[^0-9,]/g, ""))} inputMode="decimal" placeholder="Ex.: 2,5" className="w-full rounded-md border border-border bg-card px-4 py-3.5 outline-none focus:border-primary" />}
+          {tipoMultaAtraso === "fixa" ? <CampoMoeda value={valorMultaAtraso} onChange={setValorMultaAtraso} /> : <input value={valorMultaAtraso} onChange={(e) => setValorMultaAtraso(e.target.value.replace(/[^0-9,]/g, ""))} inputMode="decimal" placeholder="Ex.: 2,5" className="form-input" />}
         </div>}
 
         <div>
@@ -231,7 +231,7 @@ function NovoContrato() {
             type="date"
             value={dataPrimeiraParcela}
             onChange={(e) => setDataPrimeiraParcela(e.target.value)}
-            className="w-full rounded-md border border-border px-4 py-3.5 outline-none focus:border-primary"
+            className="form-input form-date-input"
           />
         </div>
 
@@ -266,7 +266,7 @@ function NovoContrato() {
 }
 
 function CampoMoeda({ value, onChange }: { value: string; onChange: (valor: string) => void }) {
-  return <div className="relative"><span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-xl font-extrabold text-primary">R$</span><input value={value} onChange={(e) => { const digitos = e.target.value.replace(/\D/g, ""); onChange(digitos ? digitosParaValorFormatado(digitos) : ""); }} placeholder="0,00" inputMode="numeric" className="w-full rounded-md border-2 border-transparent bg-background pl-14 pr-4 py-4 text-3xl font-extrabold text-primary outline-none focus:border-primary" /></div>;
+  return <div className="relative min-w-0"><span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-xl font-extrabold text-primary">R$</span><input value={value} onChange={(e) => { const digitos = e.target.value.replace(/\D/g, ""); onChange(digitos ? digitosParaValorFormatado(digitos) : ""); }} placeholder="0,00" inputMode="numeric" className="w-full rounded-md border-2 border-transparent bg-card pl-14 pr-4 py-4 text-3xl font-extrabold text-primary outline-none focus:border-primary" /></div>;
 }
 
 function digitosParaValorFormatado(digitos: string) {
