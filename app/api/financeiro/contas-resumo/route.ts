@@ -15,12 +15,14 @@ import { NextResponse } from "next/server";
 import { prisma } from "../../../../lib/prisma";
 import { obterSessao } from "../../../../lib/auth";
 
-export async function GET() {
+export async function GET(req: Request) {
   const sessao = await obterSessao();
   if (!sessao) return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
 
+  const carteiraId = new URL(req.url).searchParams.get("carteiraId");
+  const filtroCarteira = carteiraId ? { carteiraId } : {};
   const [contas, lancamentosPagos] = await Promise.all([
-    prisma.conta.findMany({ where: { usuarioId: sessao.id }, orderBy: { nome: "asc" } }),
+    prisma.conta.findMany({ where: { usuarioId: sessao.id, ...filtroCarteira }, orderBy: { nome: "asc" } }),
     prisma.lancamento.findMany({
       where: { usuarioId: sessao.id, status: "pago", contaId: { not: null } },
       select: { contaId: true, tipo: true, valorPago: true, valor: true },
@@ -44,6 +46,7 @@ export async function GET() {
       id: conta.id,
       nome: conta.nome,
       icone: conta.icone,
+      carteiraId: conta.carteiraId,
       saldoInicial,
       saldoAtual,
     };

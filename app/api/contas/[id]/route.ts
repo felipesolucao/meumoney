@@ -25,13 +25,17 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (!existente) return NextResponse.json({ error: "Conta não encontrada." }, { status: 404 });
 
   const body = await req.json();
-  const { nome, icone, saldoInicial } = body as { nome?: string; icone?: string; saldoInicial?: number };
+  const { nome, icone, saldoInicial, carteiraId } = body as { nome?: string; icone?: string; saldoInicial?: number; carteiraId?: string | null };
 
   if (nome !== undefined && !nome.trim()) {
     return NextResponse.json({ error: "O nome da conta não pode ficar em branco." }, { status: 400 });
   }
   if (saldoInicial !== undefined && Number.isNaN(Number(saldoInicial))) {
     return NextResponse.json({ error: "Saldo inválido." }, { status: 400 });
+  }
+  if (carteiraId) {
+    const carteira = await prisma.carteira.findFirst({ where: { id: carteiraId, usuarioId: sessao.id } });
+    if (!carteira) return NextResponse.json({ error: "Carteira não encontrada." }, { status: 400 });
   }
 
   const conta = await prisma.conta.update({
@@ -40,6 +44,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       ...(nome !== undefined ? { nome: nome.trim() } : {}),
       ...(icone !== undefined ? { icone } : {}),
       ...(saldoInicial !== undefined ? { saldoInicial: Number(saldoInicial) } : {}),
+      ...(carteiraId !== undefined ? { carteiraId: carteiraId || null } : {}),
     },
   });
   return NextResponse.json(conta);

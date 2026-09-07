@@ -128,7 +128,7 @@
   --radius-xs: 8px; /* blocos de código */
   --radius-sm: 12px; /* marcadores quadrados pequenos */
   --radius-md: 16px; /* raio padrão de cartão/botão/input */
-  --radius-lg: 22px; /* cartão principal (.card) */
+  --radius-lg: 10px; /* cartão principal (.card) */
   --radius-tile: 18px; /* azulejo de acesso rápido */
   --radius-xl: 28px; /* cantos inferiores do cabeçalho */
   --radius-pill: 999px; /* botões e badges totalmente arredondados */
@@ -299,6 +299,43 @@ h6 {
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-md);
   padding: var(--space-card);
+}
+
+/* Seletor horizontal das carteiras no início. A rolagem discreta mantém os
+   nomes criados pelo usuário acessíveis sem impor limite de carteiras. */
+.wallet-tabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  padding: 4px;
+  border-radius: 12px;
+  background: var(--color-muted-surface);
+}
+.wallet-tabs::after { content: ""; width: 1px; flex-shrink: 0; }
+.wallet-tabs { overflow-x: auto; scrollbar-width: none; }
+.wallet-tabs::-webkit-scrollbar { display: none; }
+.wallet-tab, .wallet-add {
+  min-height: 38px;
+  padding: 8px 14px;
+  border-radius: 9px;
+  color: var(--color-muted);
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.wallet-tab-active {
+  color: var(--color-foreground);
+  background: var(--color-card);
+  box-shadow: var(--shadow-sm);
+}
+.wallet-add {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-primary);
+  padding-inline: 11px;
 }
 
 /* ============================================================================

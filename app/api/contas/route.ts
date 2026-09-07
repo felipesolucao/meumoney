@@ -20,10 +20,15 @@ export async function POST(req: NextRequest) {
   if (!sessao) return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
 
   const body = await req.json();
-  const { nome, icone, saldoInicial } = body as { nome: string; icone?: string; saldoInicial?: number };
+  const { nome, icone, saldoInicial, carteiraId } = body as { nome: string; icone?: string; saldoInicial?: number; carteiraId?: string | null };
 
   if (!nome) {
     return NextResponse.json({ error: "Informe o nome da conta." }, { status: 400 });
+  }
+
+  if (carteiraId) {
+    const carteira = await prisma.carteira.findFirst({ where: { id: carteiraId, usuarioId: sessao.id } });
+    if (!carteira) return NextResponse.json({ error: "Carteira não encontrada." }, { status: 400 });
   }
 
   const conta = await prisma.conta.create({
@@ -31,6 +36,7 @@ export async function POST(req: NextRequest) {
       nome,
       icone: icone || undefined,
       saldoInicial: saldoInicial != null ? Number(saldoInicial) : undefined,
+      carteiraId: carteiraId || null,
       usuarioId: sessao.id,
     },
   });

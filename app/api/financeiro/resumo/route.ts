@@ -22,6 +22,7 @@ export async function GET(req: NextRequest) {
   const params = req.nextUrl.searchParams;
   const deParam = params.get("de");
   const ateParam = params.get("ate");
+  const carteiraId = params.get("carteiraId");
 
   let inicioMes: Date;
   let fimMes: Date;
@@ -40,10 +41,13 @@ export async function GET(req: NextRequest) {
     fimMes = new Date(ano, mes + 1, 0, 23, 59, 59);
   }
 
+  // O lançamento herda a carteira da conta selecionada. Lançamentos sem
+  // conta continuam visíveis apenas no consolidado Geral.
+  const filtroCarteira = carteiraId ? { conta: { carteiraId } } : {};
   const [lancamentosDoMes, pendentesDespesa, pendentesReceita] = await Promise.all([
-    prisma.lancamento.findMany({ where: { usuarioId: sessao.id, dataVencimento: { gte: inicioMes, lte: fimMes } } }),
-    prisma.lancamento.findMany({ where: { usuarioId: sessao.id, tipo: "despesa", status: "pendente" } }),
-    prisma.lancamento.findMany({ where: { usuarioId: sessao.id, tipo: "receita", status: "pendente" } }),
+    prisma.lancamento.findMany({ where: { usuarioId: sessao.id, ...filtroCarteira, dataVencimento: { gte: inicioMes, lte: fimMes } } }),
+    prisma.lancamento.findMany({ where: { usuarioId: sessao.id, ...filtroCarteira, tipo: "despesa", status: "pendente" } }),
+    prisma.lancamento.findMany({ where: { usuarioId: sessao.id, ...filtroCarteira, tipo: "receita", status: "pendente" } }),
   ]);
 
   const receitasDoMes = lancamentosDoMes

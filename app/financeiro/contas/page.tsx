@@ -28,7 +28,9 @@ type Conta = {
   icone: string;
   saldoInicial: number;
   saldoAtual: number;
+  carteiraId?: string | null;
 };
+type Carteira = { id: string; nome: string };
 
 type Resumo = { contas: Conta[]; totalGeral: number };
 
@@ -44,6 +46,8 @@ export default function ContasPage() {
   const [nomeForm, setNomeForm] = useState("");
   const [iconeForm, setIconeForm] = useState("🏦");
   const [saldoForm, setSaldoForm] = useState("0");
+  const [carteiraIdForm, setCarteiraIdForm] = useState("");
+  const [carteiras, setCarteiras] = useState<Carteira[]>([]);
   const [confirmarExclusaoId, setConfirmarExclusaoId] = useState("");
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState("");
@@ -58,7 +62,10 @@ export default function ContasPage() {
       });
   }
 
-  useEffect(carregarResumo, []);
+  useEffect(() => {
+    carregarResumo();
+    fetch("/api/carteiras").then((r) => r.json()).then((data: Carteira[]) => setCarteiras(data));
+  }, []);
 
   function iniciarCriacao() {
     setEditandoId(null);
@@ -66,6 +73,7 @@ export default function ContasPage() {
     setNomeForm("");
     setIconeForm("🏦");
     setSaldoForm("0");
+    setCarteiraIdForm("");
     setErro("");
   }
 
@@ -75,6 +83,7 @@ export default function ContasPage() {
     setNomeForm(conta.nome);
     setIconeForm(conta.icone);
     setSaldoForm(String(conta.saldoInicial));
+    setCarteiraIdForm(conta.carteiraId || "");
     setErro("");
   }
 
@@ -90,7 +99,7 @@ export default function ContasPage() {
     const res = await fetch("/api/contas", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ nome: nomeForm.trim(), icone: iconeForm, saldoInicial: Number(saldoForm) || 0 }),
+      body: JSON.stringify({ nome: nomeForm.trim(), icone: iconeForm, saldoInicial: Number(saldoForm) || 0, carteiraId: carteiraIdForm || null }),
     });
     setSalvando(false);
     if (!res.ok) {
@@ -109,7 +118,7 @@ export default function ContasPage() {
     const res = await fetch(`/api/contas/${editandoId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ nome: nomeForm.trim(), icone: iconeForm, saldoInicial: Number(saldoForm) || 0 }),
+      body: JSON.stringify({ nome: nomeForm.trim(), icone: iconeForm, saldoInicial: Number(saldoForm) || 0, carteiraId: carteiraIdForm || null }),
     });
     setSalvando(false);
     if (!res.ok) {
@@ -190,6 +199,9 @@ export default function ContasPage() {
                     setIconeForm={setIconeForm}
                     saldoForm={saldoForm}
                     setSaldoForm={setSaldoForm}
+                    carteiraIdForm={carteiraIdForm}
+                    setCarteiraIdForm={setCarteiraIdForm}
+                    carteiras={carteiras}
                     erro={erro}
                     salvando={salvando}
                     onCancelar={cancelarForm}
@@ -240,6 +252,9 @@ export default function ContasPage() {
             setIconeForm={setIconeForm}
             saldoForm={saldoForm}
             setSaldoForm={setSaldoForm}
+            carteiraIdForm={carteiraIdForm}
+            setCarteiraIdForm={setCarteiraIdForm}
+            carteiras={carteiras}
             erro={erro}
             salvando={salvando}
             onCancelar={cancelarForm}

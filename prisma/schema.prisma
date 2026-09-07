@@ -55,6 +55,7 @@ model Usuario {
   contratos              Contrato[]
   categorias             Categoria[]
   contas                 Conta[]
+  carteiras              Carteira[]
   lancamentos            Lancamento[]
   lancamentosRecorrentes LancamentoRecorrente[]
   historicoAcoes         HistoricoAcao[]
@@ -299,10 +300,33 @@ model Conta {
   usuarioId             String
   usuario               Usuario                @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 
+  // Uma carteira agrupa contas bancárias para separar a vida financeira
+  // (por exemplo, Pessoal, Empresa ou Investimentos). Nulo significa que a
+  // conta ainda aparece somente na visão consolidada "Geral".
+  carteiraId            String?
+  carteira              Carteira?              @relation(fields: [carteiraId], references: [id], onDelete: SetNull)
+
   lancamentos           Lancamento[]
   lancamentosRecorrentes LancamentoRecorrente[]
 
   @@map("contas")
+}
+
+// ----------------------------------------------------------------------------
+// MODEL: Carteira — agrupador personalizável de contas do usuário.
+// "Geral" não é salvo: é a visão fixa que consolida todas as carteiras.
+// ----------------------------------------------------------------------------
+model Carteira {
+  id        String   @id @default(cuid())
+  nome      String
+  criadoEm  DateTime @default(now())
+
+  usuarioId String
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  contas    Conta[]
+
+  @@unique([usuarioId, nome])
+  @@map("carteiras")
 }
 
 // ----------------------------------------------------------------------------

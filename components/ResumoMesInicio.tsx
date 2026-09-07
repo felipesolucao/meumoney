@@ -34,7 +34,7 @@ type ResumoMes = {
   totalReceitasDoMes: number;
 };
 
-export default function ResumoMesInicio() {
+export default function ResumoMesInicio({ carteiraId }: { carteiraId?: string | null }) {
   const hoje = new Date();
   const [ano, setAno] = useState(hoje.getFullYear());
   const [mes, setMes] = useState(hoje.getMonth());
@@ -45,21 +45,23 @@ export default function ResumoMesInicio() {
 
   useEffect(() => {
     setCarregando(true);
-    fetch(`/api/financeiro/resumo?ano=${ano}&mes=${mes}`)
+    const carteiraQuery = carteiraId ? `&carteiraId=${encodeURIComponent(carteiraId)}` : "";
+    fetch(`/api/financeiro/resumo?ano=${ano}&mes=${mes}${carteiraQuery}`)
       .then((r) => r.json())
       .then((data: ResumoMes) => {
         setResumo(data);
         setCarregando(false);
       });
-  }, [ano, mes]);
+  }, [ano, mes, carteiraId]);
 
   // Saldo em contas não depende do mês selecionado (é o saldo corrente),
   // então busca uma vez só, fora do efeito acima.
   useEffect(() => {
-    fetch("/api/financeiro/contas-resumo")
+    const carteiraQuery = carteiraId ? `?carteiraId=${encodeURIComponent(carteiraId)}` : "";
+    fetch(`/api/financeiro/contas-resumo${carteiraQuery}`)
       .then((r) => r.json())
       .then((data: { totalGeral: number }) => setSaldoContas(data.totalGeral));
-  }, []);
+  }, [carteiraId]);
 
   return (
     <div>

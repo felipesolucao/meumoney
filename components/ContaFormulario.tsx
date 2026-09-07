@@ -18,6 +18,9 @@ export default function ContaFormulario({
   setIconeForm,
   saldoForm,
   setSaldoForm,
+  carteiraIdForm,
+  setCarteiraIdForm,
+  carteiras,
   erro,
   salvando,
   onCancelar,
@@ -29,6 +32,9 @@ export default function ContaFormulario({
   setIconeForm: (v: string) => void;
   saldoForm: string;
   setSaldoForm: (v: string) => void;
+  carteiraIdForm: string;
+  setCarteiraIdForm: (v: string) => void;
+  carteiras: { id: string; nome: string }[];
   erro: string;
   salvando: boolean;
   onCancelar: () => void;
@@ -36,6 +42,14 @@ export default function ContaFormulario({
 }) {
   return (
     <div className="card space-y-4">
+      <div>
+        <label className="block text-xs font-semibold tracking-wide text-muted mb-2" htmlFor="carteira">CARTEIRA</label>
+        <select id="carteira" value={carteiraIdForm} onChange={(e) => setCarteiraIdForm(e.target.value)} className="w-full rounded-md border border-border bg-transparent px-3 py-3 outline-none focus:border-primary">
+          <option value="">Geral (sem separação)</option>
+          {carteiras.map((carteira) => <option key={carteira.id} value={carteira.id}>{carteira.nome}</option>)}
+        </select>
+      </div>
+
       <div>
         <p className="text-xs font-semibold tracking-wide text-muted mb-2">ÍCONE</p>
         <div className="flex items-center gap-3 mb-3">

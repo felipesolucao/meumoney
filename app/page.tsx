@@ -17,7 +17,7 @@ import { formatarMoeda } from "../lib/calculos";
 import { calcularResumoGeral } from "../lib/resumoGeral";
 import { tonCss } from "../lib/estiloCard";
 import HeaderTopo from "../components/HeaderTopo";
-import ResumoMesInicio from "../components/ResumoMesInicio";
+import CarteirasInicio from "../components/CarteirasInicio";
 import DespesasPorCategoriaInicio from "../components/DespesasPorCategoriaInicio";
 import {
   IconTrendUp,
@@ -48,13 +48,9 @@ export default async function Inicio() {
       </div>
 
       <div className="px-5 mt-5 space-y-5">
-        {/* Resumo do mês — mesmo seletor de mês usado em "Transações", com
-            saldo do mês, a receber, saldo em contas, despesas do mês e o
-            saldo total (receitas - despesas do mês). */}
-        <div>
-          <p className="text-xs font-semibold tracking-wide text-muted mb-3">RESUMO DO MÊS</p>
-          <ResumoMesInicio />
-        </div>
+        {/* Carteiras + resumo do mês — "Geral" soma tudo; as demais filtram
+            as contas vinculadas a cada carteira. */}
+        <CarteirasInicio />
 
         {/* Despesas por categoria — versão compacta do relatório completo,
             que continua em /financeiro/relatorios. */}
