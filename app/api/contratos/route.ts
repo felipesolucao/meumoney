@@ -32,6 +32,9 @@ export async function POST(req: NextRequest) {
     tipoEmprestimo,
     jurosAoMes,
     jurosAtraso,
+    tipoJurosAtraso,
+    valorJurosAtraso,
+    frequenciaJurosAtraso,
     multaAtraso,
     tipoMultaAtraso,
     valorMultaAtraso,
@@ -46,6 +49,9 @@ export async function POST(req: NextRequest) {
     tipoEmprestimo: TipoEmprestimo;
     jurosAoMes: number;
     jurosAtraso: boolean;
+    tipoJurosAtraso?: "fixo" | "percentual";
+    valorJurosAtraso?: number;
+    frequenciaJurosAtraso?: "diaria" | "semanal" | "mensal";
     multaAtraso?: boolean;
     tipoMultaAtraso?: "fixa" | "percentual";
     valorMultaAtraso?: number;
@@ -61,12 +67,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Preencha todos os campos obrigatórios." }, { status: 400 });
   }
   const entrada = Number(valorEntrada) || 0;
+  const jurosPorAtraso = Number(valorJurosAtraso) || 0;
   const multa = Number(valorMultaAtraso) || 0;
   if (entrada < 0 || entrada >= Number(valorEmprestado) || (entrada > 0 && Number(numeroParcelas) < 2)) {
     return NextResponse.json({ error: "A entrada deve ser menor que o valor do contrato e exige pelo menos 2 parcelas." }, { status: 400 });
   }
   if (multaAtraso && (!tipoMultaAtraso || multa <= 0 || (tipoMultaAtraso === "percentual" && multa > 100))) {
     return NextResponse.json({ error: "Informe uma multa por atraso válida." }, { status: 400 });
+  }
+  if (jurosAtraso && (!tipoJurosAtraso || !frequenciaJurosAtraso || !Number.isFinite(jurosPorAtraso) || jurosPorAtraso <= 0 || (tipoJurosAtraso === "percentual" && jurosPorAtraso > 100))) {
+    return NextResponse.json({ error: "Informe os juros por atraso e sua frequência." }, { status: 400 });
   }
 
   // O cliente precisa existir E pertencer ao usuário logado.
@@ -101,6 +111,9 @@ export async function POST(req: NextRequest) {
       tipoEmprestimo,
       jurosAoMes: Number(jurosAoMes) || 0,
       jurosAtraso: Boolean(jurosAtraso),
+      tipoJurosAtraso: jurosAtraso ? tipoJurosAtraso : null,
+      valorJurosAtraso: jurosAtraso ? jurosPorAtraso : 0,
+      frequenciaJurosAtraso: jurosAtraso ? frequenciaJurosAtraso : null,
       multaAtraso: Boolean(multaAtraso),
       tipoMultaAtraso: multaAtraso ? tipoMultaAtraso : null,
       valorMultaAtraso: multaAtraso ? multa : 0,

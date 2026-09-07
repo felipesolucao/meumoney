@@ -36,6 +36,9 @@ function NovoContrato() {
   const [jurosAoMes, setJurosAoMes] = useState("0");
   const [numeroParcelas, setNumeroParcelas] = useState("1");
   const [jurosAtraso, setJurosAtraso] = useState(false);
+  const [tipoJurosAtraso, setTipoJurosAtraso] = useState<"fixo" | "percentual">("percentual");
+  const [valorJurosAtraso, setValorJurosAtraso] = useState("");
+  const [frequenciaJurosAtraso, setFrequenciaJurosAtraso] = useState<"diaria" | "semanal" | "mensal">("mensal");
   const [multaAtraso, setMultaAtraso] = useState(false);
   const [tipoMultaAtraso, setTipoMultaAtraso] = useState<"fixa" | "percentual">("fixa");
   const [valorMultaAtraso, setValorMultaAtraso] = useState("");
@@ -66,6 +69,7 @@ function NovoContrato() {
     if (!clienteId) return setErro("Selecione um cliente.");
     if (!valorNum) return setErro("Informe o valor do contrato.");
     if (temEntrada && (!entradaNum || entradaNum >= valorNum)) return setErro("Informe uma entrada menor que o valor do contrato.");
+    if (jurosAtraso && !(tipoJurosAtraso === "fixo" ? valorFormatadoParaNumero(valorJurosAtraso) : Number(valorJurosAtraso.replace(",", ".")))) return setErro("Informe o valor dos juros por atraso.");
     if (multaAtraso && !valorFormatadoParaNumero(valorMultaAtraso)) return setErro("Informe o valor da multa por atraso.");
     if (!parcelasNum) return setErro("Informe o número de parcelas.");
 
@@ -80,6 +84,9 @@ function NovoContrato() {
         tipoEmprestimo,
         jurosAoMes: jurosNum,
         jurosAtraso,
+        tipoJurosAtraso: jurosAtraso ? tipoJurosAtraso : undefined,
+        valorJurosAtraso: jurosAtraso ? (tipoJurosAtraso === "fixo" ? valorFormatadoParaNumero(valorJurosAtraso) : Number(valorJurosAtraso.replace(",", "."))) : undefined,
+        frequenciaJurosAtraso: jurosAtraso ? frequenciaJurosAtraso : undefined,
         multaAtraso,
         tipoMultaAtraso,
         valorMultaAtraso: tipoMultaAtraso === "fixa" ? valorFormatadoParaNumero(valorMultaAtraso) : Number(valorMultaAtraso.replace(",", ".")),
@@ -145,7 +152,7 @@ function NovoContrato() {
         </div>}
 
         <div>
-          <p className="text-xs font-semibold tracking-wide text-muted mb-2">TIPO DE EMPRÉSTIMO</p>
+          <p className="text-xs font-semibold tracking-wide text-muted mb-2">TIPO DE CONTRATO</p>
           <div className="grid grid-cols-2 gap-2">
             <BotaoToggle ativo={tipoEmprestimo === "fixo"} onClick={() => setTipoEmprestimo("fixo")}>
               Valor Fixo
@@ -179,7 +186,7 @@ function NovoContrato() {
         </div>
 
         <label className="card flex items-center justify-between cursor-pointer">
-          <span className="font-semibold">Cobrar juros em atraso</span>
+          <span><span className="font-semibold block">Cobrar juros em atraso</span><span className="text-xs text-muted">Defina a cobrança quando houver atraso</span></span>
           <input
             type="checkbox"
             checked={jurosAtraso}
@@ -187,6 +194,16 @@ function NovoContrato() {
             className="w-6 h-6 accent-primary"
           />
         </label>
+
+        {jurosAtraso && <div className="card space-y-4" style={{ background: "var(--color-primary-surface)" }}>
+          <p className="text-xs font-semibold tracking-wide text-muted">JUROS POR ATRASO</p>
+          <div className="grid grid-cols-2 gap-2">
+            <BotaoToggle ativo={tipoJurosAtraso === "percentual"} onClick={() => setTipoJurosAtraso("percentual")}>Percentual</BotaoToggle>
+            <BotaoToggle ativo={tipoJurosAtraso === "fixo"} onClick={() => setTipoJurosAtraso("fixo")}>Valor fixo</BotaoToggle>
+          </div>
+          {tipoJurosAtraso === "fixo" ? <CampoMoeda value={valorJurosAtraso} onChange={setValorJurosAtraso} /> : <input value={valorJurosAtraso} onChange={(e) => setValorJurosAtraso(e.target.value.replace(/[^0-9,]/g, ""))} inputMode="decimal" placeholder="Ex.: 2,5%" className="form-input" />}
+          <div><p className="text-xs font-semibold tracking-wide text-muted mb-2">FREQUÊNCIA DA COBRANÇA</p><div className="grid grid-cols-3 gap-2"><BotaoToggle ativo={frequenciaJurosAtraso === "diaria"} onClick={() => setFrequenciaJurosAtraso("diaria")}>Por dia</BotaoToggle><BotaoToggle ativo={frequenciaJurosAtraso === "semanal"} onClick={() => setFrequenciaJurosAtraso("semanal")}>Por semana</BotaoToggle><BotaoToggle ativo={frequenciaJurosAtraso === "mensal"} onClick={() => setFrequenciaJurosAtraso("mensal")}>Por mês</BotaoToggle></div></div>
+        </div>}
 
         <label className="card flex items-center justify-between cursor-pointer">
           <span><span className="font-semibold block">Multa por atraso</span><span className="text-xs text-muted">Aplicada uma vez na parcela vencida</span></span>

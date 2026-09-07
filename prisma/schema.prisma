@@ -186,6 +186,9 @@ model Contrato {
   tipoEmprestimo       TipoEmprestimo
   jurosAoMes           Decimal        @default(0) @db.Decimal(6, 3) // % a.m.
   jurosAtraso          Boolean        @default(false)
+  tipoJurosAtraso      String?
+  valorJurosAtraso     Decimal        @default(0) @db.Decimal(12, 2)
+  frequenciaJurosAtraso String?
   multaAtraso          Boolean        @default(false)
   tipoMultaAtraso      String?
   valorMultaAtraso     Decimal        @default(0) @db.Decimal(12, 2)
