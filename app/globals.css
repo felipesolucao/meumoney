@@ -288,7 +288,9 @@ h6 {
 /* Cabeçalho compartilhado das telas. Como todas as páginas já usam esta
    classe, ela funciona como uma única barra fixa sem duplicar componentes. */
 .header-gradient {
-  background: var(--gradient-header);
+  /* A barra fixa precisa ser opaca: acompanha o fundo do tema atual e não
+     deixa o conteúdo rolado aparecer através dela. */
+  background: var(--color-background);
   position: sticky;
   top: 0;
   z-index: 40;
@@ -298,6 +300,7 @@ h6 {
   border-bottom-left-radius: var(--radius-xl);
   border-bottom-right-radius: var(--radius-xl);
   box-shadow: 0 5px 14px -12px rgb(var(--shadow-color) / 0.55);
+  border-bottom: 1px solid var(--color-border);
   overflow: hidden;
   isolation: isolate;
 }

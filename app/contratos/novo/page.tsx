@@ -114,7 +114,7 @@ function NovoContrato() {
         <h1 className="text-2xl font-bold">Novo contrato</h1>
       </div>
 
-      <div className="px-5 mt-6 space-y-5">
+      <div className="px-5 mt-6 space-y-5 overflow-x-hidden">
         <div>
           <p className="text-xs font-semibold tracking-wide text-muted mb-2">CLIENTE</p>
           <select
@@ -141,8 +141,8 @@ function NovoContrato() {
           <CampoMoeda value={valorEmprestado} onChange={setValorEmprestado} />
         </div>
 
-        <label className="card flex items-center justify-between cursor-pointer">
-          <span><span className="font-semibold block">Possui entrada</span><span className="text-xs text-muted">Será a 1ª parcela do contrato</span></span>
+        <label className="card flex min-w-0 items-center justify-between gap-3 cursor-pointer">
+          <span className="min-w-0"><span className="font-semibold block">Possui entrada</span><span className="text-xs text-muted block truncate">Será a 1ª parcela do contrato</span></span>
           <input type="checkbox" checked={temEntrada} onChange={(e) => setTemEntrada(e.target.checked)} className="w-6 h-6 accent-primary" />
         </label>
 
@@ -164,7 +164,7 @@ function NovoContrato() {
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <div>
+          <div className="min-w-0">
             <p className="text-xs font-semibold tracking-wide text-muted mb-2">JUROS % A.M.</p>
             <input
               value={jurosAoMes}
@@ -174,7 +174,7 @@ function NovoContrato() {
               className="form-input disabled:bg-muted-bg"
             />
           </div>
-          <div>
+          <div className="min-w-0">
             <p className="text-xs font-semibold tracking-wide text-muted mb-2">TOTAL DE PARCELAS</p>
             <input
               value={numeroParcelas}
@@ -185,8 +185,8 @@ function NovoContrato() {
           </div>
         </div>
 
-        <label className="card flex items-center justify-between cursor-pointer">
-          <span><span className="font-semibold block">Cobrar juros em atraso</span><span className="text-xs text-muted">Defina a cobrança quando houver atraso</span></span>
+        <label className="card flex min-w-0 items-center justify-between gap-3 cursor-pointer">
+          <span className="min-w-0"><span className="font-semibold block">Cobrar juros em atraso</span><span className="text-xs text-muted block truncate">Defina a cobrança quando houver atraso</span></span>
           <input
             type="checkbox"
             checked={jurosAtraso}
@@ -202,11 +202,11 @@ function NovoContrato() {
             <BotaoToggle ativo={tipoJurosAtraso === "fixo"} onClick={() => setTipoJurosAtraso("fixo")}>Valor fixo</BotaoToggle>
           </div>
           {tipoJurosAtraso === "fixo" ? <CampoMoeda value={valorJurosAtraso} onChange={setValorJurosAtraso} /> : <input value={valorJurosAtraso} onChange={(e) => setValorJurosAtraso(e.target.value.replace(/[^0-9,]/g, ""))} inputMode="decimal" placeholder="Ex.: 2,5%" className="form-input" />}
-          <div><p className="text-xs font-semibold tracking-wide text-muted mb-2">FREQUÊNCIA DA COBRANÇA</p><div className="grid grid-cols-3 gap-2"><BotaoToggle ativo={frequenciaJurosAtraso === "diaria"} onClick={() => setFrequenciaJurosAtraso("diaria")}>Por dia</BotaoToggle><BotaoToggle ativo={frequenciaJurosAtraso === "semanal"} onClick={() => setFrequenciaJurosAtraso("semanal")}>Por semana</BotaoToggle><BotaoToggle ativo={frequenciaJurosAtraso === "mensal"} onClick={() => setFrequenciaJurosAtraso("mensal")}>Por mês</BotaoToggle></div></div>
+          <div><p className="text-xs font-semibold tracking-wide text-muted mb-2">FREQUÊNCIA DA COBRANÇA</p><div className="grid grid-cols-1 min-[390px]:grid-cols-3 gap-2"><BotaoToggle ativo={frequenciaJurosAtraso === "diaria"} onClick={() => setFrequenciaJurosAtraso("diaria")}>Por dia</BotaoToggle><BotaoToggle ativo={frequenciaJurosAtraso === "semanal"} onClick={() => setFrequenciaJurosAtraso("semanal")}>Por semana</BotaoToggle><BotaoToggle ativo={frequenciaJurosAtraso === "mensal"} onClick={() => setFrequenciaJurosAtraso("mensal")}>Por mês</BotaoToggle></div></div>
         </div>}
 
-        <label className="card flex items-center justify-between cursor-pointer">
-          <span><span className="font-semibold block">Multa por atraso</span><span className="text-xs text-muted">Aplicada uma vez na parcela vencida</span></span>
+        <label className="card flex min-w-0 items-center justify-between gap-3 cursor-pointer">
+          <span className="min-w-0"><span className="font-semibold block">Multa por atraso</span><span className="text-xs text-muted block truncate">Aplicada uma vez na parcela vencida</span></span>
           <input type="checkbox" checked={multaAtraso} onChange={(e) => setMultaAtraso(e.target.checked)} className="w-6 h-6 accent-primary" />
         </label>
 
@@ -293,7 +293,7 @@ function BotaoToggle({
   children: React.ReactNode;
 }) {
   return (
-    <button type="button" onClick={onClick} className={ativo ? "btn-primary !py-3.5" : "btn-outline !py-3.5"}>
+    <button type="button" onClick={onClick} className={ativo ? "btn-primary min-w-0 !px-3 !py-3.5 leading-tight" : "btn-outline min-w-0 !px-3 !py-3.5 leading-tight"}>
       {children}
     </button>
   );
