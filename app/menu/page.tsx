@@ -18,6 +18,7 @@ import {
   IconUsers,
   IconTag,
   IconBuilding,
+  IconChat,
 } from "../../components/Icons";
 
 // "Empréstimos" e "Clientes" saíram do rodapé (BottomNav) para abrir espaço
@@ -35,6 +36,7 @@ const ITENS = [
   { href: "/parcelas", icon: IconCalendar, label: "Parcelas", desc: "Ver todas as parcelas por período" },
   { href: "/clientes/novo", icon: IconUser, label: "Novo cliente", desc: "Cadastrar um novo cliente" },
   { href: "/contratos/novo", icon: IconDocument, label: "Novo contrato", desc: "Criar um novo empréstimo" },
+  { href: "/modelos-cobranca", icon: IconChat, label: "Modelos de cobrança", desc: "Personalizar mensagens de cobrança" },
   { href: "/relatorios", icon: IconChart, label: "Relatórios", desc: "Visão geral da carteira" },
 ];
 

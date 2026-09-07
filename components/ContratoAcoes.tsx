@@ -1,44 +1,31 @@
 // ============================================================================
-// COMPONENTE: Ações do contrato (enviar via WhatsApp, editar, excluir)
+// COMPONENTE: Ações do contrato (enviar cobrança, editar, excluir)
 // ============================================================================
 "use client";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { formatarMoeda, formatarData } from "../lib/calculos";
 import { useToast } from "./ToastProvider";
 import { IconSend, IconTrash, IconHistory } from "./Icons";
+import EnviarCobrancaModal from "./EnviarCobrancaModal";
 
 export default function ContratoAcoes({
   contratoId,
-  codigo,
   clienteNome,
   clienteTelefone,
-  valorTotal,
-  numeroParcelas,
-  primeiraParcelaData,
+  parcelas,
 }: {
   contratoId: string;
-  codigo: string;
   clienteNome: string;
   clienteTelefone: string | null;
-  valorTotal: string;
-  numeroParcelas: number;
-  primeiraParcelaData: string;
+  parcelas: { numero: number; valor: string; vencimento: string; status: string }[];
 }) {
   const router = useRouter();
   const showToast = useToast();
   const [excluindo, setExcluindo] = useState(false);
 
-  function enviarWhatsApp() {
-    const mensagem = `Olá, ${clienteNome}! Segue o resumo do contrato ${codigo}: valor total ${formatarMoeda(
-      valorTotal
-    )} em ${numeroParcelas}x, primeira parcela em ${formatarData(primeiraParcelaData)}.`;
-    const numero = (clienteTelefone || "").replace(/\D/g, "");
-    const url = `https://wa.me/${numero ? `55${numero}` : ""}?text=${encodeURIComponent(mensagem)}`;
-    window.open(url, "_blank");
-  }
+  const [modalAberto, setModalAberto] = useState(false);
 
   async function excluir() {
     if (!window.confirm("Tem certeza que deseja excluir este contrato? Essa ação não pode ser desfeita.")) return;
@@ -55,8 +42,8 @@ export default function ContratoAcoes({
 
   return (
     <div className="space-y-3">
-      <button onClick={enviarWhatsApp} className="btn-primary flex items-center justify-center gap-2">
-        <IconSend size={18} /> Enviar contrato via WhatsApp
+      <button onClick={() => setModalAberto(true)} className="btn-primary flex items-center justify-center gap-2">
+        <IconSend size={18} /> Enviar cobrança
       </button>
       <div className="grid grid-cols-2 gap-3">
         <button
@@ -74,6 +61,7 @@ export default function ContratoAcoes({
           <IconHistory size={16} /> Histórico
         </Link>
       </div>
+      <EnviarCobrancaModal aberto={modalAberto} onFechar={() => setModalAberto(false)} clienteNome={clienteNome} clienteTelefone={clienteTelefone} parcelas={parcelas} />
     </div>
   );
 }

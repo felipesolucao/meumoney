@@ -62,8 +62,25 @@ model Usuario {
   // --- Cartões de crédito (NOVO) --------------------------------------------
   cartoesCredito         CartaoCredito[]
   comprasCartao          CompraCartao[]
+  modelosCobranca        CobrancaModelo[]
 
   @@map("usuarios")
+}
+
+// Textos de cobrança personalizáveis. Cada usuário tem um registro para cada
+// tipo; os padrões são criados automaticamente na primeira abertura da tela.
+model CobrancaModelo {
+  id        String   @id @default(cuid())
+  tipo      String
+  mensagem  String   @db.Text
+  criadoEm  DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  usuarioId String
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@unique([usuarioId, tipo])
+  @@map("modelos_cobranca")
 }
 
 // ----------------------------------------------------------------------------
