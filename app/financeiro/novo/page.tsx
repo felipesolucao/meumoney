@@ -14,6 +14,13 @@
 // A categoria usa um bottom sheet (SeletorCategoriaModal) que também permite
 // criar (com emoji à escolha), renomear e excluir categorias sem sair da tela
 // — a mesma tela de gerenciamento completa fica em /financeiro/categorias.
+//
+// NOVO: despesa ganhou uma segunda "forma de pagamento" — Cartão de crédito,
+// além de Conta/Carteira. Escolher cartão troca o destino do POST: em vez de
+// /api/lancamentos (cria um Lancamento), vira /api/compras-cartao (cria uma
+// CompraCartao, que só soma na fatura do ciclo certo — ver lib/cartao.ts).
+// Pode chegar pré-selecionado via "?cartaoId=xxx" (usado pelo botão "Nova
+// compra" da tela de extrato do cartão, /financeiro/cartoes/[id]).
 // ============================================================================
 "use client";
 
@@ -39,6 +46,7 @@ import {
   IconPlus,
   IconChevronDown,
   IconDocument,
+  IconCreditCard,
 } from "../../../components/Icons";
 
 // Opção extra no seletor do topo — "Empréstimo" não é um Lancamento, é um
@@ -47,8 +55,13 @@ import {
 // formulário) — escolher "Empréstimo" só navega para a tela de novo contrato.
 type TipoTransacao = TipoLancamento | "emprestimo";
 
+// NOVO: forma como a despesa é paga — só importa quando tipo === "despesa"
+// (receita sempre entra numa Conta/Carteira, nunca num cartão de crédito).
+type FormaPagamento = "conta" | "cartao";
+
 type Categoria = { id: string; nome: string; icone: string; tipo: TipoLancamento };
 type Conta = { id: string; nome: string; icone: string };
+type Cartao = { id: string; nome: string; icone: string };
 
 function isoHoje(offsetDias = 0) {
   const d = new Date();
@@ -57,7 +70,7 @@ function isoHoje(offsetDias = 0) {
 }
 
 // ============================================================================
-// MÁSCARA DE MOEDA (input "Valor") — NOVO
+// MÁSCARA DE MOEDA (input "Valor")
 // ----------------------------------------------------------------------------
 // Formata enquanto digita, no padrão real brasileiro (ex: "2.599,51"), com os
 // centavos sempre automáticos: cada dígito novo "empurra" os anteriores pra
@@ -99,9 +112,13 @@ function NovoLancamentoConteudo() {
   // a data já chega pronta via "?data=aaaa-mm-dd" — inclusive para meses
   // passados ou futuros, sem precisar trocar manualmente depois de abrir.
   const dataInicial = searchParams.get("data") || isoHoje();
+  // NOVO: chegando de "Nova compra" no extrato de um cartão (ver
+  // /financeiro/cartoes/[id]) — já abre na aba Cartão de crédito, com esse
+  // cartão pré-selecionado.
+  const cartaoIdInicial = searchParams.get("cartaoId") || "";
 
   // --- Campos principais ----------------------------------------------------
-  const [tipo, setTipo] = useState<TipoLancamento>("receita");
+  const [tipo, setTipo] = useState<TipoLancamento>(cartaoIdInicial ? "despesa" : "receita");
   const [origem, setOrigem] = useState<OrigemFinanceira>("pessoal");
   const [valor, setValor] = useState("");
   const [descricao, setDescricao] = useState("");
@@ -118,6 +135,11 @@ function NovoLancamentoConteudo() {
   const [categoriaModalAberta, setCategoriaModalAberta] = useState(false);
   const [contas, setContas] = useState<Conta[]>([]);
   const [contaId, setContaId] = useState("");
+
+  // --- Forma de pagamento da despesa: Conta/Carteira ou Cartão (NOVO) --------
+  const [formaPagamento, setFormaPagamento] = useState<FormaPagamento>(cartaoIdInicial ? "cartao" : "conta");
+  const [cartoes, setCartoes] = useState<Cartao[]>([]);
+  const [cartaoId, setCartaoId] = useState(cartaoIdInicial);
 
   // --- Recorrência ------------------------------------------------------------
   const [recorrente, setRecorrente] = useState(false);
@@ -149,6 +171,24 @@ function NovoLancamentoConteudo() {
         setContaId((atual) => atual || data[0]?.id || "");
       });
   }, []);
+
+  // NOVO: carrega os cartões uma vez (independe do tipo receita/despesa —
+  // só é usado quando tipo === "despesa" e formaPagamento === "cartao").
+  useEffect(() => {
+    fetch("/api/cartoes")
+      .then((r) => r.json())
+      .then((data: Cartao[]) => {
+        setCartoes(data);
+        setCartaoId((atual) => atual || data[0]?.id || "");
+      });
+  }, []);
+
+  // NOVO: receita nunca é paga no cartão de crédito — se o usuário estava na
+  // aba Cartão e trocou pra "Receita" no seletor do topo, volta pra
+  // Conta/Carteira sozinho, sem deixar o formulário num estado impossível.
+  useEffect(() => {
+    if (tipo !== "despesa") setFormaPagamento("conta");
+  }, [tipo]);
 
   // Handler do input de Valor (mascarado) — ver comentário completo em
   // digitosParaValorFormatado(), acima.
@@ -193,6 +233,38 @@ function NovoLancamentoConteudo() {
     const valorNum = valorFormatadoParaNumero(valor);
     if (!valorNum) return setErro("Informe o valor.");
     if (!descricao.trim()) return setErro("Informe uma descrição.");
+
+    // --- NOVO: compra no cartão de crédito -> POST /api/compras-cartao ------
+    // Fluxo inteiramente separado do Lancamento normal: não cria um
+    // Lancamento agora, só soma na fatura do ciclo certo (ver lib/cartao.ts).
+    if (tipo === "despesa" && formaPagamento === "cartao") {
+      if (!cartaoId) return setErro("Escolha um cartão.");
+      setErro("");
+      setSalvando(true);
+      const res = await fetch("/api/compras-cartao", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          cartaoId,
+          descricao,
+          valor: valorNum,
+          dataCompra: dataVencimento,
+          categoriaId: categoriaId || undefined,
+          observacoes: observacoes || undefined,
+        }),
+      });
+      setSalvando(false);
+      if (res.ok) {
+        showToast("Compra lançada no cartão!");
+        router.push(`/financeiro/cartoes/${cartaoId}`);
+      } else {
+        const data = await res.json();
+        setErro(data.error || "Não foi possível lançar a compra.");
+        showToast(data.error || "Não foi possível lançar a compra.", "erro");
+      }
+      return;
+    }
+
     if (recorrente && tipoFim === "parcelas" && (!numeroParcelas || Number(numeroParcelas) < 1)) {
       return setErro("Informe a quantidade de parcelas.");
     }
@@ -331,21 +403,29 @@ function NovoLancamentoConteudo() {
         {/* ============================================================ */}
         <div className="card space-y-5">
           {/* --- Pessoal / Empresarial --------------------------------------------- */}
-          <div>
-            <p className="text-xs font-semibold tracking-wide text-muted mb-2">ORIGEM</p>
-            <div className="grid grid-cols-2 gap-2">
-              <BotaoToggle ativo={origem === "pessoal"} onClick={() => setOrigem("pessoal")}>
-                <span className="inline-flex items-center gap-2"><IconUser size={16} /> Pessoal</span>
-              </BotaoToggle>
-              <BotaoToggle ativo={origem === "empresarial"} onClick={() => setOrigem("empresarial")}>
-                <span className="inline-flex items-center gap-2"><IconBuilding size={16} /> Empresarial</span>
-              </BotaoToggle>
+          {/* NOVO: escondida na compra no cartão — o cartão já tem um "uso"
+              (pessoal/empresarial) próprio, definido no cadastro dele (ver
+              /financeiro/contas), herdado pela fatura quando ela fecha e vira
+              um Lancamento (ver lib/cartao.ts). */}
+          {formaPagamento !== "cartao" && (
+            <div>
+              <p className="text-xs font-semibold tracking-wide text-muted mb-2">ORIGEM</p>
+              <div className="grid grid-cols-2 gap-2">
+                <BotaoToggle ativo={origem === "pessoal"} onClick={() => setOrigem("pessoal")}>
+                  <span className="inline-flex items-center gap-2"><IconUser size={16} /> Pessoal</span>
+                </BotaoToggle>
+                <BotaoToggle ativo={origem === "empresarial"} onClick={() => setOrigem("empresarial")}>
+                  <span className="inline-flex items-center gap-2"><IconBuilding size={16} /> Empresarial</span>
+                </BotaoToggle>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* --- Data ------------------------------------------------------------- */}
           <div>
-            <p className="text-xs font-semibold tracking-wide text-muted mb-2">DATA</p>
+            <p className="text-xs font-semibold tracking-wide text-muted mb-2">
+              {formaPagamento === "cartao" ? "DATA DA COMPRA" : "DATA"}
+            </p>
             <div className="grid grid-cols-3 gap-2">
               <BotaoToggle ativo={dataAtalho === "hoje"} onClick={() => escolherAtalhoData("hoje")}>
                 Hoje
@@ -396,112 +476,164 @@ function NovoLancamentoConteudo() {
             </button>
           </div>
 
-          {/* --- Conta/Carteira ------------------------------------------------------ */}
+          {/* --- Forma de pagamento: Conta/Carteira ou Cartão de crédito (NOVO) ---- */}
           <div>
-            <p className="text-xs font-semibold tracking-wide text-muted mb-2">CONTA / CARTEIRA</p>
-            <div className="flex gap-2">
-              <select
-                value={contaId}
-                onChange={(e) => setContaId(e.target.value)}
-                className="flex-1 rounded-md border border-border px-4 py-3.5 outline-none focus:border-primary bg-card"
-              >
-                {contas.length === 0 && <option value="">Nenhuma conta ainda</option>}
-                {contas.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.icone} {c.nome}
-                  </option>
-                ))}
-              </select>
-              <button type="button" onClick={criarConta} className="w-14 rounded-md border border-border flex items-center justify-center text-muted shrink-0">
-                <IconPlus size={18} />
-              </button>
-            </div>
+            <p className="text-xs font-semibold tracking-wide text-muted mb-2">FORMA DE PAGAMENTO</p>
+
+            {/* A aba só aparece pra despesa — não existe "receber no cartão". */}
+            {tipo === "despesa" && (
+              <div className="grid grid-cols-2 gap-2 mb-2">
+                <BotaoToggle ativo={formaPagamento === "conta"} onClick={() => setFormaPagamento("conta")}>
+                  Conta / Carteira
+                </BotaoToggle>
+                <BotaoToggle ativo={formaPagamento === "cartao"} onClick={() => setFormaPagamento("cartao")}>
+                  <span className="inline-flex items-center gap-2"><IconCreditCard size={16} /> Cartão de crédito</span>
+                </BotaoToggle>
+              </div>
+            )}
+
+            {formaPagamento === "cartao" ? (
+              cartoes.length === 0 ? (
+                <div className="rounded-md border border-border px-4 py-3.5 bg-card text-sm text-muted">
+                  Nenhum cartão cadastrado ainda.{" "}
+                  <Link href="/financeiro/contas" className="text-primary font-semibold">
+                    Cadastrar um cartão
+                  </Link>
+                </div>
+              ) : (
+                <select
+                  value={cartaoId}
+                  onChange={(e) => setCartaoId(e.target.value)}
+                  className="w-full rounded-md border border-border px-4 py-3.5 outline-none focus:border-primary bg-card"
+                >
+                  {cartoes.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.icone} {c.nome}
+                    </option>
+                  ))}
+                </select>
+              )
+            ) : (
+              <div className="flex gap-2">
+                <select
+                  value={contaId}
+                  onChange={(e) => setContaId(e.target.value)}
+                  className="flex-1 rounded-md border border-border px-4 py-3.5 outline-none focus:border-primary bg-card"
+                >
+                  {contas.length === 0 && <option value="">Nenhuma conta ainda</option>}
+                  {contas.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.icone} {c.nome}
+                    </option>
+                  ))}
+                </select>
+                <button type="button" onClick={criarConta} className="w-14 rounded-md border border-border flex items-center justify-center text-muted shrink-0">
+                  <IconPlus size={18} />
+                </button>
+              </div>
+            )}
           </div>
 
           {/* --- Status: recebido/pago já ou pendente --------------------------------- */}
-          <label className="flex items-center justify-between cursor-pointer pt-1">
-            <span className="font-semibold">{tipo === "receita" ? "Já recebido" : "Já pago"}</span>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={pago}
-              data-on={pago}
-              onClick={() => setPago(!pago)}
-              className="switch"
-            >
-              <span className="switch-knob" />
-            </button>
-          </label>
+          {/* NOVO: escondido na compra no cartão — ela não tem "já pago"/"pendente"
+              isolado; ela entra automaticamente em "Contas a pagar" quando a
+              fatura inteira fecha (ver lib/cartao.ts). */}
+          {formaPagamento !== "cartao" ? (
+            <label className="flex items-center justify-between cursor-pointer pt-1">
+              <span className="font-semibold">{tipo === "receita" ? "Já recebido" : "Já pago"}</span>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={pago}
+                data-on={pago}
+                onClick={() => setPago(!pago)}
+                className="switch"
+              >
+                <span className="switch-knob" />
+              </button>
+            </label>
+          ) : (
+            <p className="text-xs text-muted pt-1">
+              Esta compra entra na fatura do cartão. Quando a fatura fechar, ela vira uma despesa em "Contas a pagar" automaticamente.
+            </p>
+          )}
         </div>
 
         {/* --- Recorrência: única, fixa sem fim, com data fim, ou parcelada ---------- */}
-        <div>
-          <p className="text-xs font-semibold tracking-wide text-muted mb-2">REPETIÇÃO</p>
-          <div className="grid grid-cols-2 gap-2">
-            <BotaoToggle ativo={!recorrente} onClick={() => setRecorrente(false)}>
-              Lançamento único
-            </BotaoToggle>
-            <BotaoToggle ativo={recorrente} onClick={() => setRecorrente(true)}>
-              <span className="inline-flex items-center gap-2"><IconRepeat size={16} /> Recorrente</span>
-            </BotaoToggle>
-          </div>
-        </div>
-
-        {recorrente && (
-          <div className="card space-y-4" style={{ background: "var(--color-background)" }}>
+        {/* NOVO: escondida na compra no cartão — parcelamento de uma compra em N
+            faturas futuras ainda não existe nesta versão (toda compra no
+            cartão entra inteira na fatura do ciclo em que foi feita). */}
+        {formaPagamento !== "cartao" && (
+          <>
             <div>
-              <p className="text-xs font-semibold tracking-wide text-muted mb-2">FREQUÊNCIA</p>
-              <div className="grid grid-cols-3 gap-2">
-                {(Object.keys(LABEL_PERIODICIDADE) as PeriodicidadeLancamento[]).map((p) => (
-                  <BotaoToggle key={p} ativo={periodicidade === p} onClick={() => setPeriodicidade(p)}>
-                    {LABEL_PERIODICIDADE[p]}
-                  </BotaoToggle>
-                ))}
+              <p className="text-xs font-semibold tracking-wide text-muted mb-2">REPETIÇÃO</p>
+              <div className="grid grid-cols-2 gap-2">
+                <BotaoToggle ativo={!recorrente} onClick={() => setRecorrente(false)}>
+                  Lançamento único
+                </BotaoToggle>
+                <BotaoToggle ativo={recorrente} onClick={() => setRecorrente(true)}>
+                  <span className="inline-flex items-center gap-2"><IconRepeat size={16} /> Recorrente</span>
+                </BotaoToggle>
               </div>
             </div>
 
-            <div>
-              <p className="text-xs font-semibold tracking-wide text-muted mb-2">DURAÇÃO</p>
-              <div className="space-y-2">
-                {(Object.keys(LABEL_TIPO_FIM) as TipoFimRecorrencia[]).map((opt) => (
-                  <label key={opt} className="flex items-center gap-3 bg-card rounded-md px-4 py-3 cursor-pointer border border-border">
+            {recorrente && (
+              <div className="card space-y-4" style={{ background: "var(--color-background)" }}>
+                <div>
+                  <p className="text-xs font-semibold tracking-wide text-muted mb-2">FREQUÊNCIA</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {(Object.keys(LABEL_PERIODICIDADE) as PeriodicidadeLancamento[]).map((p) => (
+                      <BotaoToggle key={p} ativo={periodicidade === p} onClick={() => setPeriodicidade(p)}>
+                        {LABEL_PERIODICIDADE[p]}
+                      </BotaoToggle>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-xs font-semibold tracking-wide text-muted mb-2">DURAÇÃO</p>
+                  <div className="space-y-2">
+                    {(Object.keys(LABEL_TIPO_FIM) as TipoFimRecorrencia[]).map((opt) => (
+                      <label key={opt} className="flex items-center gap-3 bg-card rounded-md px-4 py-3 cursor-pointer border border-border">
+                        <input
+                          type="radio"
+                          name="tipoFim"
+                          checked={tipoFim === opt}
+                          onChange={() => setTipoFim(opt)}
+                          className="w-5 h-5 accent-primary"
+                        />
+                        <span className="font-medium text-sm">{LABEL_TIPO_FIM[opt]}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                {tipoFim === "data_fim" && (
+                  <div>
+                    <p className="text-xs font-semibold tracking-wide text-muted mb-2">REPETE ATÉ</p>
                     <input
-                      type="radio"
-                      name="tipoFim"
-                      checked={tipoFim === opt}
-                      onChange={() => setTipoFim(opt)}
-                      className="w-5 h-5 accent-primary"
+                      type="date"
+                      value={dataFim}
+                      onChange={(e) => setDataFim(e.target.value)}
+                      className="w-full rounded-md border border-border px-4 py-3.5 outline-none focus:border-primary bg-card"
                     />
-                    <span className="font-medium text-sm">{LABEL_TIPO_FIM[opt]}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
+                  </div>
+                )}
 
-            {tipoFim === "data_fim" && (
-              <div>
-                <p className="text-xs font-semibold tracking-wide text-muted mb-2">REPETE ATÉ</p>
-                <input
-                  type="date"
-                  value={dataFim}
-                  onChange={(e) => setDataFim(e.target.value)}
-                  className="w-full rounded-md border border-border px-4 py-3.5 outline-none focus:border-primary bg-card"
-                />
+                {tipoFim === "parcelas" && (
+                  <div>
+                    <p className="text-xs font-semibold tracking-wide text-muted mb-2">NÚMERO DE PARCELAS</p>
+                    <input
+                      value={numeroParcelas}
+                      onChange={(e) => setNumeroParcelas(e.target.value)}
+                      inputMode="numeric"
+                      className="w-full rounded-md border border-border px-4 py-3.5 outline-none focus:border-primary bg-card"
+                    />
+                  </div>
+                )}
               </div>
             )}
-
-            {tipoFim === "parcelas" && (
-              <div>
-                <p className="text-xs font-semibold tracking-wide text-muted mb-2">NÚMERO DE PARCELAS</p>
-                <input
-                  value={numeroParcelas}
-                  onChange={(e) => setNumeroParcelas(e.target.value)}
-                  inputMode="numeric"
-                  className="w-full rounded-md border border-border px-4 py-3.5 outline-none focus:border-primary bg-card"
-                />
-              </div>
-            )}
-          </div>
+          </>
         )}
 
         {/* --- Observações ------------------------------------------------------------ */}
@@ -519,7 +651,11 @@ function NovoLancamentoConteudo() {
         {erro && <p className="text-error text-sm font-medium">{erro}</p>}
 
         <button onClick={salvar} disabled={salvando} className="btn-primary">
-          {salvando ? "Salvando..." : `Salvar ${tipo === "receita" ? "receita" : "despesa"}`}
+          {salvando
+            ? "Salvando..."
+            : formaPagamento === "cartao"
+            ? "Salvar compra no cartão"
+            : `Salvar ${tipo === "receita" ? "receita" : "despesa"}`}
         </button>
       </div>
 

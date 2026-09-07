@@ -9,6 +9,16 @@
 // Fica todo autocontido: o pai só passa a lista de categorias e recebe de
 // volta a lista atualizada (onCategoriasAtualizadas) + a nova seleção
 // (onSelecionar) — sem precisar saber como o CRUD funciona por baixo.
+//
+// BUG CORRIGIDO: o botão "Nova categoria" (fim da lista, dentro do sheet)
+// ficava escondido atrás do menu flutuante inferior (BottomNav). Os dois
+// usavam "z-50" — como o BottomNav é renderizado DEPOIS deste componente no
+// RootLayout (ver app/layout.tsx), ele "ganhava" a disputa de empilhamento e
+// cobria o sheet. Correção: o sheet passa a usar z-[60] (estritamente maior
+// que o z-50 do menu), garantindo que o bottom sheet SEMPRE fique por cima —
+// que é o comportamento esperado de qualquer bottom sheet. Também somamos
+// env(safe-area-inset-bottom) no padding do miolo rolável, pra o botão nunca
+// ficar colado (ou tampado) no home indicator do iPhone.
 // ============================================================================
 "use client";
 
@@ -144,7 +154,9 @@ export default function SeletorCategoriaModal({
   const tituloForm = modo === "criar" ? "Nova categoria" : "Editar categoria";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center">
+    // BUG CORRIGIDO: z-50 -> z-[60], estritamente acima do BottomNav (z-50) —
+    // ver comentário completo no topo do arquivo.
+    <div className="fixed inset-0 z-[60] flex items-end justify-center">
       {/* Fundo escurecido — toca fora do sheet pra fechar */}
       <div
         className="absolute inset-0"
@@ -169,7 +181,11 @@ export default function SeletorCategoriaModal({
           </button>
         </div>
 
-        <div className="overflow-y-auto px-5 pb-6">
+        {/* BUG CORRIGIDO: pb-6 -> pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))]
+            — o sheet já sobe acima do menu flutuante (z-[60] acima), mas em
+            iPhones com home indicator o botão "Nova categoria" ainda ficava
+            colado na borda física da tela sem esse respiro extra. */}
+        <div className="overflow-y-auto px-5 pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))]">
           {modo === "lista" && (
             <>
               {categorias.length === 0 && (
@@ -183,7 +199,7 @@ export default function SeletorCategoriaModal({
                         className="card !py-3 flex items-center justify-between gap-3"
                         style={{ background: "var(--color-error-subtle)" }}
                       >
-                        <span className="text-sm font-medium text-error">Excluir “{cat.nome}”?</span>
+                        <span className="text-sm font-medium text-error">Excluir "{cat.nome}"?</span>
                         <div className="flex gap-2 shrink-0">
                           <button
                             type="button"

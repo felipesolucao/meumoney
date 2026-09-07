@@ -9,15 +9,26 @@
 // Existe para permitir que a tela principal do Financeiro (app/financeiro)
 // e o resumo do mês na Início (components/ResumoMesInicio) naveguem entre
 // meses no cliente sem precisar recarregar a página inteira a cada troca.
+//
+// NOVO: chama fecharFaturasVencidas() antes de somar — se algum cartão tem
+// uma fatura cuja data de fechamento já passou, ela vira um Lancamento
+// (despesa) na hora, ANTES da soma do mês rodar. Sem isso, a fatura só
+// apareceria na soma na próxima vez que alguém abrisse /financeiro/cartoes.
+// Essa fatura já entra corretamente no filtro por carteira logo abaixo,
+// porque o filtro olha a carteira DA CONTA do lançamento, e a fatura nasce
+// com a Conta que o cartão está vinculado (ver lib/cartao.ts).
 // ============================================================================
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "../../../../lib/prisma";
 import { obterSessao } from "../../../../lib/auth";
 import { statusEfetivoLancamento } from "../../../../lib/financeiro";
+import { fecharFaturasVencidas } from "../../../../lib/cartao";
 
 export async function GET(req: NextRequest) {
   const sessao = await obterSessao();
   if (!sessao) return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
+
+  await fecharFaturasVencidas(sessao.id);
 
   const params = req.nextUrl.searchParams;
   const deParam = params.get("de");

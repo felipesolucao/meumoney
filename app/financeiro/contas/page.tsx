@@ -11,16 +11,29 @@
 // na tela (saldoAtual) é sempre inicial + lançamentos pagos, recalculado no
 // servidor (/api/financeiro/contas-resumo), nunca gravado direto. Isso evita
 // a conta ficar "descolada" do extrato de lançamentos depois de um ajuste.
+//
+// Cada conta também pode ser vinculada a uma Carteira (agrupador — Pessoal,
+// Empresa etc., ver components/CarteirasInicio.tsx e model Carteira) direto
+// no ContaFormulario abaixo.
+//
+// NOVO: seção "Cartões de crédito" logo abaixo — criar/editar/excluir vários
+// cartões, cada um vinculado a uma Conta desta lista (quem paga a fatura).
+// Cada cartão mostra o valor da fatura ATUAL e é um link para o extrato
+// completo (/financeiro/cartoes/[id], com histórico por mês). Ver
+// lib/cartao.ts para a lógica de fechamento de fatura.
 // ============================================================================
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { formatarMoeda } from "../../../lib/financeiro";
+import type { OrigemFinanceira } from "../../../lib/financeiro";
 import CardSaldo from "../../../components/CardSaldo";
 import BotaoVoltar from "../../../components/BotaoVoltar";
 import ContaFormulario from "../../../components/ContaFormulario";
+import CartaoFormulario from "../../../components/CartaoFormulario";
 import { useToast } from "../../../components/ToastProvider";
-import { IconPlus, IconEdit, IconTrash } from "../../../components/Icons";
+import { IconPlus, IconEdit, IconTrash, IconCreditCard } from "../../../components/Icons";
 
 type Conta = {
   id: string;
@@ -34,9 +47,29 @@ type Carteira = { id: string; nome: string };
 
 type Resumo = { contas: Conta[]; totalGeral: number };
 
+type FaturaResumo = {
+  valorTotal: string;
+  status: "aberta" | "fechada" | "paga";
+};
+
+type CartaoCredito = {
+  id: string;
+  nome: string;
+  icone: string;
+  bandeira: string | null;
+  limite: string | null;
+  diaFechamento: number;
+  diaVencimento: number;
+  origem: OrigemFinanceira;
+  contaId: string;
+  conta: { id: string; nome: string; icone: string };
+  faturaAtual: FaturaResumo | null;
+};
+
 export default function ContasPage() {
   const showToast = useToast();
 
+  // --- Contas/carteiras -----------------------------------------------------
   const [resumo, setResumo] = useState<Resumo | null>(null);
   const [carregando, setCarregando] = useState(true);
 
@@ -144,6 +177,146 @@ export default function ContasPage() {
     carregarResumo();
   }
 
+  // --- Cartões de crédito (NOVO) --------------------------------------------
+  const [cartoes, setCartoes] = useState<CartaoCredito[]>([]);
+  const [carregandoCartoes, setCarregandoCartoes] = useState(true);
+
+  const [criandoCartao, setCriandoCartao] = useState(false);
+  const [editandoCartaoId, setEditandoCartaoId] = useState<string | null>(null);
+  const [nomeCartaoForm, setNomeCartaoForm] = useState("");
+  const [iconeCartaoForm, setIconeCartaoForm] = useState("💳");
+  const [bandeiraCartaoForm, setBandeiraCartaoForm] = useState("");
+  const [limiteCartaoForm, setLimiteCartaoForm] = useState("");
+  const [diaFechamentoForm, setDiaFechamentoForm] = useState("1");
+  const [diaVencimentoForm, setDiaVencimentoForm] = useState("10");
+  const [contaIdCartaoForm, setContaIdCartaoForm] = useState("");
+  const [origemCartaoForm, setOrigemCartaoForm] = useState<OrigemFinanceira>("pessoal");
+  const [confirmarExclusaoCartaoId, setConfirmarExclusaoCartaoId] = useState("");
+  const [salvandoCartao, setSalvandoCartao] = useState(false);
+  const [erroCartao, setErroCartao] = useState("");
+
+  function carregarCartoes() {
+    setCarregandoCartoes(true);
+    fetch("/api/cartoes")
+      .then((r) => r.json())
+      .then((data: CartaoCredito[]) => {
+        setCartoes(data);
+        setCarregandoCartoes(false);
+      });
+  }
+
+  useEffect(carregarCartoes, []);
+
+  function iniciarCriacaoCartao() {
+    setEditandoCartaoId(null);
+    setCriandoCartao(true);
+    setNomeCartaoForm("");
+    setIconeCartaoForm("💳");
+    setBandeiraCartaoForm("");
+    setLimiteCartaoForm("");
+    setDiaFechamentoForm("1");
+    setDiaVencimentoForm("10");
+    setContaIdCartaoForm(resumo?.contas[0]?.id || "");
+    setOrigemCartaoForm("pessoal");
+    setErroCartao("");
+  }
+
+  function iniciarEdicaoCartao(cartao: CartaoCredito) {
+    setCriandoCartao(false);
+    setEditandoCartaoId(cartao.id);
+    setNomeCartaoForm(cartao.nome);
+    setIconeCartaoForm(cartao.icone);
+    setBandeiraCartaoForm(cartao.bandeira || "");
+    setLimiteCartaoForm(cartao.limite || "");
+    setDiaFechamentoForm(String(cartao.diaFechamento));
+    setDiaVencimentoForm(String(cartao.diaVencimento));
+    setContaIdCartaoForm(cartao.contaId);
+    setOrigemCartaoForm(cartao.origem);
+    setErroCartao("");
+  }
+
+  function cancelarFormCartao() {
+    setCriandoCartao(false);
+    setEditandoCartaoId(null);
+    setErroCartao("");
+  }
+
+  async function criarCartao() {
+    if (!nomeCartaoForm.trim()) return setErroCartao("Dê um nome para o cartão.");
+    if (!contaIdCartaoForm) return setErroCartao("Escolha a conta que paga a fatura.");
+    setSalvandoCartao(true);
+    const res = await fetch("/api/cartoes", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        nome: nomeCartaoForm.trim(),
+        icone: iconeCartaoForm,
+        bandeira: bandeiraCartaoForm || undefined,
+        limite: limiteCartaoForm ? Number(limiteCartaoForm) : undefined,
+        diaFechamento: Number(diaFechamentoForm),
+        diaVencimento: Number(diaVencimentoForm),
+        contaId: contaIdCartaoForm,
+        origem: origemCartaoForm,
+      }),
+    });
+    setSalvandoCartao(false);
+    if (!res.ok) {
+      const data = await res.json();
+      return setErroCartao(data.error || "Não foi possível criar o cartão.");
+    }
+    setCriandoCartao(false);
+    showToast("Cartão cadastrado!");
+    carregarCartoes();
+  }
+
+  async function salvarEdicaoCartao() {
+    if (!editandoCartaoId) return;
+    if (!nomeCartaoForm.trim()) return setErroCartao("Dê um nome para o cartão.");
+    setSalvandoCartao(true);
+    const res = await fetch(`/api/cartoes/${editandoCartaoId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        nome: nomeCartaoForm.trim(),
+        icone: iconeCartaoForm,
+        bandeira: bandeiraCartaoForm || null,
+        limite: limiteCartaoForm ? Number(limiteCartaoForm) : null,
+        diaFechamento: Number(diaFechamentoForm),
+        diaVencimento: Number(diaVencimentoForm),
+        contaId: contaIdCartaoForm,
+        origem: origemCartaoForm,
+      }),
+    });
+    setSalvandoCartao(false);
+    if (!res.ok) {
+      const data = await res.json();
+      return setErroCartao(data.error || "Não foi possível salvar.");
+    }
+    setEditandoCartaoId(null);
+    showToast("Cartão atualizado!");
+    carregarCartoes();
+  }
+
+  async function excluirCartao(cartao: CartaoCredito) {
+    if (cartao.faturaAtual && Number(cartao.faturaAtual.valorTotal) > 0) {
+      const confirma = window.confirm(
+        "Este cartão tem uma fatura em aberto com compras ainda não lançadas. Excluir o cartão apaga essas compras (faturas já fechadas/pagas continuam no seu histórico normalmente, como Lançamentos). Continuar?"
+      );
+      if (!confirma) return;
+    }
+    setSalvandoCartao(true);
+    const res = await fetch(`/api/cartoes/${cartao.id}`, { method: "DELETE" });
+    setSalvandoCartao(false);
+    if (!res.ok) {
+      const data = await res.json();
+      showToast(data.error || "Não foi possível excluir o cartão.", "erro");
+      return;
+    }
+    setConfirmarExclusaoCartaoId("");
+    showToast("Cartão excluído.");
+    carregarCartoes();
+  }
+
   return (
     <div>
       <div className="header-gradient flex items-center gap-3">
@@ -180,7 +353,7 @@ export default function ContasPage() {
                     className="card !py-3 flex items-center justify-between gap-3"
                     style={{ background: "var(--color-error-subtle)" }}
                   >
-                    <span className="text-sm font-medium text-error">Excluir “{conta.nome}”?</span>
+                    <span className="text-sm font-medium text-error">Excluir "{conta.nome}"?</span>
                     <div className="flex gap-2 shrink-0">
                       <button type="button" onClick={() => setConfirmarExclusaoId("")} className="btn-chip bg-card text-foreground">
                         Cancelar
@@ -265,6 +438,149 @@ export default function ContasPage() {
             <IconPlus size={18} /> Nova conta
           </button>
         )}
+
+        {/* ==================================================================== */}
+        {/* SEÇÃO NOVA: Cartões de crédito                                        */}
+        {/* ==================================================================== */}
+        <div>
+          <p className="text-xs font-semibold tracking-wide text-muted mb-3">CARTÕES DE CRÉDITO</p>
+
+          {carregandoCartoes ? (
+            <p className="text-center text-muted text-sm py-6">Carregando...</p>
+          ) : (
+            <div className="list-gap">
+              {cartoes.length === 0 && !criandoCartao && (
+                <div className="card text-center text-muted text-sm">Nenhum cartão cadastrado ainda.</div>
+              )}
+
+              {cartoes.map((cartao) =>
+                confirmarExclusaoCartaoId === cartao.id ? (
+                  <div
+                    key={cartao.id}
+                    className="card !py-3 flex items-center justify-between gap-3"
+                    style={{ background: "var(--color-error-subtle)" }}
+                  >
+                    <span className="text-sm font-medium text-error">Excluir "{cartao.nome}"?</span>
+                    <div className="flex gap-2 shrink-0">
+                      <button type="button" onClick={() => setConfirmarExclusaoCartaoId("")} className="btn-chip bg-card text-foreground">
+                        Cancelar
+                      </button>
+                      <button type="button" disabled={salvandoCartao} onClick={() => excluirCartao(cartao)} className="btn-chip btn-danger !min-h-0">
+                        Excluir
+                      </button>
+                    </div>
+                  </div>
+                ) : editandoCartaoId === cartao.id ? (
+                  <CartaoFormulario
+                    key={cartao.id}
+                    nomeForm={nomeCartaoForm}
+                    setNomeForm={setNomeCartaoForm}
+                    iconeForm={iconeCartaoForm}
+                    setIconeForm={setIconeCartaoForm}
+                    bandeiraForm={bandeiraCartaoForm}
+                    setBandeiraForm={setBandeiraCartaoForm}
+                    limiteForm={limiteCartaoForm}
+                    setLimiteForm={setLimiteCartaoForm}
+                    diaFechamentoForm={diaFechamentoForm}
+                    setDiaFechamentoForm={setDiaFechamentoForm}
+                    diaVencimentoForm={diaVencimentoForm}
+                    setDiaVencimentoForm={setDiaVencimentoForm}
+                    contaIdForm={contaIdCartaoForm}
+                    setContaIdForm={setContaIdCartaoForm}
+                    origemForm={origemCartaoForm}
+                    setOrigemForm={setOrigemCartaoForm}
+                    contas={resumo?.contas ?? []}
+                    erro={erroCartao}
+                    salvando={salvandoCartao}
+                    onCancelar={cancelarFormCartao}
+                    onSalvar={salvarEdicaoCartao}
+                  />
+                ) : (
+                  // O card inteiro é um link pro extrato (/financeiro/cartoes/[id]) —
+                  // os botões de editar/excluir chamam preventDefault() pra não
+                  // disparar a navegação do Link ao serem clicados.
+                  <Link key={cartao.id} href={`/financeiro/cartoes/${cartao.id}`} className="card !py-2.5 flex items-center gap-3">
+                    <span className="w-10 h-10 rounded-md bg-primary-subtle flex items-center justify-center text-lg shrink-0">
+                      {cartao.icone}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold truncate">{cartao.nome}</p>
+                      <p className="text-xs text-muted truncate">
+                        Fecha dia {cartao.diaFechamento} · Vence dia {cartao.diaVencimento} · {cartao.conta.icone} {cartao.conta.nome}
+                      </p>
+                      <p className="text-sm font-bold mt-0.5" style={{ color: "var(--color-error)" }}>
+                        {formatarMoeda(cartao.faturaAtual?.valorTotal ?? 0)}{" "}
+                        <span className="text-xs font-normal text-muted">na fatura atual</span>
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        iniciarEdicaoCartao(cartao);
+                      }}
+                      className="icon-btn !w-9 !h-9 text-muted shrink-0"
+                      aria-label={`Editar ${cartao.nome}`}
+                    >
+                      <IconEdit size={15} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setConfirmarExclusaoCartaoId(cartao.id);
+                      }}
+                      className="icon-btn !w-9 !h-9 text-error shrink-0"
+                      aria-label={`Excluir ${cartao.nome}`}
+                    >
+                      <IconTrash size={15} />
+                    </button>
+                  </Link>
+                )
+              )}
+            </div>
+          )}
+
+          {criandoCartao ? (
+            <div className="mt-3">
+              <CartaoFormulario
+                nomeForm={nomeCartaoForm}
+                setNomeForm={setNomeCartaoForm}
+                iconeForm={iconeCartaoForm}
+                setIconeForm={setIconeCartaoForm}
+                bandeiraForm={bandeiraCartaoForm}
+                setBandeiraForm={setBandeiraCartaoForm}
+                limiteForm={limiteCartaoForm}
+                setLimiteForm={setLimiteCartaoForm}
+                diaFechamentoForm={diaFechamentoForm}
+                setDiaFechamentoForm={setDiaFechamentoForm}
+                diaVencimentoForm={diaVencimentoForm}
+                setDiaVencimentoForm={setDiaVencimentoForm}
+                contaIdForm={contaIdCartaoForm}
+                setContaIdForm={setContaIdCartaoForm}
+                origemForm={origemCartaoForm}
+                setOrigemForm={setOrigemCartaoForm}
+                contas={resumo?.contas ?? []}
+                erro={erroCartao}
+                salvando={salvandoCartao}
+                onCancelar={cancelarFormCartao}
+                onSalvar={criarCartao}
+              />
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={iniciarCriacaoCartao}
+              disabled={(resumo?.contas.length ?? 0) === 0}
+              className="btn-outline mt-3 flex items-center justify-center gap-2"
+            >
+              <IconCreditCard size={18} /> Novo cartão
+            </button>
+          )}
+          {(resumo?.contas.length ?? 0) === 0 && (
+            <p className="text-xs text-muted mt-2 text-center">Cadastre uma conta/carteira acima antes de criar um cartão.</p>
+          )}
+        </div>
       </div>
     </div>
   );

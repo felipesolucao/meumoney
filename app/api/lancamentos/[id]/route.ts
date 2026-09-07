@@ -8,11 +8,28 @@
 // Todas as ações exigem que o lançamento pertença ao usuário logado.
 // Toda alteração/exclusão grava um snapshot "antes" em HistoricoAcao, o que
 // permite desfazer (reverter) a ação depois pela tela de Histórico.
+//
+// NOVO: se este Lancamento é o Lancamento consolidado de uma fatura de
+// cartão (FaturaCartao.lancamentoId aponta pra ele), marcar como pago/reabrir
+// aqui também sincroniza FaturaCartao.status (fechada <-> paga) — é assim que
+// a tela de extrato do cartão sabe mostrar "Paga" sem lógica própria.
 // ============================================================================
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "../../../../lib/prisma";
 import { obterSessao } from "../../../../lib/auth";
 import { registrarAcao } from "../../../../lib/historico";
+
+// Sincroniza o status da fatura, se este Lancamento for o de uma fatura.
+// Silenciosa (não faz nada) se não houver fatura vinculada — a maioria dos
+// Lancamentos do app não tem.
+async function sincronizarFaturaDoLancamento(lancamentoId: string, novoStatus: "pago" | "pendente") {
+  const fatura = await prisma.faturaCartao.findUnique({ where: { lancamentoId } });
+  if (!fatura) return;
+  await prisma.faturaCartao.update({
+    where: { id: fatura.id },
+    data: { status: novoStatus === "pago" ? "paga" : "fechada" },
+  });
+}
 
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
   const sessao = await obterSessao();
@@ -54,6 +71,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       where: { id: params.id },
       data: { status: "pago", dataPagamento: new Date(), valorPago: existente.valor },
     });
+    await sincronizarFaturaDoLancamento(lancamento.id, "pago");
     await registrarAcao(prisma, {
       usuarioId: sessao.id,
       tipo: "LANCAMENTO_PAGO",
@@ -72,6 +90,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       where: { id: params.id },
       data: { status: "pendente", dataPagamento: null, valorPago: null },
     });
+    await sincronizarFaturaDoLancamento(lancamento.id, "pendente");
     await registrarAcao(prisma, {
       usuarioId: sessao.id,
       tipo: "LANCAMENTO_REABERTO",

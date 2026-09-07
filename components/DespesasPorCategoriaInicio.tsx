@@ -6,6 +6,11 @@
 // completo, que continua em /financeiro/relatorios (com gráfico de
 // pizza/barras e a lista de maiores lançamentos). Sempre olha o mês atual
 // (não tem seletor de mês próprio — é um resumo rápido, não a tela cheia).
+//
+// NOVO: cada categoria agora é um link para /financeiro/categorias/[id] —
+// a tela que já existe com o histórico de lançamentos daquela categoria,
+// com seletor de mês (mesmo MesSeletor usado em Contas a pagar/receber).
+// Antes, essas linhas não levavam a lugar nenhum.
 // ============================================================================
 "use client";
 
@@ -50,7 +55,14 @@ export default function DespesasPorCategoriaInicio() {
         ) : (
           <div className="space-y-3">
             {categorias.map((c) => (
-              <div key={c.id}>
+              // NOVO: cada categoria vira um link pro histórico completo
+              // (/financeiro/categorias/[id]), que já abre com o mês atual e
+              // deixa trocar de mês por lá — ver comentário no topo do arquivo.
+              <Link
+                key={c.id}
+                href={`/financeiro/categorias/${c.id}`}
+                className="block -mx-1 px-1 py-0.5 rounded-md active:bg-background"
+              >
                 <div className="flex items-center gap-2.5 mb-1.5">
                   <span className="shrink-0">{c.icone}</span>
                   <span className="flex-1 min-w-0 truncate text-sm font-medium">{c.nome}</span>
@@ -63,7 +75,7 @@ export default function DespesasPorCategoriaInicio() {
                     style={{ width: `${Math.min(c.percentual, 100)}%`, background: c.cor }}
                   />
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         )}

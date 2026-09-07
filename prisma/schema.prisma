@@ -59,6 +59,9 @@ model Usuario {
   lancamentos            Lancamento[]
   lancamentosRecorrentes LancamentoRecorrente[]
   historicoAcoes         HistoricoAcao[]
+  // --- Cartões de crédito (NOVO) --------------------------------------------
+  cartoesCredito         CartaoCredito[]
+  comprasCartao          CompraCartao[]
 
   @@map("usuarios")
 }
@@ -276,6 +279,10 @@ model Categoria {
 
   lancamentos           Lancamento[]
   lancamentosRecorrentes LancamentoRecorrente[]
+  // Só informativo — pra saber em que categoria caiu cada compra no extrato
+  // do cartão. NÃO entra na soma de /api/financeiro/categorias-resumo — só a
+  // fatura consolidada entra lá (ver lib/cartao.ts).
+  comprasCartao         CompraCartao[]
 
   @@map("categorias")
 }
@@ -308,6 +315,9 @@ model Conta {
 
   lancamentos           Lancamento[]
   lancamentosRecorrentes LancamentoRecorrente[]
+  // Cartões cuja fatura é debitada desta conta quando marcada como paga
+  // (NOVO — ver model CartaoCredito, abaixo).
+  cartoesCredito        CartaoCredito[]
 
   @@map("contas")
 }
@@ -401,7 +411,124 @@ model Lancamento {
   usuarioId       String
   usuario         Usuario           @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 
+  // Preenchido só nos Lancamentos GERADOS AUTOMATICAMENTE pelo fechamento de
+  // uma fatura de cartão (ver FaturaCartao.lancamentoId, abaixo) — NOVO.
+  faturaCartao    FaturaCartao?
+
   @@map("lancamentos")
+}
+
+// ============================================================================
+// MÓDULO: CARTÕES DE CRÉDITO (NOVO)
+// ----------------------------------------------------------------------------
+// Um Cartão de Crédito NÃO debita a Conta na hora da compra — as compras
+// (CompraCartao) só se acumulam numa Fatura (FaturaCartao) daquele ciclo.
+// Quando a fatura FECHA, o sistema cria automaticamente UM Lancamento
+// (despesa) com o valor total da fatura, vinculado à Conta que paga o
+// cartão — reaproveitando 100% do sistema de saldo/contas a pagar que já
+// existe, sem duplicar contagem. Ver lib/cartao.ts para a lógica completa.
+// ============================================================================
+
+// ----------------------------------------------------------------------------
+// ENUM: Ciclo de vida de uma fatura.
+//   aberta  -> ainda recebendo compras (antes do dia de fechamento)
+//   fechada -> fechou, já virou um Lancamento pendente ("conta a pagar")
+//   paga    -> o Lancamento da fatura foi marcado como pago
+// ----------------------------------------------------------------------------
+enum StatusFatura {
+  aberta
+  fechada
+  paga
+}
+
+// ----------------------------------------------------------------------------
+// MODEL: CartaoCredito (ex: "Nubank Ultravioleta", "Inter Gold")
+// ----------------------------------------------------------------------------
+model CartaoCredito {
+  id             String           @id @default(cuid())
+  nome           String
+  icone          String           @default("💳")
+  bandeira       String?          // opcional, só exibição (Visa, Mastercard...)
+  limite         Decimal?         @db.Decimal(12, 2)
+  diaFechamento  Int              // 1-31: dia do mês em que a fatura fecha
+  diaVencimento  Int              // 1-31: dia do mês em que a fatura vence
+  origem         OrigemFinanceira @default(pessoal) // herdado pelo Lancamento da fatura
+  ativo          Boolean          @default(true)
+  criadoEm       DateTime         @default(now())
+
+  // Conta que paga a fatura — quando o Lancamento gerado no fechamento é
+  // marcado como pago, é o saldo DESTA conta que é descontado (ver
+  // /api/financeiro/contas-resumo, que já calcula isso sozinho).
+  contaId        String
+  conta          Conta            @relation(fields: [contaId], references: [id])
+
+  usuarioId      String
+  usuario        Usuario          @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  faturas        FaturaCartao[]
+  compras        CompraCartao[]
+
+  @@map("cartoes_credito")
+}
+
+// ----------------------------------------------------------------------------
+// MODEL: FaturaCartao — um ciclo (competência) de um cartão.
+// ----------------------------------------------------------------------------
+model FaturaCartao {
+  id              String        @id @default(cuid())
+
+  cartaoId        String
+  cartao          CartaoCredito @relation(fields: [cartaoId], references: [id], onDelete: Cascade)
+
+  anoReferencia   Int           // ano da competência (ex: 2026)
+  mesReferencia   Int           // mês da competência, 0-11 (mesmo padrão de Date.getMonth() usado no resto do app)
+
+  dataFechamento  DateTime
+  dataVencimento  DateTime
+  valorTotal      Decimal       @default(0) @db.Decimal(12, 2)
+  status          StatusFatura  @default(aberta)
+
+  // Preenchido quando a fatura fecha E teve alguma compra (valorTotal > 0) —
+  // aponta pro Lancamento (despesa) que representa essa fatura inteira nas
+  // telas de "Contas a pagar" e nos resumos do mês.
+  lancamentoId    String?       @unique
+  lancamento      Lancamento?   @relation(fields: [lancamentoId], references: [id])
+
+  compras         CompraCartao[]
+
+  criadoEm        DateTime      @default(now())
+
+  // Uma única fatura por cartão por competência.
+  @@unique([cartaoId, anoReferencia, mesReferencia])
+  @@map("faturas_cartao")
+}
+
+// ----------------------------------------------------------------------------
+// MODEL: CompraCartao — cada compra individual lançada no cartão.
+// ----------------------------------------------------------------------------
+model CompraCartao {
+  id           String        @id @default(cuid())
+  descricao    String
+  valor        Decimal       @db.Decimal(12, 2)
+  dataCompra   DateTime
+
+  cartaoId     String
+  cartao       CartaoCredito @relation(fields: [cartaoId], references: [id], onDelete: Cascade)
+  faturaId     String
+  fatura       FaturaCartao  @relation(fields: [faturaId], references: [id], onDelete: Cascade)
+
+  // Só informativo (extrato do cartão) — não entra na soma de categorias do
+  // relatório geral, ver decisão de arquitetura no documento de implementação.
+  categoriaId  String?
+  categoria    Categoria?    @relation(fields: [categoriaId], references: [id])
+
+  observacoes  String?
+  criadoEm     DateTime      @default(now())
+
+  usuarioId    String
+  usuario      Usuario       @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@map("compras_cartao")
 }
 
 // ============================================================================

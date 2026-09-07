@@ -345,3 +345,15 @@ export function IconMapPin({ size = 20, className, strokeWidth = 1.8 }: IconProp
     </svg>
   );
 }
+
+// NOVO — usado na aba "Cartão de crédito" (forma de pagamento em Nova
+// transação) e nas telas de Contas / extrato do cartão.
+export function IconCreditCard({ size = 20, className, strokeWidth = 1.8 }: IconProps) {
+  return (
+    <svg {...base(size)} className={className}>
+      <rect x="2.5" y="5.5" width="19" height="13" rx="2" stroke="currentColor" strokeWidth={strokeWidth} />
+      <path d="M2.5 9.5h19" stroke="currentColor" strokeWidth={strokeWidth} />
+      <path d="M6 14.5h4" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" />
+    </svg>
+  );
+}

@@ -10,6 +10,10 @@
 // POST -> cria um lançamento. Se "recorrente" vier true, cria a regra em
 //         LancamentoRecorrente e gera todas as ocorrências (parceladas ou
 //         com data de fim) ou o primeiro lote (contas fixas sem fim).
+//
+// NOVO: o GET chama fecharFaturasVencidas() antes de listar — garante que a
+// fatura de um cartão cujo fechamento já passou apareça em "Contas a pagar"
+// mesmo que o usuário nunca tenha aberto a tela de Cartões.
 // ============================================================================
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "../../../lib/prisma";
@@ -17,10 +21,13 @@ import { obterSessao } from "../../../lib/auth";
 import { gerarOcorrencias, statusEfetivoLancamento } from "../../../lib/financeiro";
 import type { TipoLancamento, OrigemFinanceira, PeriodicidadeLancamento, TipoFimRecorrencia } from "../../../lib/financeiro";
 import { registrarAcao } from "../../../lib/historico";
+import { fecharFaturasVencidas } from "../../../lib/cartao";
 
 export async function GET(req: NextRequest) {
   const sessao = await obterSessao();
   if (!sessao) return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
+
+  await fecharFaturasVencidas(sessao.id);
 
   const params = req.nextUrl.searchParams;
   const tipo = params.get("tipo");

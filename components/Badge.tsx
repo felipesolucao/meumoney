@@ -94,3 +94,20 @@ export function tomEStatusLancamento(statusEfetivo: "pendente" | "atrasado" | "p
       return { tom: "amber", texto: "Pendente" };
   }
 }
+
+// ----------------------------------------------------------------------------
+// NOVO — Status de uma fatura de cartão de crédito (aberta/fechada/paga) —
+// ver prisma/schema.prisma (enum StatusFatura) e lib/cartao.ts.
+// ----------------------------------------------------------------------------
+export function tomEStatusFatura(status: "aberta" | "fechada" | "paga"): { tom: Tom; texto: string } {
+  switch (status) {
+    case "aberta":
+      return { tom: "amber", texto: "Em aberto" };
+    case "fechada":
+      return { tom: "vermelho", texto: "Fechada — a pagar" };
+    case "paga":
+      return { tom: "verde", texto: "Paga" };
+    default:
+      return { tom: "neutro", texto: status };
+  }
+}
