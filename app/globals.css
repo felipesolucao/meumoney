@@ -757,20 +757,29 @@ a {
 .form-input:focus { border-color: var(--color-primary); }
 .form-date-input {
   display: block;
+  inline-size: 100%;
   max-width: 100%;
+  max-inline-size: 100%;
+  min-inline-size: 0;
+  -webkit-min-logical-width: 0;
+  box-sizing: border-box;
   min-height: 52px;
   font-size: 16px;
   line-height: 1.25;
-  overflow: hidden;
+  padding-right: 42px;
 }
 :root[data-theme="dark"] .form-date-input { color-scheme: dark; }
 .form-date-input::-webkit-datetime-edit,
 .form-date-input::-webkit-datetime-edit-fields-wrapper {
   min-width: 0;
+  max-width: 100%;
   padding: 0;
 }
 .form-date-input::-webkit-calendar-picker-indicator {
   flex: 0 0 auto;
   margin: 0;
   opacity: 0.8;
+}
+@media (max-width: 380px) {
+  .form-date-input { font-size: 14px; }
 }
