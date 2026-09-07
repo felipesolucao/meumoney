@@ -285,12 +285,47 @@ h6 {
   width: 100%;
 }
 
-/* Cabeçalho em degradê verde-claro, usado no topo de cada tela */
+/* Cabeçalho compartilhado das telas. Como todas as páginas já usam esta
+   classe, ela funciona como uma única barra fixa sem duplicar componentes. */
 .header-gradient {
   background: var(--gradient-header);
-  padding: 20px 20px 16px;
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  height: 70px;
+  max-height: 70px;
+  padding: 8px 20px;
   border-bottom-left-radius: var(--radius-xl);
   border-bottom-right-radius: var(--radius-xl);
+  box-shadow: 0 5px 14px -12px rgb(var(--shadow-color) / 0.55);
+  overflow: hidden;
+  isolation: isolate;
+}
+.header-gradient > div {
+  min-width: 0;
+}
+.header-gradient h1,
+.header-gradient h2,
+.header-gradient p {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.header-gradient h1,
+.header-gradient h2 {
+  line-height: 1.15;
+}
+.header-gradient .icon-btn {
+  width: 40px;
+  height: 40px;
+}
+@media (max-width: 380px) {
+  .header-gradient {
+    padding-inline: 14px;
+    gap: 8px !important;
+  }
+  .header-gradient h1 { font-size: 1.125rem; }
+  .header-gradient p { font-size: 0.75rem; }
 }
 
 /* Cartão branco padrão usado em listas (clientes, contratos, parcelas) */
