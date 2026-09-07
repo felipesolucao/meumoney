@@ -28,6 +28,7 @@ type CartaoDetalhe = {
   id: string;
   nome: string;
   icone: string;
+  limite: string | null; // Decimal do Prisma chega serializado como string
   diaFechamento: number;
   diaVencimento: number;
   conta: { nome: string; icone: string };
@@ -52,6 +53,24 @@ type Fatura = {
   lancamentoId: string | null;
   compras: Compra[];
 };
+
+// ----------------------------------------------------------------------------
+// Quantos dias faltam para uma data de vencimento (pode dar negativo, se já
+// venceu). Comparamos usando os componentes UTC da data — o backend grava
+// dataVencimento como meia-noite UTC (ver calcularDataVencimento em
+// lib/cartao.ts) e formatarData() também lê em UTC, então fazemos o mesmo
+// aqui pra não perder/ganhar 1 dia dependendo do fuso horário do navegador.
+// ----------------------------------------------------------------------------
+function diasParaVencimento(dataVencimentoISO: string): number {
+  const vencimento = new Date(dataVencimentoISO);
+  const vencimentoUTC = Date.UTC(vencimento.getUTCFullYear(), vencimento.getUTCMonth(), vencimento.getUTCDate());
+
+  const hoje = new Date();
+  const hojeUTC = Date.UTC(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
+
+  const UM_DIA_MS = 1000 * 60 * 60 * 24;
+  return Math.round((vencimentoUTC - hojeUTC) / UM_DIA_MS);
+}
 
 export default function DetalheCartaoPage({ params }: { params: { id: string } }) {
   const router = useRouter();
@@ -205,6 +224,22 @@ export default function DetalheCartaoPage({ params }: { params: { id: string } }
 
   const { tom, texto } = fatura ? tomEStatusFatura(fatura.status) : { tom: "neutro" as const, texto: "" };
 
+  // --- Resumo do cartão: limite total, valor gasto na fatura atual e -------
+  // --- quantos dias faltam para o vencimento --------------------------------
+  const limiteNum = cartao.limite != null ? Number(cartao.limite) : null;
+  const valorGasto = fatura ? Number(fatura.valorTotal) : 0;
+  const percentualUsado = limiteNum && limiteNum > 0 ? Math.min(100, (valorGasto / limiteNum) * 100) : null;
+  const dias = fatura ? diasParaVencimento(fatura.dataVencimento) : null;
+  const vencida = dias !== null && dias < 0 && fatura?.status !== "paga";
+  const textoDias =
+    dias === null
+      ? "—"
+      : dias === 0
+      ? "Vence hoje"
+      : dias > 0
+      ? `Faltam ${dias} dia${dias === 1 ? "" : "s"}`
+      : `Venceu há ${Math.abs(dias)} dia${Math.abs(dias) === 1 ? "" : "s"}`;
+
   return (
     <div>
       <div className="header-gradient flex items-center gap-3">
@@ -303,6 +338,56 @@ export default function DetalheCartaoPage({ params }: { params: { id: string } }
               <button type="button" onClick={() => setConfirmarExclusao(true)} className="icon-btn text-error shrink-0" aria-label="Excluir cartão">
                 <IconTrash size={16} />
               </button>
+            </div>
+          )}
+        </div>
+
+        {/* ==================================================================== */}
+        {/* NOVO: Resumo do cartão — limite total, valor gasto, dia de           */}
+        {/* vencimento e quantos dias faltam pra vencer.                         */}
+        {/* ==================================================================== */}
+        <div className="card space-y-3">
+          <p className="text-xs font-semibold tracking-wide text-muted">RESUMO DO CARTÃO</p>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <p className="text-xs text-muted">Limite total</p>
+              <p className="text-lg font-bold truncate">
+                {limiteNum !== null ? formatarMoeda(limiteNum) : "Sem limite definido"}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-muted">Valor gasto (fatura atual)</p>
+              <p className="text-lg font-bold truncate" style={{ color: "var(--color-error)" }}>
+                {carregando && !fatura ? "—" : formatarMoeda(valorGasto)}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-muted">Dia de vencimento</p>
+              <p className="text-lg font-bold">Dia {cartao.diaVencimento}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted">Faltam quantos dias</p>
+              <p className="text-lg font-bold" style={{ color: vencida ? "var(--color-error)" : undefined }}>
+                {textoDias}
+              </p>
+            </div>
+          </div>
+
+          {/* Barra de uso do limite — só aparece quando o cartão tem limite
+              cadastrado, já que sem limite não faz sentido calcular %. */}
+          {percentualUsado !== null && (
+            <div>
+              <div className="w-full h-2 rounded-full bg-background overflow-hidden">
+                <div
+                  className="h-full rounded-full"
+                  style={{
+                    width: `${percentualUsado}%`,
+                    background: percentualUsado >= 90 ? "var(--color-error)" : "var(--color-primary)",
+                  }}
+                />
+              </div>
+              <p className="text-xs text-muted mt-1">{percentualUsado.toFixed(0)}% do limite usado nesta fatura</p>
             </div>
           )}
         </div>

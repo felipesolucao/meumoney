@@ -15,7 +15,16 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   const sessao = await obterSessao();
   if (!sessao) return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
 
-  const cartao = await prisma.cartaoCredito.findFirst({ where: { id: params.id, usuarioId: sessao.id } });
+  // BUGFIX: antes este findFirst não incluía a relação "conta" — a tela de
+  // detalhe do cartão (app/financeiro/cartoes/[id]/page.tsx) lê
+  // cartao.conta.icone/cartao.conta.nome no cabeçalho, então a resposta
+  // chegava com conta=undefined e a página quebrava (tela em branco / erro
+  // "Cannot read properties of undefined (reading 'icone')") assim que o
+  // usuário clicava no cartão em /financeiro/contas.
+  const cartao = await prisma.cartaoCredito.findFirst({
+    where: { id: params.id, usuarioId: sessao.id },
+    include: { conta: { select: { id: true, nome: true, icone: true } } },
+  });
   if (!cartao) return NextResponse.json({ error: "Cartão não encontrado." }, { status: 404 });
 
   await fecharFaturasVencidas(sessao.id);
