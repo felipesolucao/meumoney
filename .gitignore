@@ -4,3 +4,15 @@ node_modules/
 .env*.local
 .DS_Store
 npm-debug.log*
+
+# Service worker do PWA — gerado a cada "next build" por @ducanh2912/next-pwa
+# (ver next.config.js). Nunca commitar: seria sempre sobrescrito no próximo
+# build e commitar uma versão velha só arrisca confundir com a real.
+public/sw.js
+public/sw.js.map
+public/swe-worker*.js
+public/swe-worker*.js.map
+public/workbox-*.js
+public/workbox-*.js.map
+public/fallback-*.js
+public/fallback-*.js.map

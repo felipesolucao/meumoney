@@ -15,7 +15,10 @@ import { jwtVerify } from "jose";
 const CHAVE = new TextEncoder().encode(process.env.JWT_SECRET || "chave-de-desenvolvimento-troque-isso");
 
 // Rotas que não exigem login.
-const ROTAS_PUBLICAS = ["/login", "/cadastro"];
+// "/~offline" é a página de fallback do PWA (ver app/~offline/page.tsx) — na
+// prática o service worker sempre serve ela direto do cache sem passar por
+// aqui, mas fica pública por segurança caso alguém acesse a URL diretamente.
+const ROTAS_PUBLICAS = ["/login", "/cadastro", "/~offline"];
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;

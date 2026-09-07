@@ -13,15 +13,38 @@ import ThemeProvider, { SCRIPT_TEMA_INICIAL } from "../components/ThemeProvider"
 export const metadata: Metadata = {
   title: "MeuMoney — Sua vida financeira sob controle",
   description: "Controle financeiro pessoal e empresarial: contas a pagar, a receber e gestão de empréstimos",
+  applicationName: "MeuMoney",
+  // --------------------------------------------------------------------------
+  // PWA / iOS ("Adicionar à Tela de Início")
+  // ----------------------------------------------------------------------------
+  // O manifest (app/manifest.ts) cobre Android/Chrome/desktop. Este bloco gera
+  // as três meta tags que só o iOS/Safari entende, pra virar um app instalável
+  // sem barra de navegador por lá também:
+  //   <meta name="apple-mobile-web-app-capable" content="yes">
+  //   <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  //   <meta name="apple-mobile-web-app-title" content="MeuMoney">
+  // O apple-touch-icon em si vem sozinho do arquivo app/apple-icon.png
+  // (convenção do Next.js — não precisa listar aqui).
+  // --------------------------------------------------------------------------
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "MeuMoney",
+  },
 };
 
 // viewportFit: "cover" habilita env(safe-area-inset-*) no CSS — necessário
 // pro menu flutuante inferior (BottomNav) respeitar a área do home indicator
 // do iPhone em vez de ficar espremido/sobreposto ao conteúdo (ver globals.css).
+//
+// themeColor: pinta a barra de status/barra de endereço do navegador (e a
+// moldura em volta do app quando instalado) na cor da marca. Mesmo valor do
+// "theme_color" em app/manifest.ts — se trocar um, troque o outro junto.
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
+  themeColor: "#1EAC60",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
