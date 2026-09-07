@@ -73,10 +73,47 @@ function ContasAPagarConteudo() {
       });
   }, [aba, ano, mes, usaFiltroMes]);
 
-  const totalPendente = useMemo(
-    () => lancamentos.filter((l) => l.status !== "pago").reduce((s, l) => s + Number(l.valor), 0),
-    [lancamentos]
-  );
+  // ----------------------------------------------------------------------------
+  // BUG CORRIGIDO: o total sempre filtrava por "status !== pago" antes de
+  // somar. Isso funciona nas abas Pendentes/Atrasadas/Todas, mas na aba
+  // "Pagas" a lista inteira já é status=pago (veio filtrada da API) — então
+  // esse filtro zerava tudo e o card mostrava R$ 0,00 mesmo com lançamentos
+  // na lista.
+  //
+  // Correção: a soma passa a depender da aba selecionada, e o rótulo do card
+  // muda junto pra continuar fazendo sentido com o número mostrado:
+  //   - "atrasadas" -> soma tudo (já é só atrasado) / rótulo "TOTAL EM ATRASO"
+  //   - "pagas"     -> soma só o que está pago       / rótulo "TOTAL PAGO"
+  //   - demais      -> soma só o que ainda não foi pago (comportamento de
+  //                    antes) / rótulo "TOTAL EM ABERTO"
+  // ----------------------------------------------------------------------------
+  const totalExibido = useMemo(() => {
+    if (aba === "pagas") {
+      return lancamentos.filter((l) => l.status === "pago").reduce((s, l) => s + Number(l.valor), 0);
+    }
+    if (aba === "atrasadas") {
+      return lancamentos.reduce((s, l) => s + Number(l.valor), 0);
+    }
+    return lancamentos.filter((l) => l.status !== "pago").reduce((s, l) => s + Number(l.valor), 0);
+  }, [lancamentos, aba]);
+
+  const rotuloTotal = aba === "pagas" ? "TOTAL PAGO" : aba === "atrasadas" ? "TOTAL EM ATRASO" : "TOTAL EM ABERTO";
+
+  // Instantâneo: chamado pelo LancamentosLista assim que o usuário marca um
+  // lançamento como pago/reaberto e a API confirma. Antes disso o item só
+  // sumia da tela quando a página recarregava (troca de mês/aba ou F5), o que
+  // dava a impressão de que a ação não tinha funcionado.
+  function aoAlterarStatusLocal(id: string, novoStatus: "pendente" | "pago") {
+    setLancamentos((atual) => {
+      // Nas abas filtradas por status, o item que mudou não pertence mais a
+      // esta lista -> some na hora. Na aba "Todas" (sem filtro de status) ele
+      // continua na lista, só com o status/badge atualizados.
+      if (aba !== "todas") {
+        return atual.filter((l) => l.id !== id);
+      }
+      return atual.map((l) => (l.id === id ? { ...l, status: novoStatus } : l));
+    });
+  }
 
   return (
     <div>
@@ -99,8 +136,8 @@ function ContasAPagarConteudo() {
         )}
 
         <div className="card" style={{ background: "var(--color-error-subtle)" }}>
-          <p className="text-xs font-semibold tracking-wide text-error">TOTAL EM ABERTO</p>
-          <p className="text-3xl font-extrabold mt-1 text-error">{formatarMoeda(totalPendente)}</p>
+          <p className="text-xs font-semibold tracking-wide text-error">{rotuloTotal}</p>
+          <p className="text-3xl font-extrabold mt-1 text-error">{formatarMoeda(totalExibido)}</p>
         </div>
 
         <div className="flex gap-2 overflow-x-auto pb-1">
@@ -126,7 +163,7 @@ function ContasAPagarConteudo() {
         {carregando ? (
           <p className="text-center text-muted text-sm py-6">Carregando...</p>
         ) : (
-          <LancamentosLista lancamentos={lancamentos} />
+          <LancamentosLista lancamentos={lancamentos} aoAlterarStatus={aoAlterarStatusLocal} />
         )}
       </div>
     </div>

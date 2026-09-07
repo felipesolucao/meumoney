@@ -56,6 +56,38 @@ function isoHoje(offsetDias = 0) {
   return d.toISOString().slice(0, 10);
 }
 
+// ============================================================================
+// MÁSCARA DE MOEDA (input "Valor") — NOVO
+// ----------------------------------------------------------------------------
+// Formata enquanto digita, no padrão real brasileiro (ex: "2.599,51"), com os
+// centavos sempre automáticos: cada dígito novo "empurra" os anteriores pra
+// esquerda, como em qualquer app bancário — não existe "ponto/vírgula" pra
+// digitar, só números.
+//
+// Estratégia: o estado "valor" guarda sempre a STRING JÁ FORMATADA (o que
+// aparece na tela). A cada tecla, pegamos só os dígitos que sobraram no
+// campo (e.target.value.replace(/\D/g, "")) — isso funciona tanto pra digitar
+// quanto pra apagar (backspace), porque remover qualquer caractere do texto
+// formatado ainda deixa a sequência de dígitos certa — e tratamos esses
+// dígitos como CENTAVOS (os 2 últimos são sempre as casas decimais).
+// ----------------------------------------------------------------------------
+function digitosParaValorFormatado(digitos: string): string {
+  const centavos = Number(digitos || "0");
+  return (centavos / 100).toLocaleString("pt-BR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+// Caminho inverso, usado só na hora de salvar: transforma "2.599,51" de volta
+// em número (2599.51). Não usa parseFloat(valor.replace(",", ".")) como antes
+// porque isso quebrava com o separador de milhar (".") — "2.599,51" virava
+// "2.599.51", e parseFloat parava no primeiro ponto (dava 2.599, errado).
+function valorFormatadoParaNumero(valorFormatado: string): number {
+  const digitos = valorFormatado.replace(/\D/g, "");
+  return digitos ? Number(digitos) / 100 : 0;
+}
+
 // useSearchParams() só é seguro em build quando o componente que o chama
 // fica dentro de um <Suspense> (ver export default no fim do arquivo) —
 // por isso toda a lógica da tela mora aqui, e não na exportação padrão.
@@ -118,6 +150,13 @@ function NovoLancamentoConteudo() {
       });
   }, []);
 
+  // Handler do input de Valor (mascarado) — ver comentário completo em
+  // digitosParaValorFormatado(), acima.
+  function aoDigitarValor(e: React.ChangeEvent<HTMLInputElement>) {
+    const somenteDigitos = e.target.value.replace(/\D/g, "");
+    setValor(somenteDigitos ? digitosParaValorFormatado(somenteDigitos) : "");
+  }
+
   function escolherAtalhoData(atalho: "hoje" | "ontem" | "outros") {
     setDataAtalho(atalho);
     if (atalho === "hoje") setDataVencimento(isoHoje());
@@ -151,7 +190,7 @@ function NovoLancamentoConteudo() {
   }
 
   async function salvar() {
-    const valorNum = parseFloat(valor.replace(",", "."));
+    const valorNum = valorFormatadoParaNumero(valor);
     if (!valorNum) return setErro("Informe o valor.");
     if (!descricao.trim()) return setErro("Informe uma descrição.");
     if (recorrente && tipoFim === "parcelas" && (!numeroParcelas || Number(numeroParcelas) < 1)) {
@@ -259,9 +298,9 @@ function NovoLancamentoConteudo() {
               </span>
               <input
                 value={valor}
-                onChange={(e) => setValor(e.target.value)}
+                onChange={aoDigitarValor}
                 placeholder="0,00"
-                inputMode="decimal"
+                inputMode="numeric"
                 className={`w-full rounded-md border-2 border-transparent pl-14 pr-4 py-4 outline-none text-3xl font-extrabold bg-background ${
                   tipo === "receita" ? "focus:border-primary text-primary" : "focus:border-error text-error"
                 }`}
@@ -276,7 +315,13 @@ function NovoLancamentoConteudo() {
               value={descricao}
               onChange={(e) => setDescricao(e.target.value)}
               placeholder={tipo === "receita" ? "Ex: Salário, Bonificação..." : "Ex: Aluguel, Mercado..."}
-              className="w-full rounded-md border border-border px-4 py-3.5 outline-none focus:border-primary"
+              // BUG CORRIGIDO: faltava "bg-card" aqui (os campos vizinhos —
+              // select de conta, data, número de parcelas — já tinham). Sem
+              // isso, no tema escuro o texto herda a cor clara do tema
+              // (--color-foreground) mas o fundo do <input> fica no branco
+              // padrão do navegador (não segue o tema custom do app) —
+              // texto claro sobre fundo claro, ilegível.
+              className="w-full rounded-md border border-border px-4 py-3.5 outline-none focus:border-primary bg-card"
             />
           </div>
         </div>
@@ -317,7 +362,9 @@ function NovoLancamentoConteudo() {
                 type="date"
                 value={dataVencimento}
                 onChange={(e) => setDataVencimento(e.target.value)}
-                className="w-full rounded-md border border-border px-4 py-3.5 outline-none focus:border-primary mt-2"
+                // Mesmo bug/correção do campo Descrição logo abaixo (faltava
+                // bg-card) — incluído aqui de brinde, mesma causa.
+                className="w-full rounded-md border border-border px-4 py-3.5 outline-none focus:border-primary mt-2 bg-card"
               />
             )}
           </div>
@@ -464,7 +511,8 @@ function NovoLancamentoConteudo() {
             value={observacoes}
             onChange={(e) => setObservacoes(e.target.value)}
             rows={3}
-            className="w-full rounded-md border border-border px-4 py-3.5 outline-none focus:border-primary"
+            // BUG CORRIGIDO: mesma causa do campo Descrição — faltava bg-card.
+            className="w-full rounded-md border border-border px-4 py-3.5 outline-none focus:border-primary bg-card"
           />
         </div>
 

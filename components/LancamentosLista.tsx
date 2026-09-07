@@ -41,7 +41,19 @@ export type LancamentoItem = {
   recorrenteId: string | null;
 };
 
-export default function LancamentosLista({ lancamentos }: { lancamentos: LancamentoItem[] }) {
+export default function LancamentosLista({
+  lancamentos,
+  aoAlterarStatus,
+}: {
+  lancamentos: LancamentoItem[];
+  // Opcional: chamado com (id, novoStatus) assim que a API confirma que um
+  // lançamento foi pago/reaberto. As telas que mantêm a lista em estado
+  // local (Contas a pagar/receber) usam isso pra tirar/atualizar o item na
+  // hora, em vez de esperar a página recarregar — ver comentário em
+  // alternarStatus() logo abaixo. Quem não passa essa prop (ex: o histórico
+  // dentro de categorias) mantém o comportamento antigo, só com router.refresh().
+  aoAlterarStatus?: (id: string, novoStatus: "pendente" | "pago") => void;
+}) {
   const router = useRouter();
   const showToast = useToast();
   const [carregandoId, setCarregandoId] = useState<string | null>(null);
@@ -52,6 +64,7 @@ export default function LancamentosLista({ lancamentos }: { lancamentos: Lancame
   );
 
   async function alternarStatus(item: LancamentoItem) {
+    const novoStatus: "pendente" | "pago" = item.status === "pago" ? "pendente" : "pago";
     setCarregandoId(item.id);
     const res = await fetch(`/api/lancamentos/${item.id}`, {
       method: "PATCH",
@@ -67,6 +80,13 @@ export default function LancamentosLista({ lancamentos }: { lancamentos: Lancame
           ? "Recebimento confirmado!"
           : "Pagamento confirmado!"
       );
+      // BUG CORRIGIDO: antes só existia o router.refresh() abaixo, que não
+      // adianta nada aqui porque esta lista vem de um fetch client-side nas
+      // telas de Contas a pagar/receber (useEffect + setLancamentos), não de
+      // dado de servidor — então o item ficava na tela, parecendo que a ação
+      // não tinha funcionado, até o usuário trocar de aba/mês ou dar F5.
+      // Agora avisamos a tela pai na hora, que atualiza seu próprio estado.
+      aoAlterarStatus?.(item.id, novoStatus);
     } else {
       showToast("Não foi possível atualizar o lançamento.", "erro");
     }

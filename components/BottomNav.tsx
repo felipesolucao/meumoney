@@ -60,6 +60,30 @@ const ITENS_DEPOIS_DO_BOTAO = [
 // encolhem um pouco (ver tamanhos no map abaixo) para caber confortavelmente.
 const ALTURA_BARRA = 60;
 
+// Todos os itens juntos (inclusive os dois lados do botão central), usados só
+// para calcular qual aba deve acender — nunca renderizados diretamente daqui.
+const TODOS_ITENS = [...ITENS, ...ITENS_DEPOIS_DO_BOTAO];
+
+// ----------------------------------------------------------------------------
+// BUG CORRIGIDO: "/financeiro/contas" acendia Transações E Contas ao mesmo
+// tempo, porque a checagem antiga era só pathname.startsWith(item.href), e
+// "/financeiro/contas" começa com "/financeiro" (o href de Transações).
+// Correção: entre todos os itens cujo href é prefixo da rota atual, só o de
+// href MAIS ESPECÍFICO (mais longo) acende — assim "/financeiro/contas" bate
+// com os dois prefixos, mas só "Contas" (o mais específico) fica ativo.
+// Funciona pra qualquer rota nova que apareça no futuro, sem precisar de caso
+// especial pra cada sub-rota.
+// ----------------------------------------------------------------------------
+function itemEstaAtivo(item: (typeof ITENS)[number], pathname: string) {
+  if (item.href === "/") return pathname === "/";
+
+  const candidatos = TODOS_ITENS.filter((i) => i.href !== "/" && pathname.startsWith(i.href));
+  if (candidatos.length === 0) return false;
+
+  const maisEspecifico = candidatos.reduce((a, b) => (b.href.length > a.href.length ? b : a));
+  return maisEspecifico.href === item.href;
+}
+
 export default function BottomNav() {
   const pathname = usePathname();
 
@@ -71,7 +95,7 @@ export default function BottomNav() {
   }
 
   function ItemNav(item: (typeof ITENS)[number]) {
-    const ativo = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+    const ativo = itemEstaAtivo(item, pathname);
     const Icon = item.icon;
     return (
       <Link key={item.href} href={item.href} className="flex-1 min-w-0 flex justify-center">

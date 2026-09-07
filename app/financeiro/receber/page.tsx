@@ -69,10 +69,35 @@ function ContasAReceberConteudo() {
       });
   }, [aba, ano, mes, usaFiltroMes]);
 
-  const totalPendente = useMemo(
-    () => lancamentos.filter((l) => l.status !== "pago").reduce((s, l) => s + Number(l.valor), 0),
-    [lancamentos]
-  );
+  // ----------------------------------------------------------------------------
+  // BUG CORRIGIDO: mesmo problema do espelho em app/financeiro/pagar/page.tsx —
+  // o total sempre filtrava "status !== pago" antes de somar, o que zerava o
+  // card na aba "Recebidas" (lista inteira já é status=pago ali). Ver
+  // comentário completo na versão de "pagar" — a lógica é a mesma, só troca
+  // "pagas" por "recebidas" e o rótulo de "TOTAL PAGO" por "TOTAL RECEBIDO".
+  // ----------------------------------------------------------------------------
+  const totalExibido = useMemo(() => {
+    if (aba === "recebidas") {
+      return lancamentos.filter((l) => l.status === "pago").reduce((s, l) => s + Number(l.valor), 0);
+    }
+    if (aba === "atrasadas") {
+      return lancamentos.reduce((s, l) => s + Number(l.valor), 0);
+    }
+    return lancamentos.filter((l) => l.status !== "pago").reduce((s, l) => s + Number(l.valor), 0);
+  }, [lancamentos, aba]);
+
+  const rotuloTotal =
+    aba === "recebidas" ? "TOTAL RECEBIDO" : aba === "atrasadas" ? "TOTAL EM ATRASO" : "TOTAL A RECEBER";
+
+  // Instantâneo: mesmo mecanismo do espelho em "pagar" — ver comentário lá.
+  function aoAlterarStatusLocal(id: string, novoStatus: "pendente" | "pago") {
+    setLancamentos((atual) => {
+      if (aba !== "todas") {
+        return atual.filter((l) => l.id !== id);
+      }
+      return atual.map((l) => (l.id === id ? { ...l, status: novoStatus } : l));
+    });
+  }
 
   return (
     <div>
@@ -95,8 +120,8 @@ function ContasAReceberConteudo() {
         )}
 
         <div className="card" style={{ background: "var(--color-primary-surface)" }}>
-          <p className="text-xs font-semibold tracking-wide text-primary">TOTAL A RECEBER</p>
-          <p className="text-3xl font-extrabold mt-1 text-primary">{formatarMoeda(totalPendente)}</p>
+          <p className="text-xs font-semibold tracking-wide text-primary">{rotuloTotal}</p>
+          <p className="text-3xl font-extrabold mt-1 text-primary">{formatarMoeda(totalExibido)}</p>
         </div>
 
         <div className="flex gap-2 overflow-x-auto pb-1">
@@ -122,7 +147,7 @@ function ContasAReceberConteudo() {
         {carregando ? (
           <p className="text-center text-muted text-sm py-6">Carregando...</p>
         ) : (
-          <LancamentosLista lancamentos={lancamentos} />
+          <LancamentosLista lancamentos={lancamentos} aoAlterarStatus={aoAlterarStatusLocal} />
         )}
       </div>
     </div>
