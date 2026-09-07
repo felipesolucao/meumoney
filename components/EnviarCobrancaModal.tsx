@@ -10,7 +10,7 @@ import { useToast } from "./ToastProvider";
 type Parcela = { numero: number; valor: string; vencimento: string; status: string };
 type ModeloSalvo = { tipo: string; mensagem: string };
 
-export default function EnviarCobrancaModal({ aberto, onFechar, clienteNome, clienteTelefone, parcelas }: { aberto: boolean; onFechar: () => void; clienteNome: string; clienteTelefone: string | null; parcelas: Parcela[] }) {
+export default function EnviarCobrancaModal({ aberto, onFechar, clienteNome, clienteTelefone, parcelas, valorContrato, multaAtraso, tipoMultaAtraso, valorMultaAtraso }: { aberto: boolean; onFechar: () => void; clienteNome: string; clienteTelefone: string | null; parcelas: Parcela[]; valorContrato: string; multaAtraso: boolean; tipoMultaAtraso: string | null; valorMultaAtraso: string }) {
   const toast = useToast();
   const [modelos, setModelos] = useState<ModeloSalvo[]>([]);
   const proxima = parcelas.find((p) => p.status !== "pago") || parcelas[parcelas.length - 1];
@@ -32,19 +32,22 @@ export default function EnviarCobrancaModal({ aberto, onFechar, clienteNome, cli
     const dias = diferencaDias(proxima.vencimento);
     const original = modelos.find((m) => m.tipo === tipo)?.mensagem || MODELOS_COBRANCA.find((m) => m.tipo === tipo)?.mensagem || "";
     const valor = formatarMoeda(proxima.valor);
+    const valorDaMulta = multaAtraso ? (tipoMultaAtraso === "percentual" ? Number(valorContrato) * (Number(valorMultaAtraso) / 100) : Number(valorMultaAtraso)) : 0;
+    const acrescimo = formatarMoeda(valorDaMulta);
     return preencherModelo(original, {
       nome: clienteNome.split(" ")[0], nomeCompleto: clienteNome, numero: proxima.numero, totalParcelas: parcelas.length,
-      valor, total: valor, acrescimo: "R$ 0,00", vencimento: formatarData(proxima.vencimento), diasAtraso: Math.max(0, -dias),
+      valor, total: formatarMoeda(Number(proxima.valor) + valorDaMulta), acrescimo, vencimento: formatarData(proxima.vencimento), diasAtraso: Math.max(0, -dias),
       diasRestantes: Math.max(0, dias), diasRestantesTexto: dias > 0 ? ` (em ${dias} dia${dias === 1 ? "" : "s"})` : "",
     });
   }
 
-  const mensagem = useMemo(montarMensagemComDadosDoCliente, [clienteNome, modelos, parcelas.length, proxima, tipo]);
+  const mensagem = useMemo(montarMensagemComDadosDoCliente, [clienteNome, modelos, multaAtraso, parcelas.length, proxima, tipo, tipoMultaAtraso, valorContrato, valorMultaAtraso]);
 
   async function copiar() {
     // Monta no clique para garantir que a área de transferência receba os
     // valores deste cliente/parcela, e nunca o texto-base com variáveis.
-    try { await navigator.clipboard.writeText(montarMensagemComDadosDoCliente()); toast("Mensagem copiada!"); } catch { toast("Não foi possível copiar a mensagem.", "erro"); }
+    const textoParaCopiar = montarMensagemComDadosDoCliente();
+    try { await navigator.clipboard.writeText(textoParaCopiar); toast("Mensagem copiada!"); } catch { copiarComFallback(textoParaCopiar) ? toast("Mensagem copiada!") : toast("Não foi possível copiar a mensagem.", "erro"); }
   }
   function whatsapp() {
     const numero = (clienteTelefone || "").replace(/\D/g, "");
@@ -63,6 +66,18 @@ export default function EnviarCobrancaModal({ aberto, onFechar, clienteNome, cli
       <footer className="grid grid-cols-2 gap-2 border-t border-border bg-primary-subtle p-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))]"><button onClick={copiar} className="btn-outline cobranca-modal-action"><IconDocument size={17} /> <span>Copiar</span></button><button onClick={whatsapp} disabled={!proxima} className="btn-primary cobranca-modal-action"><IconChat size={17} /> <span>WhatsApp</span></button></footer>
     </section>
   </div>;
+}
+
+function copiarComFallback(texto: string) {
+  const area = document.createElement("textarea");
+  area.value = texto;
+  area.style.position = "fixed";
+  area.style.opacity = "0";
+  document.body.appendChild(area);
+  area.select();
+  const copiou = document.execCommand("copy");
+  area.remove();
+  return copiou;
 }
 
 function diferencaDias(data: string) {

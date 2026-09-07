@@ -15,11 +15,19 @@ export default function ContratoAcoes({
   clienteNome,
   clienteTelefone,
   parcelas,
+  valorTotal,
+  multaAtraso,
+  tipoMultaAtraso,
+  valorMultaAtraso,
 }: {
   contratoId: string;
   clienteNome: string;
   clienteTelefone: string | null;
   parcelas: { numero: number; valor: string; vencimento: string; status: string }[];
+  valorTotal: string;
+  multaAtraso: boolean;
+  tipoMultaAtraso: string | null;
+  valorMultaAtraso: string;
 }) {
   const router = useRouter();
   const showToast = useToast();
@@ -61,7 +69,7 @@ export default function ContratoAcoes({
           <IconHistory size={16} /> Histórico
         </Link>
       </div>
-      <EnviarCobrancaModal aberto={modalAberto} onFechar={() => setModalAberto(false)} clienteNome={clienteNome} clienteTelefone={clienteTelefone} parcelas={parcelas} />
+      <EnviarCobrancaModal aberto={modalAberto} onFechar={() => setModalAberto(false)} clienteNome={clienteNome} clienteTelefone={clienteTelefone} parcelas={parcelas} valorContrato={valorTotal} multaAtraso={multaAtraso} tipoMultaAtraso={tipoMultaAtraso} valorMultaAtraso={valorMultaAtraso} />
     </div>
   );
 }

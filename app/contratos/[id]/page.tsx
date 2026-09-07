@@ -111,6 +111,10 @@ export default async function DetalheContrato({ params }: { params: { id: string
           clienteNome={contrato.cliente.nome}
           clienteTelefone={contrato.cliente.telefone}
           parcelas={contrato.parcelas}
+          valorTotal={contrato.valorTotal}
+          multaAtraso={contrato.multaAtraso}
+          tipoMultaAtraso={contrato.tipoMultaAtraso}
+          valorMultaAtraso={contrato.valorMultaAtraso}
         />
 
         <div>

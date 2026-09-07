@@ -29,10 +29,16 @@ function NovoContrato() {
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [clienteId, setClienteId] = useState(clienteIdInicial);
   const [valorEmprestado, setValorEmprestado] = useState("");
+  const [valorEntrada, setValorEntrada] = useState("");
+  const [temEntrada, setTemEntrada] = useState(false);
+  const [dataEntrada, setDataEntrada] = useState(() => new Date().toISOString().slice(0, 10));
   const [tipoEmprestimo, setTipoEmprestimo] = useState<TipoEmprestimo>("juros");
   const [jurosAoMes, setJurosAoMes] = useState("0");
   const [numeroParcelas, setNumeroParcelas] = useState("1");
   const [jurosAtraso, setJurosAtraso] = useState(false);
+  const [multaAtraso, setMultaAtraso] = useState(false);
+  const [tipoMultaAtraso, setTipoMultaAtraso] = useState<"fixa" | "percentual">("fixa");
+  const [valorMultaAtraso, setValorMultaAtraso] = useState("");
   const [frequencia, setFrequencia] = useState<Frequencia>("mensal");
   const [dataPrimeiraParcela, setDataPrimeiraParcela] = useState(() => new Date().toISOString().slice(0, 10));
   const [salvando, setSalvando] = useState(false);
@@ -48,13 +54,14 @@ function NovoContrato() {
   }, [clienteIdInicial]);
 
   // --- Simulação em tempo real, igual à prévia que o usuário veria no app --
-  const valorNum = parseFloat(valorEmprestado.replace(",", ".")) || 0;
+  const valorNum = valorFormatadoParaNumero(valorEmprestado);
+  const entradaNum = temEntrada ? valorFormatadoParaNumero(valorEntrada) : 0;
   const jurosNum = parseFloat(jurosAoMes.replace(",", ".")) || 0;
   const parcelasNum = parseInt(numeroParcelas) || 1;
   const simulacao =
     valorNum > 0
       ? calcularContrato({
-          valorEmprestado: valorNum,
+          valorEmprestado: Math.max(0, valorNum - entradaNum),
           tipoEmprestimo,
           jurosAoMes: jurosNum,
           numeroParcelas: parcelasNum,
@@ -66,6 +73,8 @@ function NovoContrato() {
   async function salvar() {
     if (!clienteId) return setErro("Selecione um cliente.");
     if (!valorNum) return setErro("Informe o valor emprestado.");
+    if (temEntrada && (!entradaNum || entradaNum >= valorNum)) return setErro("Informe uma entrada menor que o valor do contrato.");
+    if (multaAtraso && !valorFormatadoParaNumero(valorMultaAtraso)) return setErro("Informe o valor da multa por atraso.");
     if (!parcelasNum) return setErro("Informe o número de parcelas.");
 
     setErro("");
@@ -79,6 +88,11 @@ function NovoContrato() {
         tipoEmprestimo,
         jurosAoMes: jurosNum,
         jurosAtraso,
+        multaAtraso,
+        tipoMultaAtraso,
+        valorMultaAtraso: tipoMultaAtraso === "fixa" ? valorFormatadoParaNumero(valorMultaAtraso) : Number(valorMultaAtraso.replace(",", ".")),
+        valorEntrada: entradaNum,
+        dataEntrada: temEntrada ? dataEntrada : undefined,
         numeroParcelas: parcelasNum,
         frequencia,
         dataPrimeiraParcela,
@@ -124,15 +138,19 @@ function NovoContrato() {
         </div>
 
         <div>
-          <p className="text-xs font-semibold tracking-wide text-muted mb-2">VALOR EMPRESTADO (R$)</p>
-          <input
-            value={valorEmprestado}
-            onChange={(e) => setValorEmprestado(e.target.value)}
-            placeholder="0,00"
-            inputMode="decimal"
-            className="w-full rounded-md border border-border px-4 py-3.5 outline-none focus:border-primary"
-          />
+          <p className="text-xs font-semibold tracking-wide text-muted mb-2">VALOR</p>
+          <CampoMoeda value={valorEmprestado} onChange={setValorEmprestado} />
         </div>
+
+        <label className="card flex items-center justify-between cursor-pointer">
+          <span><span className="font-semibold block">Possui entrada</span><span className="text-xs text-muted">Desconta da quantia parcelada</span></span>
+          <input type="checkbox" checked={temEntrada} onChange={(e) => setTemEntrada(e.target.checked)} className="w-6 h-6 accent-primary" />
+        </label>
+
+        {temEntrada && <div className="card space-y-4" style={{ background: "var(--color-primary-surface)" }}>
+          <div><p className="text-xs font-semibold tracking-wide text-muted mb-2">VALOR DA ENTRADA</p><CampoMoeda value={valorEntrada} onChange={setValorEntrada} /></div>
+          <div><p className="text-xs font-semibold tracking-wide text-muted mb-2">DATA DA ENTRADA</p><input type="date" value={dataEntrada} onChange={(e) => setDataEntrada(e.target.value)} className="w-full rounded-md border border-border bg-card px-4 py-3.5 outline-none focus:border-primary" /></div>
+        </div>}
 
         <div>
           <p className="text-xs font-semibold tracking-wide text-muted mb-2">TIPO DE EMPRÉSTIMO</p>
@@ -178,6 +196,17 @@ function NovoContrato() {
           />
         </label>
 
+        <label className="card flex items-center justify-between cursor-pointer">
+          <span><span className="font-semibold block">Multa por atraso</span><span className="text-xs text-muted">Aplicada uma vez na parcela vencida</span></span>
+          <input type="checkbox" checked={multaAtraso} onChange={(e) => setMultaAtraso(e.target.checked)} className="w-6 h-6 accent-primary" />
+        </label>
+
+        {multaAtraso && <div className="card space-y-3" style={{ background: "var(--color-warning-subtle)" }}>
+          <p className="text-xs font-semibold tracking-wide text-muted">TIPO E VALOR DA MULTA</p>
+          <div className="grid grid-cols-2 gap-2"><BotaoToggle ativo={tipoMultaAtraso === "fixa"} onClick={() => setTipoMultaAtraso("fixa")}>Valor fixo</BotaoToggle><BotaoToggle ativo={tipoMultaAtraso === "percentual"} onClick={() => setTipoMultaAtraso("percentual")}>% do contrato</BotaoToggle></div>
+          {tipoMultaAtraso === "fixa" ? <CampoMoeda value={valorMultaAtraso} onChange={setValorMultaAtraso} /> : <input value={valorMultaAtraso} onChange={(e) => setValorMultaAtraso(e.target.value.replace(/[^0-9,]/g, ""))} inputMode="decimal" placeholder="Ex.: 2,5" className="w-full rounded-md border border-border bg-card px-4 py-3.5 outline-none focus:border-primary" />}
+        </div>}
+
         <div>
           <p className="text-xs font-semibold tracking-wide text-muted mb-2">FREQUÊNCIA DE PAGAMENTO</p>
           <div className="grid grid-cols-2 gap-2">
@@ -214,6 +243,7 @@ function NovoContrato() {
               <span className="text-muted">Valor total a receber</span>
               <span className="font-bold">{formatarMoeda(simulacao.valorTotal)}</span>
             </div>
+            {temEntrada && <div className="flex justify-between text-sm"><span className="text-muted">Entrada</span><span className="font-bold">{formatarMoeda(entradaNum)}</span></div>}
             <div className="flex justify-between text-sm">
               <span className="text-muted">Lucro estimado</span>
               <span className="font-bold text-primary">{formatarMoeda(simulacao.valorLucro)}</span>
@@ -233,6 +263,19 @@ function NovoContrato() {
       </div>
     </div>
   );
+}
+
+function CampoMoeda({ value, onChange }: { value: string; onChange: (valor: string) => void }) {
+  return <div className="relative"><span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-xl font-extrabold text-primary">R$</span><input value={value} onChange={(e) => { const digitos = e.target.value.replace(/\D/g, ""); onChange(digitos ? digitosParaValorFormatado(digitos) : ""); }} placeholder="0,00" inputMode="numeric" className="w-full rounded-md border-2 border-transparent bg-background pl-14 pr-4 py-4 text-3xl font-extrabold text-primary outline-none focus:border-primary" /></div>;
+}
+
+function digitosParaValorFormatado(digitos: string) {
+  return (Number(digitos || "0") / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function valorFormatadoParaNumero(valor: string) {
+  const digitos = valor.replace(/\D/g, "");
+  return digitos ? Number(digitos) / 100 : 0;
 }
 
 function BotaoToggle({

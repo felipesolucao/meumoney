@@ -32,6 +32,11 @@ export async function POST(req: NextRequest) {
     tipoEmprestimo,
     jurosAoMes,
     jurosAtraso,
+    multaAtraso,
+    tipoMultaAtraso,
+    valorMultaAtraso,
+    valorEntrada,
+    dataEntrada,
     numeroParcelas,
     frequencia,
     dataPrimeiraParcela,
@@ -41,6 +46,11 @@ export async function POST(req: NextRequest) {
     tipoEmprestimo: TipoEmprestimo;
     jurosAoMes: number;
     jurosAtraso: boolean;
+    multaAtraso?: boolean;
+    tipoMultaAtraso?: "fixa" | "percentual";
+    valorMultaAtraso?: number;
+    valorEntrada?: number;
+    dataEntrada?: string;
     numeroParcelas: number;
     frequencia: Frequencia;
     dataPrimeiraParcela: string;
@@ -49,6 +59,14 @@ export async function POST(req: NextRequest) {
   // --- Validação básica dos campos obrigatórios --------------------------
   if (!clienteId || !valorEmprestado || !numeroParcelas || !frequencia || !dataPrimeiraParcela) {
     return NextResponse.json({ error: "Preencha todos os campos obrigatórios." }, { status: 400 });
+  }
+  const entrada = Number(valorEntrada) || 0;
+  const multa = Number(valorMultaAtraso) || 0;
+  if (entrada < 0 || entrada >= Number(valorEmprestado)) {
+    return NextResponse.json({ error: "A entrada deve ser menor que o valor do contrato." }, { status: 400 });
+  }
+  if (multaAtraso && (!tipoMultaAtraso || multa <= 0 || (tipoMultaAtraso === "percentual" && multa > 100))) {
+    return NextResponse.json({ error: "Informe uma multa por atraso válida." }, { status: 400 });
   }
 
   // O cliente precisa existir E pertencer ao usuário logado.
@@ -59,7 +77,7 @@ export async function POST(req: NextRequest) {
 
   // --- Cálculo financeiro (juros, valor total, parcelas) ------------------
   const resultado = calcularContrato({
-    valorEmprestado: Number(valorEmprestado),
+    valorEmprestado: Number(valorEmprestado) - entrada,
     tipoEmprestimo,
     jurosAoMes: Number(jurosAoMes) || 0,
     numeroParcelas: Number(numeroParcelas),
@@ -82,6 +100,11 @@ export async function POST(req: NextRequest) {
       tipoEmprestimo,
       jurosAoMes: Number(jurosAoMes) || 0,
       jurosAtraso: Boolean(jurosAtraso),
+      multaAtraso: Boolean(multaAtraso),
+      tipoMultaAtraso: multaAtraso ? tipoMultaAtraso : null,
+      valorMultaAtraso: multaAtraso ? multa : 0,
+      valorEntrada: entrada,
+      dataEntrada: entrada && dataEntrada ? new Date(dataEntrada) : null,
       numeroParcelas: Number(numeroParcelas),
       frequencia,
       dataPrimeiraParcela: new Date(dataPrimeiraParcela),

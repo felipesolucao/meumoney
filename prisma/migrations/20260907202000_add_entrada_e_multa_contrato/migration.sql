@@ -1,0 +1,6 @@
+ALTER TABLE "contratos"
+  ADD COLUMN "multaAtraso" BOOLEAN NOT NULL DEFAULT false,
+  ADD COLUMN "tipoMultaAtraso" TEXT,
+  ADD COLUMN "valorMultaAtraso" DECIMAL(12,2) NOT NULL DEFAULT 0,
+  ADD COLUMN "valorEntrada" DECIMAL(12,2) NOT NULL DEFAULT 0,
+  ADD COLUMN "dataEntrada" TIMESTAMP(3);
