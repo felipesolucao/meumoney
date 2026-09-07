@@ -724,3 +724,20 @@ a {
   position: relative;
   margin-bottom: 10px;
 }
+
+/* Ações do popup de cobrança: tamanho compacto e alinhamento consistente
+   entre ícone e texto, inclusive em telas estreitas. */
+.cobranca-modal-action {
+  height: 45px !important;
+  min-height: 45px !important;
+  padding: 0 12px !important;
+  display: inline-flex !important;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+.cobranca-modal-action svg {
+  flex: 0 0 auto;
+}
