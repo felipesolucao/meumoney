@@ -6,7 +6,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "../../../lib/prisma";
 import { obterSessao } from "../../../lib/auth";
-import { calcularContrato, gerarCodigoContrato, TipoEmprestimo, Frequencia } from "../../../lib/calculos";
+import { calcularParcelasDoContrato, gerarCodigoContrato, TipoEmprestimo, Frequencia } from "../../../lib/calculos";
 import { registrarAcao } from "../../../lib/historico";
 
 export async function GET() {
@@ -62,8 +62,8 @@ export async function POST(req: NextRequest) {
   }
   const entrada = Number(valorEntrada) || 0;
   const multa = Number(valorMultaAtraso) || 0;
-  if (entrada < 0 || entrada >= Number(valorEmprestado)) {
-    return NextResponse.json({ error: "A entrada deve ser menor que o valor do contrato." }, { status: 400 });
+  if (entrada < 0 || entrada >= Number(valorEmprestado) || (entrada > 0 && Number(numeroParcelas) < 2)) {
+    return NextResponse.json({ error: "A entrada deve ser menor que o valor do contrato e exige pelo menos 2 parcelas." }, { status: 400 });
   }
   if (multaAtraso && (!tipoMultaAtraso || multa <= 0 || (tipoMultaAtraso === "percentual" && multa > 100))) {
     return NextResponse.json({ error: "Informe uma multa por atraso válida." }, { status: 400 });
@@ -75,13 +75,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Cliente não encontrado." }, { status: 404 });
   }
 
-  // --- Cálculo financeiro (juros, valor total, parcelas) ------------------
-  const resultado = calcularContrato({
-    valorEmprestado: Number(valorEmprestado) - entrada,
-    tipoEmprestimo,
-    jurosAoMes: Number(jurosAoMes) || 0,
+  // O valor informado é o total da negociação. A entrada entra como a 1ª
+  // parcela e o saldo é dividido entre as parcelas restantes.
+  const resultado = calcularParcelasDoContrato({
+    valorContrato: Number(valorEmprestado),
+    valorEntrada: entrada,
     numeroParcelas: Number(numeroParcelas),
     frequencia,
+    dataEntrada: entrada && dataEntrada ? new Date(dataEntrada) : undefined,
     dataPrimeiraParcela: new Date(dataPrimeiraParcela),
   });
 
@@ -108,8 +109,8 @@ export async function POST(req: NextRequest) {
       numeroParcelas: Number(numeroParcelas),
       frequencia,
       dataPrimeiraParcela: new Date(dataPrimeiraParcela),
-      valorTotal: resultado.valorTotal,
-      valorLucro: resultado.valorLucro,
+      valorTotal: Number(valorEmprestado),
+      valorLucro: 0,
       status: "em_dia",
       parcelas: {
         create: resultado.parcelas.map((p) => ({

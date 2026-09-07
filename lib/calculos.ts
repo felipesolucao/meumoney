@@ -22,6 +22,44 @@ export interface ResultadoCalculoContrato {
   parcelas: ParcelaCalculada[];
 }
 
+// Gera o cronograma a partir do valor TOTAL negociado. Quando existe entrada,
+// ela é a parcela nº 1; o saldo é dividido somente entre as demais parcelas.
+// Todos os cálculos usam centavos inteiros para a soma fechar exatamente.
+export function calcularParcelasDoContrato(params: {
+  valorContrato: number;
+  valorEntrada?: number;
+  numeroParcelas: number;
+  frequencia: Frequencia;
+  dataEntrada?: Date;
+  dataPrimeiraParcela: Date;
+}): { parcelas: ParcelaCalculada[]; valorRestante: number; valorParcela: number } {
+  const totalCentavos = Math.round(params.valorContrato * 100);
+  const entradaCentavos = Math.round((params.valorEntrada || 0) * 100);
+  const temEntrada = entradaCentavos > 0;
+  const quantidadeRestante = params.numeroParcelas - (temEntrada ? 1 : 0);
+  const restanteCentavos = totalCentavos - entradaCentavos;
+  const parcelas: ParcelaCalculada[] = [];
+
+  if (temEntrada) {
+    parcelas.push({ numero: 1, valor: entradaCentavos / 100, vencimento: params.dataEntrada || params.dataPrimeiraParcela });
+  }
+
+  const valorBaseCentavos = Math.floor(restanteCentavos / quantidadeRestante);
+  let acumuladoCentavos = 0;
+  for (let indice = 0; indice < quantidadeRestante; indice++) {
+    const ehUltima = indice === quantidadeRestante - 1;
+    const valorCentavos = ehUltima ? restanteCentavos - acumuladoCentavos : valorBaseCentavos;
+    acumuladoCentavos += valorCentavos;
+    parcelas.push({
+      numero: indice + (temEntrada ? 2 : 1),
+      valor: valorCentavos / 100,
+      vencimento: adicionarIntervalo(params.dataPrimeiraParcela, params.frequencia, indice),
+    });
+  }
+
+  return { parcelas, valorRestante: restanteCentavos / 100, valorParcela: valorBaseCentavos / 100 };
+}
+
 // ----------------------------------------------------------------------------
 // Soma um intervalo de tempo a uma data, de acordo com a frequência escolhida.
 // Usado para gerar a data de vencimento de cada parcela.

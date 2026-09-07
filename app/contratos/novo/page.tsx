@@ -6,7 +6,7 @@
 import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { calcularContrato, formatarMoeda, Frequencia, TipoEmprestimo } from "../../../lib/calculos";
+import { calcularParcelasDoContrato, formatarMoeda, Frequencia, TipoEmprestimo } from "../../../lib/calculos";
 import BotaoVoltar from "../../../components/BotaoVoltar";
 
 type Cliente = { id: string; nome: string };
@@ -58,21 +58,13 @@ function NovoContrato() {
   const entradaNum = temEntrada ? valorFormatadoParaNumero(valorEntrada) : 0;
   const jurosNum = parseFloat(jurosAoMes.replace(",", ".")) || 0;
   const parcelasNum = parseInt(numeroParcelas) || 1;
-  const simulacao =
-    valorNum > 0
-      ? calcularContrato({
-          valorEmprestado: Math.max(0, valorNum - entradaNum),
-          tipoEmprestimo,
-          jurosAoMes: jurosNum,
-          numeroParcelas: parcelasNum,
-          frequencia,
-          dataPrimeiraParcela: new Date(dataPrimeiraParcela),
-        })
-      : null;
+  const simulacao = valorNum > 0 && (!temEntrada || (entradaNum > 0 && entradaNum < valorNum && parcelasNum > 1))
+    ? calcularParcelasDoContrato({ valorContrato: valorNum, valorEntrada: entradaNum, numeroParcelas: parcelasNum, frequencia, dataEntrada: new Date(dataEntrada), dataPrimeiraParcela: new Date(dataPrimeiraParcela) })
+    : null;
 
   async function salvar() {
     if (!clienteId) return setErro("Selecione um cliente.");
-    if (!valorNum) return setErro("Informe o valor emprestado.");
+    if (!valorNum) return setErro("Informe o valor do contrato.");
     if (temEntrada && (!entradaNum || entradaNum >= valorNum)) return setErro("Informe uma entrada menor que o valor do contrato.");
     if (multaAtraso && !valorFormatadoParaNumero(valorMultaAtraso)) return setErro("Informe o valor da multa por atraso.");
     if (!parcelasNum) return setErro("Informe o número de parcelas.");
@@ -138,12 +130,12 @@ function NovoContrato() {
         </div>
 
         <div>
-          <p className="text-xs font-semibold tracking-wide text-muted mb-2">VALOR</p>
+          <p className="text-xs font-semibold tracking-wide text-muted mb-2">VALOR DO CONTRATO</p>
           <CampoMoeda value={valorEmprestado} onChange={setValorEmprestado} />
         </div>
 
         <label className="card flex items-center justify-between cursor-pointer">
-          <span><span className="font-semibold block">Possui entrada</span><span className="text-xs text-muted">Desconta da quantia parcelada</span></span>
+          <span><span className="font-semibold block">Possui entrada</span><span className="text-xs text-muted">Será a 1ª parcela do contrato</span></span>
           <input type="checkbox" checked={temEntrada} onChange={(e) => setTemEntrada(e.target.checked)} className="w-6 h-6 accent-primary" />
         </label>
 
@@ -176,7 +168,7 @@ function NovoContrato() {
             />
           </div>
           <div>
-            <p className="text-xs font-semibold tracking-wide text-muted mb-2">Nº PARCELAS</p>
+            <p className="text-xs font-semibold tracking-wide text-muted mb-2">TOTAL DE PARCELAS</p>
             <input
               value={numeroParcelas}
               onChange={(e) => setNumeroParcelas(e.target.value)}
@@ -226,7 +218,7 @@ function NovoContrato() {
         </div>
 
         <div>
-          <p className="text-xs font-semibold tracking-wide text-muted mb-2">DATA DA PRIMEIRA PARCELA</p>
+          <p className="text-xs font-semibold tracking-wide text-muted mb-2">{temEntrada ? "DATA DA 2ª PARCELA" : "DATA DA PRIMEIRA PARCELA"}</p>
           <input
             type="date"
             value={dataPrimeiraParcela}
@@ -240,16 +232,12 @@ function NovoContrato() {
           <div className="card space-y-1" style={{ background: "var(--color-primary-surface)" }}>
             <p className="text-xs font-semibold tracking-wide text-muted">RESUMO DO CONTRATO</p>
             <div className="flex justify-between text-sm">
-              <span className="text-muted">Valor total a receber</span>
-              <span className="font-bold">{formatarMoeda(simulacao.valorTotal)}</span>
+              <span className="text-muted">Valor do contrato</span>
+              <span className="font-bold">{formatarMoeda(valorNum)}</span>
             </div>
-            {temEntrada && <div className="flex justify-between text-sm"><span className="text-muted">Entrada</span><span className="font-bold">{formatarMoeda(entradaNum)}</span></div>}
+            {temEntrada && <><div className="flex justify-between text-sm"><span className="text-muted">1ª parcela · entrada</span><span className="font-bold">{formatarMoeda(entradaNum)}</span></div><div className="flex justify-between text-sm"><span className="text-muted">Saldo em {parcelasNum - 1} parcelas</span><span className="font-bold">{formatarMoeda(simulacao.valorRestante)}</span></div></>}
             <div className="flex justify-between text-sm">
-              <span className="text-muted">Lucro estimado</span>
-              <span className="font-bold text-primary">{formatarMoeda(simulacao.valorLucro)}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-muted">Valor de cada parcela</span>
+              <span className="text-muted">Valor das parcelas {temEntrada ? "restantes" : ""}</span>
               <span className="font-bold">{formatarMoeda(simulacao.valorParcela)}</span>
             </div>
           </div>
