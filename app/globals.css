@@ -301,6 +301,74 @@ h6 {
   padding: var(--space-card);
 }
 
+/* ============================================================================
+   LIQUID GLASS — barra de navegação inferior
+   ----------------------------------------------------------------------------
+   Estilo "vidro líquido" (Apple Liquid Glass): painel fosco escuro e
+   translúcido, com brilho na borda superior (simula reflexo de vidro) e um
+   halo verde suave "vazando" por baixo — igual à referência enviada pelo FR.
+   Deliberadamente igual nos dois temas (claro/escuro do app): a barra sempre
+   flutua como vidro escuro sobre o conteúdo, então NÃO usa var(--color-card)
+   nem var(--color-muted) (que trocam de tom por tema) — usa tons próprios
+   (brancos translúcidos) que garantem contraste em cima do vidro escuro nos
+   dois temas.
+   ========================================================================== */
+.liquid-glass-bar {
+  position: relative;
+  background: linear-gradient(
+    180deg,
+    rgba(54, 54, 58, 0.55) 0%,
+    rgba(18, 18, 20, 0.68) 100%
+  );
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: var(--radius-pill);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.2) inset,
+    /* aresta de vidro no topo */ 0 -1px 0 rgba(0, 0, 0, 0.35) inset,
+    0 18px 40px -16px rgba(0, 0, 0, 0.55); /* sombra de flutuação */
+}
+
+/* Halo verde suave "vazando" por baixo do vidro — o brilho colorido visto na
+   referência. Fica atrás da barra (z-index -1) e não recebe toque. */
+.liquid-glass-bar::after {
+  content: "";
+  position: absolute;
+  left: 16%;
+  right: 16%;
+  bottom: -8px;
+  height: 12px;
+  background: var(--color-success);
+  filter: blur(12px);
+  opacity: 0.5;
+  border-radius: var(--radius-pill);
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* Cápsula do item ativo — o "vidro dentro do vidro", mais claro, que circula
+   o ícone + rótulo selecionado (ver "Home" na referência) */
+.liquid-glass-item-ativo {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.22) 0%,
+    rgba(255, 255, 255, 0.08) 100%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.3) inset,
+    0 4px 12px -4px rgba(0, 0, 0, 0.4);
+}
+
+/* Cor de ícone/rótulo sobre o vidro — sempre clara, independente do tema
+   claro/escuro do app, porque o fundo do vidro é sempre escuro. */
+.text-glass-muted {
+  color: rgba(255, 255, 255, 0.55);
+}
+.text-glass-ativo {
+  color: #ffffff;
+}
+
 /* Espaçamento vertical padrão entre cards empilhados (listas de transações,
    parcelas, histórico) — usar no lugar de "space-y-3" quando a lista tiver
    ações/botões dentro do card, para não parecer apertado. */

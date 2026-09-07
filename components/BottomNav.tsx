@@ -10,15 +10,34 @@
 // "Transações" é a antiga aba "Financeiro" só com o rótulo trocado — a rota
 // continua sendo /financeiro, então nenhum link existente quebra.
 //
-// Ajustes visuais:
+// --- Visual: LIQUID GLASS (atualizado) --------------------------------------
+// A barra virou um painel de "vidro líquido" escuro e translúcido (referência
+// enviada pelo FR), em vez do .card branco/temático de antes:
+//   - fundo com blur + saturação (backdrop-filter) e uma aresta de brilho no
+//     topo, pra simular a borda de um vidro — ver ".liquid-glass-bar" em
+//     globals.css
+//   - halo verde suave "vazando" por baixo da barra (pseudo-elemento ::after
+//     da mesma classe)
+//   - o item ativo ganha uma cápsula de vidro mais clara por cima do vidro
+//     escuro (".liquid-glass-item-ativo"), em vez do fundo verde-claro de
+//     antes — igual ao "Home" destacado na referência
+//   - como o vidro é sempre escuro (nos dois temas do app, claro e escuro),
+//     ícone/rótulo usam cores próprias sempre claras (".text-glass-ativo" /
+//     ".text-glass-muted"), não mais var(--color-primary)/var(--color-muted)
+//     (que trocam de tom por tema e ficariam ilegíveis em cima do vidro)
+//   - o botão central ganhou um contorno e um brilho superior sutis (mesmo
+//     verde de sempre, var(--color-success)) pra combinar com o rim de vidro
+//     da barra, sem perder o destaque de "ação principal"
+//
+// Ajustes visuais herdados (mantidos):
 //   - barra com altura fixa (pedido explícito)
 //   - o item da tela atual ganha um "selo" arredondado ao redor do ícone,
 //     em vez de só mudar a cor do ícone
 //   - o botão central "flutua" acima da barra (translateY negativo) e tem
 //     sombra própria, para destacar como ação principal da tela
 //   - o wrapper que limita a largura do pill (.bottom-nav-shell, ver
-//     globals.css) não tem fundo — só o pill (.card) tem — pra nenhuma cor
-//     sólida "vazar" atrás dele por cima dos cards ao rolar a tela
+//     globals.css) não tem fundo — só o pill (.liquid-glass-bar) tem — pra
+//     nenhuma cor sólida "vazar" atrás dele por cima dos cards ao rolar
 //   - a margem inferior soma env(safe-area-inset-bottom) pra não ficar colado
 //     (ou escondido atrás) do home indicator do iPhone
 // ============================================================================
@@ -56,14 +75,20 @@ export default function BottomNav() {
     const Icon = item.icon;
     return (
       <Link key={item.href} href={item.href} className="flex-1 min-w-0 flex justify-center">
-        {/* O "selo" (fundo + borda arredondada) só existe no item ativo —
-            é ele que faz o ícone atual parecer "circulado", como pedido. */}
+        {/* A cápsula de vidro (.liquid-glass-item-ativo) só existe no item
+            ativo — é ela que faz o ícone atual parecer "circulado" em vidro
+            mais claro, como o "Home" na referência. */}
         <span
-          className="flex flex-col items-center justify-center gap-0.5 rounded-md px-2.5 py-1 min-w-0"
-          style={ativo ? { background: "var(--color-primary-subtle)" } : undefined}
+          className={`flex flex-col items-center justify-center gap-0.5 rounded-full px-2.5 py-1 min-w-0 ${
+            ativo ? "liquid-glass-item-ativo" : ""
+          }`}
         >
           <Icon ativo={ativo} />
-          <span className={`text-[9px] font-medium leading-none truncate ${ativo ? "text-primary" : "text-muted"}`}>
+          <span
+            className={`text-[9px] font-medium leading-none truncate ${
+              ativo ? "text-glass-ativo" : "text-glass-muted"
+            }`}
+          >
             {item.label}
           </span>
         </span>
@@ -75,13 +100,9 @@ export default function BottomNav() {
     <nav className="fixed bottom-0 left-0 right-0 flex justify-center pointer-events-none z-50">
       <div className="bottom-nav-shell">
         <div
-          className="pointer-events-auto mx-4 card flex items-center justify-between relative"
+          className="pointer-events-auto mx-4 liquid-glass-bar flex items-center justify-between relative"
           style={{
             height: ALTURA_BARRA,
-            // .card (globals.css) define "padding: 20px" nos 4 lados — o
-            // inline style abaixo tem prioridade sobre essa classe e é o
-            // jeito de manter a altura exata (padding menor, e só nas
-            // laterais, sem sobra em cima/baixo).
             padding: "0 6px",
             marginBottom: "calc(1rem + env(safe-area-inset-bottom, 0px))",
           }}
@@ -94,8 +115,12 @@ export default function BottomNav() {
             aria-label="Nova transação"
             className="flex-shrink-0 w-14 h-14 rounded-full flex items-center justify-center text-white"
             style={{
-              background: "var(--color-success)",
-              boxShadow: "var(--shadow-md)",
+              // Mesmo verde de sempre (var(--color-success)), com um brilho
+              // superior sutil pra combinar com o rim de vidro da barra.
+              background:
+                "linear-gradient(180deg, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0) 45%), var(--color-success)",
+              border: "1px solid rgba(255,255,255,0.35)",
+              boxShadow: "var(--shadow-md), 0 1px 0 rgba(255,255,255,0.4) inset",
               transform: "translateY(-18px)",
             }}
           >
@@ -112,10 +137,11 @@ export default function BottomNav() {
 // ----------------------------------------------------------------------------
 // Ícones simples em SVG inline (sem dependência externa de biblioteca de ícones)
 // ----------------------------------------------------------------------------
-// Devolve a classe utilitaria de cor; os tracos do SVG usam currentColor,
-// entao a cor vem do token (--color-primary / --color-muted) via Tailwind.
+// Devolve a classe de cor sobre o vidro — sempre clara nos dois temas, porque
+// o fundo da barra (.liquid-glass-bar) é sempre escuro. Os traços do SVG
+// usam currentColor, então a cor vem dessa classe.
 function corIcone(ativo: boolean) {
-  return ativo ? "text-primary" : "text-muted";
+  return ativo ? "text-glass-ativo" : "text-glass-muted";
 }
 
 function IconInicio({ ativo }: { ativo: boolean }) {
