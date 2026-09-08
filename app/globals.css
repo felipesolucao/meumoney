@@ -903,10 +903,36 @@ a {
   .contract-detail .contract-installments .text-lg { font-size: 14px; }
   .contract-detail .contract-installments .text-sm { font-size: 12px; }
   .contract-detail .contract-installments .btn-chip { min-height: 32px; padding: 6px 8px; font-size: 11px; }
+
+  /* --------------------------------------------------------------------------
+     ABA "CLIENTES" — mesma receita visual da aba Contratos acima: cabeçalho
+     mais alto com gradiente, cards com borda definida e badges menores. A
+     diferença é que aqui não há campo de busca, então a linha 1 do grid tem
+     só o botão "+ Novo cliente" e a barra de filtros de ordenação.
+     -------------------------------------------------------------------------- */
+  .desktop-layout > .clients-shell { max-width: 1350px; width: calc(100% - 64px); background: transparent; }
+  .clients-shell .header-gradient { height: 94px; max-height: 94px; padding: 22px 24px; background: linear-gradient(165deg, var(--color-card), var(--color-primary-surface)); border: 1px solid var(--color-primary-border); border-top: 0; box-shadow: var(--shadow-md); }
+  .clients-shell .header-gradient h1 { font-size: 24px; }
+  .clients-shell .header-gradient .icon-btn { width: 44px; height: 44px; border: 1px solid var(--color-border); }
+  .clients-shell .card { border: 1px solid var(--color-border); border-radius: 16px; }
+  .clients-shell .badge { font-size: 11px; padding: 5px 10px; gap: 5px; }
+  .clients-shell .badge-dot { width: 6px; height: 6px; }
+  .clients-list { display: grid; grid-template-columns: 204px 1fr; gap: 24px 12px; margin-top: 32px; align-items: center; }
+  .clients-list > * { margin-top: 0 !important; min-width: 0; }
+  .clients-create { grid-column: 1; grid-row: 1; }
+  .clients-shell .clients-create { min-height: 48px; padding: 12px 16px; border-radius: 16px; }
+  .clients-filters { grid-column: 2; grid-row: 1; justify-content: flex-end; padding-bottom: 0; }
+  .clients-list > p, .clients-list > .card { grid-column: 1 / -1; }
+  .clients-grid { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
+  .clients-grid > * { margin-top: 0 !important; min-width: 0; }
+  .clients-grid > .card { padding: 20px; }
+  .clients-grid .avatar { width: 56px; height: 56px; font-size: 20px; }
+  .clients-grid .font-bold { font-size: 17px; }
 }
 
 @media (min-width: 1440px) {
   .contracts-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .clients-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 /* Início: painel amplo somente no desktop; ordem e medidas mobile preservadas. */
 @media (min-width: 1024px) {

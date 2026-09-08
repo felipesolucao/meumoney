@@ -15,7 +15,12 @@ export async function GET() {
   const clientes = await prisma.cliente.findMany({
     where: { usuarioId: sessao.id },
     orderBy: { criadoEm: "desc" },
-    include: { _count: { select: { contratos: true } } },
+    include: {
+      _count: { select: { contratos: true } },
+      // Só o valorTotal de cada contrato — usado pra somar e ordenar por
+      // "maior valor"/"menor valor" na tela de clientes (ver app/clientes/page.tsx).
+      contratos: { select: { valorTotal: true } },
+    },
   });
   return NextResponse.json(clientes);
 }

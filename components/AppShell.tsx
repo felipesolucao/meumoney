@@ -17,6 +17,7 @@ export default function AppShell({ children, nome }: { children: React.ReactNode
   const pathname = usePathname();
   const semMenu = pathname === "/login" || pathname === "/cadastro" || pathname.startsWith("/admin");
   const contratos = pathname === "/contratos" || pathname.startsWith("/contratos/");
+  const clientes = pathname === "/clientes";
 
   return (
     <div className={semMenu ? "" : "desktop-layout"}>
@@ -43,7 +44,7 @@ export default function AppShell({ children, nome }: { children: React.ReactNode
           </nav>
         </aside>
       )}
-      <div className={`app-shell${contratos ? " contracts-shell" : ""}${pathname === "/" ? " home-shell" : ""}${pathname === "/emprestimos" ? " loans-shell" : ""}`}>{children}</div>
+      <div className={`app-shell${contratos ? " contracts-shell" : ""}${clientes ? " clients-shell" : ""}${pathname === "/" ? " home-shell" : ""}${pathname === "/emprestimos" ? " loans-shell" : ""}`}>{children}</div>
     </div>
   );
 }
