@@ -3,6 +3,7 @@
 // ============================================================================
 import Link from "next/link";
 import Image from "next/image";
+import logo from "../../public/logo.png";
 import { exigirSessao } from "../../lib/auth";
 import BotaoSair from "../../components/BotaoSair";
 import ThemeToggle from "../../components/ThemeToggle";
@@ -46,7 +47,7 @@ export default async function Menu() {
   return (
     <div>
       <div className="header-gradient flex items-center gap-3">
-        <Image src="/logo.png" alt="MeuMoney" width={48} height={48} unoptimized />
+        <Image src={logo} alt="MeuMoney" width={48} height={48} unoptimized />
         <div>
           <h1 className="text-2xl font-bold">MeuMoney</h1>
           <p className="text-muted text-sm">{sessao.email}</p>
