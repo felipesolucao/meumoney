@@ -986,3 +986,33 @@ a {
 @media (min-width: 1280px) {
   .home-month-stats, .home-pending > .grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
+/* Painel de contratos (/emprestimos). */
+@media (min-width: 1024px) {
+  .desktop-layout > .loans-shell { max-width: 1350px; width: calc(100% - 64px); background: transparent; }
+  .loans-shell .header-gradient { height: 94px; max-height: 94px; padding: 20px 24px; display: flex; align-items: center; background: linear-gradient(165deg, var(--color-card), var(--color-primary-surface)); border: 1px solid var(--color-primary-border); border-top: 0; box-shadow: var(--shadow-md); }
+  .loans-shell .header-gradient > div { width: 100%; }
+  .loans-dashboard { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; margin-top: 24px; align-items: start; }
+  .loans-dashboard > * { min-width: 0; margin-top: 0 !important; }
+  .loans-summary { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 2fr; gap: 20px; align-items: stretch; }
+  .loans-summary > * { min-width: 0; margin-top: 0 !important; }
+  .loans-summary-cards { grid-column: 1 / -1; gap: 16px; }
+  .loans-shell .card { border: 1px solid var(--color-border); border-radius: 16px; }
+  .loans-summary-cards .card { padding: 24px; }
+  .loans-summary-cards .text-lg { font-size: clamp(20px, 1.6vw, 28px); }
+  .loans-overdue { display: flex; flex-direction: column; justify-content: center; padding: 24px; }
+  .loans-overdue .text-3xl { overflow-wrap: anywhere; }
+  .loans-status { padding: 24px; }
+  .loans-today { align-self: stretch; }
+  .loans-shortcuts { min-width: 0; }
+  .loans-active { grid-column: 1 / -1; }
+  .loans-active-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+  .loans-active-grid > * { margin-top: 0 !important; min-width: 0; }
+  .loans-shell a.card:hover { border-color: var(--color-primary-border); box-shadow: var(--shadow-tile); }
+  .loans-shell a:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 3px; }
+}
+@media (min-width: 1280px) {
+  .loans-summary-cards { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+@media (min-width: 1440px) {
+  .loans-active-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}

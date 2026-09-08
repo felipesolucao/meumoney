@@ -3,7 +3,8 @@
 // ============================================================================
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { formatarMoeda, formatarData, statusDoContrato } from "../../lib/calculos";
 import Badge, { tomEStatusContrato } from "../../components/Badge";
@@ -28,10 +29,20 @@ const ABAS = [
 ];
 
 export default function Contratos() {
+  return <Suspense fallback={<p className="p-5 text-muted">Carregando...</p>}><ListaContratos /></Suspense>;
+}
+
+function ListaContratos() {
+  const searchParams = useSearchParams();
   const [contratos, setContratos] = useState<Contrato[]>([]);
   const [aba, setAba] = useState("todos");
   const [busca, setBusca] = useState("");
   const [carregando, setCarregando] = useState(true);
+
+  useEffect(() => {
+    const status = searchParams.get("status");
+    setAba(ABAS.find((a) => a.valor === status)?.valor ?? "todos");
+  }, [searchParams]);
 
   useEffect(() => {
     fetch("/api/contratos")

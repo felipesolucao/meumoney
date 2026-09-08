@@ -30,6 +30,8 @@ export async function GET(req: NextRequest) {
   if (status === "atrasado") {
     where.status = { not: "pago" };
     where.vencimento = { lt: new Date(new Date().toDateString()) };
+  } else if (status === "pendente") {
+    where.status = { not: "pago" };
   } else if (status) {
     where.status = status;
   }

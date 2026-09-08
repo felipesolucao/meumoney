@@ -12,9 +12,9 @@
 // ============================================================================
 import Link from "next/link";
 import { prisma } from "../../lib/prisma";
-import { formatarMoeda, iniciais, statusDoContrato } from "../../lib/calculos";
+import { formatarMoeda, iniciais, statusDoContrato, statusDaParcela } from "../../lib/calculos";
 import { exigirSessao } from "../../lib/auth";
-import CardSaldo from "../../components/CardSaldo";
+import ResumoContratos from "../../components/ResumoContratos";
 import { IconBell, IconWallet, IconDocument, IconReceipt, IconChart } from "../../components/Icons";
 
 export const dynamic = "force-dynamic";
@@ -30,7 +30,9 @@ export default async function Emprestimos() {
 
   const todasParcelas = contratos.flatMap((c) => c.parcelas);
 
-  const totalEmprestado = contratos.reduce((soma, c) => soma + Number(c.valorEmprestado), 0);
+  const totalContratos = contratos.reduce((soma, c) => soma + Number(c.valorTotal), 0);
+  const lucro = contratos.reduce((soma, c) => soma + Number(c.valorLucro), 0);
+  const atrasado = todasParcelas.filter((p) => statusDaParcela(p.vencimento, p.status === "pago") === "atrasado").reduce((soma, p) => soma + Number(p.valor), 0);
   const recebido = todasParcelas
     .filter((p) => p.status === "pago")
     .reduce((soma, p) => soma + Number(p.valorPago ?? p.valor), 0);
@@ -45,7 +47,7 @@ export default async function Emprestimos() {
 
   const statusPorContrato = new Map(contratos.map((c) => [c.id, statusDoContrato(c.parcelas)]));
   const contratosAtivos = contratos.filter((c) => statusPorContrato.get(c.id) !== "quitado").slice(0, 5);
-  const tudoEmDia = ![...statusPorContrato.values()].some((s) => s === "atrasado");
+  const status = [...statusPorContrato.values()];
 
   return (
     <div>
@@ -53,41 +55,19 @@ export default async function Emprestimos() {
         <div className="flex items-center justify-between">
           <div>
             <p className="text-muted text-sm">Painel de</p>
-            <h1 className="text-2xl font-bold">Empréstimos</h1>
+            <h1 className="text-2xl font-bold">Contratos</h1>
           </div>
           <div className="icon-btn text-foreground">
             <IconBell size={19} />
           </div>
         </div>
 
-        {/* Cartão de resumo financeiro, com fundo decorativo e opção de ocultar valor */}
-        <div className="mt-5">
-          <CardSaldo label="TOTAL EMPRESTADO" valor={formatarMoeda(totalEmprestado)}>
-            <span
-              className="badge mt-3"
-              style={{ background: tudoEmDia ? "var(--color-success-subtle)" : "var(--color-error-subtle)", color: tudoEmDia ? "var(--color-success)" : "var(--color-error)" }}
-            >
-              <span className="badge-dot" />
-              {tudoEmDia ? "Tudo em dia" : "Existem parcelas atrasadas"}
-            </span>
-
-            <div className="grid grid-cols-2 gap-3 mt-4">
-              <div className="rounded-md border p-3" style={{ background: "var(--color-surface-inset)", borderColor: "var(--color-primary-border)" }}>
-                <p className="text-primary text-xs font-semibold">RECEBIDO</p>
-                <p className="font-bold mt-1">{formatarMoeda(recebido)}</p>
-              </div>
-              <div className="rounded-md border p-3" style={{ background: "var(--color-surface-inset)", borderColor: "var(--color-accent-border)" }}>
-                <p className="text-warning text-xs font-semibold">A RECEBER</p>
-                <p className="font-bold mt-1">{formatarMoeda(aReceber)}</p>
-              </div>
-            </div>
-          </CardSaldo>
-        </div>
       </div>
 
-      <div className="px-5 mt-5 space-y-5">
+      <div className="loans-dashboard px-5 mt-5 space-y-5">
+        <ResumoContratos total={totalContratos} recebido={recebido} pendente={aReceber} lucro={lucro} atrasado={atrasado} emDia={status.filter((s) => s === "em_dia").length} atrasados={status.filter((s) => s === "atrasado").length} quitados={status.filter((s) => s === "quitado").length} />
         {/* Parcelas de hoje */}
-        <div className="card flex items-center gap-3">
+        <div className="loans-today card flex items-center gap-3">
           <div className="w-12 h-12 rounded-md bg-background flex items-center justify-center text-primary">
             <IconReceipt size={22} />
           </div>
@@ -107,18 +87,18 @@ export default async function Emprestimos() {
         </div>
 
         {/* Acesso rápido */}
-        <div>
+        <div className="loans-shortcuts">
           <p className="text-xs font-semibold tracking-wide text-muted mb-3">ACESSO RÁPIDO</p>
           <div className="grid grid-cols-4 gap-3 text-center">
             <AtalhoRapido href="/financeiro" icon={<IconWallet size={22} />} label="Financeiro" />
             <AtalhoRapido href="/contratos" icon={<IconDocument size={22} />} label="Contratos" />
             <AtalhoRapido href="/parcelas" icon={<IconReceipt size={22} />} label="Parcelas" />
-            <AtalhoRapido href="/relatorios" icon={<IconChart size={22} />} label="Histórico" />
+            <AtalhoRapido href="/historico?entidade=Contrato&voltar=/emprestimos" icon={<IconChart size={22} />} label="Histórico" />
           </div>
         </div>
 
         {/* Contratos ativos */}
-        <div>
+        <div className="loans-active">
           <div className="flex items-center justify-between mb-3">
             <p className="text-xs font-semibold tracking-wide text-muted">CONTRATOS ATIVOS</p>
             <Link href="/contratos" className="text-primary text-sm font-semibold">
@@ -126,7 +106,7 @@ export default async function Emprestimos() {
             </Link>
           </div>
 
-          <div className="space-y-3">
+          <div className="loans-active-grid space-y-3">
             {contratosAtivos.length === 0 && (
               <div className="card text-center text-muted text-sm">Nenhum contrato ativo ainda.</div>
             )}

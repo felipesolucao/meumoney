@@ -80,7 +80,7 @@ export default async function Inicio() {
               <div className="stat-icon">
                 <IconReceipt size={18} />
               </div>
-              <p className="text-[11px] font-semibold tracking-wide text-muted">A RECEBER (EMPRÉSTIMOS)</p>
+              <p className="text-[11px] font-semibold tracking-wide text-muted">A RECEBER (CONTRATOS)</p>
               <p className="font-extrabold mt-1">{formatarMoeda(resumo.aReceberEmprestimos)}</p>
             </Link>
 

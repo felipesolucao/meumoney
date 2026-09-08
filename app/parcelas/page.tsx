@@ -3,7 +3,8 @@
 // ============================================================================
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { formatarMoeda, formatarData, statusDaParcela } from "../../lib/calculos";
 import Badge, { tomEStatusParcela } from "../../components/Badge";
@@ -13,12 +14,13 @@ type ParcelaComContrato = {
   id: string;
   numero: number;
   valor: string;
+  valorPago: string | null;
   vencimento: string;
   status: string;
   contrato: { id: string; codigo: string; cliente: { nome: string; telefone: string | null } };
 };
 
-type Aba = "hoje" | "amanha" | "atrasadas" | "por_data";
+type Aba = "hoje" | "amanha" | "atrasadas" | "por_data" | "recebidas" | "pendentes";
 
 function isoHoje(offsetDias = 0) {
   const d = new Date();
@@ -34,27 +36,48 @@ function inicioFimMes() {
 }
 
 export default function Parcelas() {
+  return <Suspense fallback={<p className="p-5 text-muted">Carregando...</p>}><ListaParcelas /></Suspense>;
+}
+
+function ListaParcelas() {
+  const searchParams = useSearchParams();
   const [aba, setAba] = useState<Aba>("hoje");
   const [parcelas, setParcelas] = useState<ParcelaComContrato[]>([]);
   const [carregando, setCarregando] = useState(true);
+  const [erro, setErro] = useState("");
   const { inicio, fim } = inicioFimMes();
   const [de, setDe] = useState(inicio);
   const [ate, setAte] = useState(fim);
 
   useEffect(() => {
+    const destino = searchParams.get("aba");
+    setAba(destino === "recebidas" || destino === "pendentes" || destino === "atrasadas" ? destino : "hoje");
+  }, [searchParams]);
+
+  useEffect(() => {
     setCarregando(true);
+    setErro("");
     let url = "/api/parcelas?";
     if (aba === "hoje") url += `de=${isoHoje()}&ate=${isoHoje()}`;
     else if (aba === "amanha") url += `de=${isoHoje(1)}&ate=${isoHoje(1)}`;
     else if (aba === "atrasadas") url += `status=atrasado`;
+    else if (aba === "recebidas") url += `status=pago`;
+    else if (aba === "pendentes") url += `status=pendente`;
     else url += `de=${de}&ate=${ate}`;
 
-    fetch(url)
-      .then((r) => r.json())
+    const controller = new AbortController();
+    fetch(url, { signal: controller.signal })
+      .then((r) => {
+        if (!r.ok) throw new Error("Falha ao carregar parcelas");
+        return r.json();
+      })
       .then((data) => {
         setParcelas(data);
         setCarregando(false);
+      }).catch(() => {
+        if (!controller.signal.aborted) { setErro("Não foi possível carregar as parcelas. Atualize a página para tentar novamente."); setParcelas([]); setCarregando(false); }
       });
+    return () => controller.abort();
   }, [aba, de, ate]);
 
   const totalAReceber = useMemo(
@@ -78,6 +101,8 @@ export default function Parcelas() {
               { valor: "amanha", label: "Amanhã" },
               { valor: "atrasadas", label: "Atrasadas" },
               { valor: "por_data", label: "Por data" },
+              { valor: "recebidas", label: "Recebidas" },
+              { valor: "pendentes", label: "Pendentes" },
             ] as { valor: Aba; label: string }[]
           ).map((a) => (
             <button
@@ -101,13 +126,14 @@ export default function Parcelas() {
         )}
 
         <div className="card" style={{ background: "var(--color-primary-surface)" }}>
-          <p className="text-xs font-semibold tracking-wide text-muted">TOTAL A RECEBER</p>
-          <p className="text-3xl font-extrabold text-primary mt-1">{formatarMoeda(totalAReceber)}</p>
-          <p className="text-sm text-muted mt-0.5">{pendentes.length} parcela(s)</p>
+          <p className="text-xs font-semibold tracking-wide text-muted">{aba === "recebidas" ? "TOTAL RECEBIDO" : "TOTAL A RECEBER"}</p>
+          <p className="text-3xl font-extrabold text-primary mt-1">{carregando ? "R$ —" : formatarMoeda(aba === "recebidas" ? parcelas.reduce((s, p) => s + Number(p.valorPago ?? p.valor), 0) : totalAReceber)}</p>
+          <p className="text-sm text-muted mt-0.5">{carregando ? "—" : aba === "recebidas" ? parcelas.length : pendentes.length} parcela(s)</p>
         </div>
 
         {carregando && <p className="text-center text-muted text-sm">Carregando...</p>}
-        {!carregando && parcelas.length === 0 && (
+        {erro && <p role="alert" className="text-error text-sm">{erro}</p>}
+        {!carregando && !erro && parcelas.length === 0 && (
           <div className="card text-center text-muted text-sm">Nenhuma parcela neste período.</div>
         )}
 
@@ -129,7 +155,7 @@ export default function Parcelas() {
                     <Badge tom={tom}>{texto}</Badge>
                   </div>
                   <p className="text-sm text-muted">Vence {formatarData(p.vencimento)}</p>
-                  <p className="text-primary font-bold">{formatarMoeda(p.valor)}</p>
+                  <p className="text-primary font-bold">{formatarMoeda(p.status === "pago" ? p.valorPago ?? p.valor : p.valor)}</p>
                 </div>
                 <Link
                   href={`/contratos/${p.contrato.id}`}

@@ -28,7 +28,7 @@ export default function AppShell({ children, nome }: { children: React.ReactNode
           </Link>
           <nav aria-label="Menu principal" className="sidebar-nav">
             {itens.map(({ href, label, icon: Icon }) => {
-              const ativo = href === "/" ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
+              const ativo = href === "/" ? pathname === href : pathname === href || pathname.startsWith(`${href}/`) || (href === "/contratos" && pathname === "/emprestimos");
               return <Link key={href} href={href} className="sidebar-link" aria-current={ativo ? "page" : undefined}><Icon size={20} /><span>{label}</span></Link>;
             })}
             <details className="sidebar-settings">
@@ -37,12 +37,13 @@ export default function AppShell({ children, nome }: { children: React.ReactNode
               <Link className="sidebar-link" href="/modelos-cobranca">Modelos de cobrança</Link>
               <Link className="sidebar-link" href="/financeiro">Transações</Link>
               <Link className="sidebar-link" href="/financeiro/contas">Contas bancárias</Link>
+              <Link className="sidebar-link" href="/emprestimos">Resumo de contratos</Link>
               <Link className="sidebar-link" href="/menu">Todas as opções</Link>
             </details>
           </nav>
         </aside>
       )}
-      <div className={`app-shell${contratos ? " contracts-shell" : ""}${pathname === "/" ? " home-shell" : ""}`}>{children}</div>
+      <div className={`app-shell${contratos ? " contracts-shell" : ""}${pathname === "/" ? " home-shell" : ""}${pathname === "/emprestimos" ? " loans-shell" : ""}`}>{children}</div>
     </div>
   );
 }
