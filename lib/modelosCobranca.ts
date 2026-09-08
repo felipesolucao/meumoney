@@ -66,5 +66,10 @@ export const VARIAVEIS_COBRANCA = ["{nome}", "{nomeCompleto}", "{numero}", "{tot
 export type TipoModeloCobranca = (typeof MODELOS_COBRANCA)[number]["tipo"];
 
 export function preencherModelo(mensagem: string, dados: Record<string, string | number>) {
-  return mensagem.replace(/\{([a-zA-Z]+)\}/g, (variavel) => String(dados[variavel.slice(1)] ?? variavel));
+  // Tolerante a espaços acidentais dentro das chaves (ex: "{ nome }"), pra que
+  // um modelo editado à mão não deixe a variável crua na mensagem final.
+  return mensagem.replace(/\{\s*([a-zA-Z]+)\s*\}/g, (match, chave) => {
+    const valor = dados[chave];
+    return valor === undefined || valor === null ? match : String(valor);
+  });
 }
