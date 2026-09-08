@@ -58,5 +58,5 @@ export async function middleware(req: NextRequest) {
 // Aplica o middleware a todas as rotas, exceto arquivos estáticos e a API
 // (a API se protege sozinha — ver comentário acima).
 export const config = {
-  matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
+  matcher: ["/((?!api|_next/static|_next/image|favicon.ico|logo\\.png$).*)"],
 };
