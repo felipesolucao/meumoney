@@ -6,9 +6,10 @@
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { formatarMoeda, formatarData, statusDaParcela } from "../../lib/calculos";
+import { agruparPorDia, formatarMoeda, formatarData } from "../../lib/calculos";
 import Badge, { tomEStatusParcela } from "../../components/Badge";
-import { IconChevronRight } from "../../components/Icons";
+import { IconArrowLeft, IconChevronRight } from "../../components/Icons";
+import MesSeletor from "../../components/MesSeletor";
 
 type ParcelaComContrato = {
   id: string;
@@ -22,17 +23,21 @@ type ParcelaComContrato = {
 
 type Aba = "hoje" | "amanha" | "atrasadas" | "por_data" | "recebidas" | "pendentes";
 
+function isoLocal(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 function isoHoje(offsetDias = 0) {
   const d = new Date();
   d.setDate(d.getDate() + offsetDias);
-  return d.toISOString().slice(0, 10);
+  return isoLocal(d);
 }
 
 function inicioFimMes() {
   const hoje = new Date();
   const inicio = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
   const fim = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0);
-  return { inicio: inicio.toISOString().slice(0, 10), fim: fim.toISOString().slice(0, 10) };
+  return { inicio: isoLocal(inicio), fim: isoLocal(fim) };
 }
 
 export default function Parcelas() {
@@ -48,6 +53,9 @@ function ListaParcelas() {
   const { inicio, fim } = inicioFimMes();
   const [de, setDe] = useState(inicio);
   const [ate, setAte] = useState(fim);
+  const [ano, setAno] = useState(new Date().getFullYear());
+  const [mes, setMes] = useState(new Date().getMonth());
+  const usaFiltroMes = aba === "pendentes" || aba === "recebidas";
 
   useEffect(() => {
     const destino = searchParams.get("aba");
@@ -64,6 +72,9 @@ function ListaParcelas() {
     else if (aba === "recebidas") url += `status=pago`;
     else if (aba === "pendentes") url += `status=pendente`;
     else url += `de=${de}&ate=${ate}`;
+    if (usaFiltroMes) {
+      url += `&de=${isoLocal(new Date(ano, mes, 1))}&ate=${isoLocal(new Date(ano, mes + 1, 0))}`;
+    }
 
     const controller = new AbortController();
     fetch(url, { signal: controller.signal })
@@ -78,23 +89,32 @@ function ListaParcelas() {
         if (!controller.signal.aborted) { setErro("Não foi possível carregar as parcelas. Atualize a página para tentar novamente."); setParcelas([]); setCarregando(false); }
       });
     return () => controller.abort();
-  }, [aba, de, ate]);
+  }, [aba, de, ate, ano, mes, usaFiltroMes]);
 
   const totalAReceber = useMemo(
     () => parcelas.filter((p) => p.status !== "pago").reduce((s, p) => s + Number(p.valor), 0),
     [parcelas]
   );
   const pendentes = parcelas.filter((p) => p.status !== "pago");
+  const grupos = useMemo(() => agruparPorDia(
+    [...parcelas].sort((a, b) => a.vencimento.localeCompare(b.vencimento)),
+    (p) => p.vencimento
+  ), [parcelas]);
 
   return (
     <div>
-      <div className="header-gradient">
+      <div className="header-gradient flex items-center gap-3">
+        <Link href="/contratos" aria-label="Voltar para contratos" className="icon-btn text-foreground flex-shrink-0">
+          <IconArrowLeft size={19} />
+        </Link>
+        <div>
         <h1 className="text-2xl font-bold">Parcelas</h1>
         <p className="text-muted text-sm">{parcelas.length} no total</p>
+        </div>
       </div>
 
       <div className="px-5 mt-5 space-y-4">
-        <div className="flex gap-2 overflow-x-auto pb-1">
+        <div className="flex flex-wrap gap-2">
           {(
             [
               { valor: "hoje", label: "Hoje" },
@@ -108,6 +128,7 @@ function ListaParcelas() {
             <button
               key={a.valor}
               onClick={() => setAba(a.valor)}
+              aria-pressed={aba === a.valor}
               className={`px-4 py-2 rounded-pill text-sm font-semibold whitespace-nowrap ${
                 aba === a.valor ? "bg-primary text-white" : "bg-card border border-border text-foreground"
               }`}
@@ -117,11 +138,19 @@ function ListaParcelas() {
           ))}
         </div>
 
+        {usaFiltroMes && (
+          <div className="card">
+            <MesSeletor ano={ano} mes={mes} onMudar={(a, m) => { setAno(a); setMes(m); }} />
+          </div>
+        )}
         {aba === "por_data" && (
-          <div className="card flex items-center gap-2">
-            <input type="date" value={de} onChange={(e) => setDe(e.target.value)} className="flex-1 outline-none" />
-            <span className="text-muted"><IconChevronRight size={16} /></span>
-            <input type="date" value={ate} onChange={(e) => setAte(e.target.value)} className="flex-1 outline-none" />
+          <div className="card grid grid-cols-1 min-[380px]:grid-cols-2 gap-3">
+            <label className="min-w-0 text-xs font-semibold text-muted">De
+              <input type="date" value={de} max={ate} onChange={(e) => setDe(e.target.value)} className="mt-1 block w-full min-w-0 rounded-md border border-border p-2 text-sm text-foreground outline-none" />
+            </label>
+            <label className="min-w-0 text-xs font-semibold text-muted">Até
+              <input type="date" value={ate} min={de} onChange={(e) => setAte(e.target.value)} className="mt-1 block w-full min-w-0 rounded-md border border-border p-2 text-sm text-foreground outline-none" />
+            </label>
           </div>
         )}
 
@@ -137,37 +166,64 @@ function ListaParcelas() {
           <div className="card text-center text-muted text-sm">Nenhuma parcela neste período.</div>
         )}
 
-        <div className="space-y-3">
-          {parcelas.map((p) => {
-            const efetivo = statusDaParcela(new Date(p.vencimento), p.status === "pago");
-            const { tom, texto } = tomEStatusParcela(efetivo);
-            return (
-              <div key={p.id} className="card flex items-center gap-3">
-                <div
-                  className="w-11 h-11 rounded-sm flex items-center justify-center font-bold text-white flex-shrink-0"
-                  style={{ background: p.status === "pago" ? "var(--color-success)" : "var(--color-accent-strong)" }}
-                >
-                  {p.numero}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="font-bold truncate">{p.contrato.cliente.nome}</p>
-                    <Badge tom={tom}>{texto}</Badge>
-                  </div>
-                  <p className="text-sm text-muted">Vence {formatarData(p.vencimento)}</p>
-                  <p className="text-primary font-bold">{formatarMoeda(p.status === "pago" ? p.valorPago ?? p.valor : p.valor)}</p>
-                </div>
-                <Link
-                  href={`/contratos/${p.contrato.id}`}
-                  className="w-9 h-9 rounded-pill bg-background flex items-center justify-center flex-shrink-0 text-muted"
-                >
-                  <IconChevronRight size={16} />
-                </Link>
-              </div>
-            );
-          })}
+        <div className="space-y-6">
+          {!carregando && !erro && grupos.map((grupo) => (
+            <GrupoParcelas key={grupo.itens[0].vencimento.slice(0, 10)} parcelas={grupo.itens} />
+          ))}
         </div>
       </div>
     </div>
+  );
+}
+
+
+function GrupoParcelas({ parcelas }: { parcelas: ParcelaComContrato[] }) {
+  const data = parcelas[0].vencimento.slice(0, 10);
+  const dia = new Date(`${data}T00:00:00Z`);
+  const semana = dia.toLocaleDateString("pt-BR", { weekday: "long", timeZone: "UTC" });
+  const mesNome = dia.toLocaleDateString("pt-BR", { month: "long", timeZone: "UTC" });
+  const rotulo = `${semana}, ${data.slice(8, 10)} de ${mesNome}, ${data.slice(0, 4)}`;
+  const totalDia = parcelas.reduce((s, p) => s + Math.round(Number(p.status === "pago" ? p.valorPago ?? p.valor : p.valor) * 100), 0) / 100;
+  const dias = Math.round((dia.getTime() - new Date(`${isoHoje()}T00:00:00Z`).getTime()) / 86400000);
+  const prazo = dias === 0 ? "Vence hoje" : dias === 1 ? "Falta 1 dia" : dias > 1 ? `Faltam ${dias} dias` : `Há ${Math.abs(dias)} ${dias === -1 ? "dia" : "dias"} em atraso`;
+  return (
+    <section key={data} aria-label={rotulo} className="space-y-3">
+      <div className="flex items-start justify-between gap-3 border-b border-border pb-2">
+        <h2 className="min-w-0 text-sm font-semibold text-muted first-letter:uppercase">{rotulo}</h2>
+        <div className="shrink-0 text-right">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-muted">Total do dia</p>
+          <p className="text-sm font-bold tabular-nums">{formatarMoeda(totalDia)}</p>
+        </div>
+      </div>
+      {parcelas.map((p) => {
+        const efetivo = p.status === "pago" ? "pago" : dias < 0 ? "atrasado" : "a_vencer";
+        const { tom, texto } = tomEStatusParcela(efetivo);
+        return (
+          <Link key={p.id} href={`/contratos/${p.contrato.id}`}
+            className="card block border border-border transition-colors hover:border-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+          >
+            <div className="flex items-start gap-3">
+              <div className="w-11 h-11 rounded-xl flex items-center justify-center font-bold flex-shrink-0"
+                style={{ background: p.status === "pago" ? "var(--color-success-subtle)" : "var(--color-warning-subtle)", color: p.status === "pago" ? "var(--color-success)" : "var(--color-warning)" }}>
+                {p.numero}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-bold leading-snug [overflow-wrap:anywhere]">{p.contrato.cliente.nome}</p>
+                <p className="text-xs text-muted mt-1">Parcela {p.numero} · Contrato {p.contrato.codigo}</p>
+              </div>
+              <IconChevronRight size={16} className="text-muted flex-shrink-0 mt-3" />
+            </div>
+            <div className="flex flex-wrap items-center justify-between gap-2 mt-4">
+              <p className="text-xl font-bold text-primary tabular-nums">{formatarMoeda(p.status === "pago" ? p.valorPago ?? p.valor : p.valor)}</p>
+              <Badge tom={tom}>{texto}</Badge>
+            </div>
+            <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 mt-2 text-xs">
+              <p className="text-muted">Vence {formatarData(p.vencimento)}</p>
+              {p.status !== "pago" && <p className={`font-semibold ${dias < 0 ? "text-error" : "text-muted"}`}>{prazo}</p>}
+            </div>
+          </Link>
+        );
+      })}
+    </section>
   );
 }
