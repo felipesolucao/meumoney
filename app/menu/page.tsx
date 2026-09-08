@@ -26,7 +26,7 @@ import {
 // para o botão central de nova transação — por isso entram aqui, no topo da
 // lista, para continuarem a um toque de distância.
 const ITENS = [
-  { href: "/emprestimos", icon: IconWallet, label: "Contratos", desc: "Valor total, recebido e pendente dos contratos" },
+  { href: "/contratos", icon: IconWallet, label: "Contratos", desc: "Valor total, recebido e pendente dos contratos" },
   { href: "/clientes", icon: IconClientes, label: "Clientes", desc: "Lista de clientes e contratos" },
   { href: "/financeiro/novo", icon: IconPlus, label: "Novo lançamento", desc: "Cadastrar uma receita ou despesa" },
   { href: "/financeiro/pagar", icon: IconReceipt, label: "Contas a pagar", desc: "Histórico de despesas" },

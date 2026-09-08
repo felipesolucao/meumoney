@@ -76,7 +76,7 @@ export default async function Inicio() {
               <p className="font-extrabold mt-1">{formatarMoeda(resumo.aPagarFinanceiro)}</p>
             </Link>
 
-            <Link href="/emprestimos" className="card stat-card" style={tonCss("var(--color-warning)", "var(--color-warning-subtle)")}>
+            <Link href="/contratos" className="card stat-card" style={tonCss("var(--color-warning)", "var(--color-warning-subtle)")}>
               <div className="stat-icon">
                 <IconReceipt size={18} />
               </div>

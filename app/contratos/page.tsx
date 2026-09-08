@@ -1,24 +1,49 @@
 // ============================================================================
-// PÁGINA: Contratos (lista com abas de status)
+// PÁGINA: Contratos (painel + lista com abas de status)
+// ----------------------------------------------------------------------------
+// Esta página absorveu o conteúdo que antes vivia em "/emprestimos" (resumo
+// da carteira, parcelas de hoje, acesso rápido) — agora "/contratos" é a
+// ÚNICA rota oficial para esse módulo. "/emprestimos" só redireciona pra cá
+// (ver app/emprestimos/page.tsx).
+//
+// Além do resumo, esta tela ganhou:
+//   - "Contratos no mês": mesmo seletor de mês usado na Início/Financeiro,
+//     com opção de trocar para um período personalizado (ver dataDe/dataAte).
+//   - Paginação na lista de contratos, pra não renderizar centenas de cards
+//     de uma vez quando a carteira crescer.
 // ============================================================================
 "use client";
 
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { formatarMoeda, formatarData, statusDoContrato } from "../../lib/calculos";
+import { formatarMoeda, statusDaParcela, statusDoContrato, formatarData } from "../../lib/calculos";
 import Badge, { tomEStatusContrato } from "../../components/Badge";
-import { IconHistory } from "../../components/Icons";
+import ResumoContratos from "../../components/ResumoContratos";
+import ContratosNoMes from "../../components/ContratosNoMes";
+import {
+  IconHistory,
+  IconReceipt,
+  IconWallet,
+  IconUsers,
+  IconChevronLeft,
+  IconChevronRight,
+  IconChart,
+} from "../../components/Icons";
 
+type Parcela = { status: string; vencimento: string; valor: string; valorPago: string | null };
 type Contrato = {
   id: string;
   codigo: string;
   valorTotal: string;
+  valorEmprestado: string;
+  valorLucro: string;
   numeroParcelas: number;
   status: string;
   jurosAoMes: string;
+  criadoEm: string;
   cliente: { nome: string };
-  parcelas: { status: string; vencimento: string }[];
+  parcelas: Parcela[];
 };
 
 const ABAS = [
@@ -27,6 +52,8 @@ const ABAS = [
   { valor: "atrasado", label: "Atrasados" },
   { valor: "quitado", label: "Quitados" },
 ];
+
+const ITENS_POR_PAGINA = 12;
 
 export default function Contratos() {
   return <Suspense fallback={<p className="p-5 text-muted">Carregando...</p>}><ListaContratos /></Suspense>;
@@ -38,6 +65,7 @@ function ListaContratos() {
   const [aba, setAba] = useState("todos");
   const [busca, setBusca] = useState("");
   const [carregando, setCarregando] = useState(true);
+  const [pagina, setPagina] = useState(1);
 
   useEffect(() => {
     const status = searchParams.get("status");
@@ -53,6 +81,34 @@ function ListaContratos() {
       });
   }, []);
 
+  // --- Resumo geral (todo o histórico, igual ao antigo /emprestimos) ------
+  const todasParcelas = useMemo(() => contratos.flatMap((c) => c.parcelas), [contratos]);
+  const totalContratos = useMemo(() => contratos.reduce((soma, c) => soma + Number(c.valorTotal), 0), [contratos]);
+  const lucro = useMemo(() => contratos.reduce((soma, c) => soma + Number(c.valorLucro), 0), [contratos]);
+  const atrasado = useMemo(
+    () => todasParcelas.filter((p) => statusDaParcela(new Date(p.vencimento), p.status === "pago") === "atrasado").reduce((s, p) => s + Number(p.valor), 0),
+    [todasParcelas]
+  );
+  const recebido = useMemo(
+    () => todasParcelas.filter((p) => p.status === "pago").reduce((s, p) => s + Number(p.valorPago ?? p.valor), 0),
+    [todasParcelas]
+  );
+  const aReceber = useMemo(
+    () => todasParcelas.filter((p) => p.status !== "pago").reduce((s, p) => s + Number(p.valor), 0),
+    [todasParcelas]
+  );
+  const statusValues = useMemo(
+    () => contratos.map((c) => statusDoContrato(c.parcelas.map((p) => ({ vencimento: p.vencimento, status: p.status })))),
+    [contratos]
+  );
+
+  const hojeStr = new Date().toDateString();
+  const parcelasHoje = useMemo(
+    () => todasParcelas.filter((p) => p.status !== "pago" && new Date(p.vencimento).toDateString() === hojeStr),
+    [todasParcelas, hojeStr]
+  );
+
+  // --- Lista filtrada por aba/busca + paginação ----------------------------
   const filtrados = useMemo(() => {
     return contratos.filter((c) => {
       const statusEfetivo = statusDoContrato(c.parcelas.map((p) => ({ vencimento: p.vencimento, status: p.status })));
@@ -61,6 +117,14 @@ function ListaContratos() {
       return passaAba && passaBusca;
     });
   }, [contratos, aba, busca]);
+
+  useEffect(() => {
+    setPagina(1);
+  }, [aba, busca]);
+
+  const totalPaginas = Math.max(1, Math.ceil(filtrados.length / ITENS_POR_PAGINA));
+  const paginaAtual = Math.min(pagina, totalPaginas);
+  const visiveis = filtrados.slice((paginaAtual - 1) * ITENS_POR_PAGINA, paginaAtual * ITENS_POR_PAGINA);
 
   return (
     <div>
@@ -73,6 +137,54 @@ function ListaContratos() {
           <IconHistory size={18} />
         </Link>
       </div>
+
+      {/* Resumo geral + parcelas de hoje + acesso rápido — migrado de
+          "/emprestimos" (ver comentário no topo do arquivo). */}
+      <div className="loans-dashboard px-5 mt-5 space-y-5">
+        <ResumoContratos
+          total={totalContratos}
+          recebido={recebido}
+          pendente={aReceber}
+          lucro={lucro}
+          atrasado={atrasado}
+          emDia={statusValues.filter((s) => s === "em_dia").length}
+          atrasados={statusValues.filter((s) => s === "atrasado").length}
+          quitados={statusValues.filter((s) => s === "quitado").length}
+        />
+
+        <div className="loans-today card flex items-center gap-3">
+          <div className="w-12 h-12 rounded-md bg-background flex items-center justify-center text-primary">
+            <IconReceipt size={22} />
+          </div>
+          <div>
+            <p className="text-xs font-semibold tracking-wide text-muted">PARCELAS DE HOJE</p>
+            {parcelasHoje.length === 0 ? (
+              <>
+                <p className="font-bold">Não temos parcelas hoje</p>
+                <p className="text-sm text-muted">Nenhum vencimento para hoje</p>
+              </>
+            ) : (
+              <p className="font-bold">
+                {parcelasHoje.length} parcela(s) — {formatarMoeda(parcelasHoje.reduce((s, p) => s + Number(p.valor), 0))}
+              </p>
+            )}
+          </div>
+        </div>
+
+        <div className="loans-shortcuts">
+          <p className="text-xs font-semibold tracking-wide text-muted mb-3">ACESSO RÁPIDO</p>
+          <div className="grid grid-cols-4 gap-3 text-center">
+            <AtalhoRapido href="/financeiro" icon={<IconWallet size={22} />} label="Financeiro" />
+            <AtalhoRapido href="/clientes" icon={<IconUsers size={22} />} label="Clientes" />
+            <AtalhoRapido href="/parcelas" icon={<IconReceipt size={22} />} label="Parcelas" />
+            <AtalhoRapido href="/historico?entidade=Contrato&voltar=/contratos" icon={<IconChart size={22} />} label="Histórico" />
+          </div>
+        </div>
+      </div>
+
+      {/* Contratos no mês — mesmo seletor de mês da Início/Financeiro, com
+          opção de período personalizado (ver components/ContratosNoMes.tsx). */}
+      <ContratosNoMes contratos={contratos} />
 
       <div className="contracts-list px-5 mt-5 space-y-4">
         <Link href="/contratos/novo" className="contracts-create btn-primary">
@@ -106,7 +218,7 @@ function ListaContratos() {
         )}
 
         <div className="contracts-grid space-y-3">
-          {filtrados.map((c) => {
+          {visiveis.map((c) => {
             const pagas = c.parcelas.filter((p) => p.status === "pago").length;
             const proxima = c.parcelas.find((p) => p.status !== "pago");
             const statusEfetivo = statusDoContrato(c.parcelas.map((p) => ({ vencimento: p.vencimento, status: p.status })));
@@ -140,7 +252,44 @@ function ListaContratos() {
             );
           })}
         </div>
+
+        {/* Paginação — só aparece quando há mais contratos do que cabem numa
+            página, pra não renderizar centenas de cards de uma vez. */}
+        {totalPaginas > 1 && (
+          <div className="contracts-pagination flex items-center justify-center gap-4 pt-2">
+            <button
+              type="button"
+              onClick={() => setPagina((p) => Math.max(1, p - 1))}
+              disabled={paginaAtual <= 1}
+              aria-label="Página anterior"
+              className="icon-btn text-foreground disabled:opacity-40"
+            >
+              <IconChevronLeft size={18} />
+            </button>
+            <p className="text-sm text-muted">
+              Página {paginaAtual} de {totalPaginas}
+            </p>
+            <button
+              type="button"
+              onClick={() => setPagina((p) => Math.min(totalPaginas, p + 1))}
+              disabled={paginaAtual >= totalPaginas}
+              aria-label="Próxima página"
+              className="icon-btn text-foreground disabled:opacity-40"
+            >
+              <IconChevronRight size={18} />
+            </button>
+          </div>
+        )}
       </div>
     </div>
+  );
+}
+
+function AtalhoRapido({ href, icon, label }: { href: string; icon: React.ReactNode; label: string }) {
+  return (
+    <Link href={href} className="flex flex-col items-center gap-2">
+      <div className="quick-tile text-primary">{icon}</div>
+      <span className="text-xs font-medium">{label}</span>
+    </Link>
   );
 }
