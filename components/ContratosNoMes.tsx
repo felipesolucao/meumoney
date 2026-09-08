@@ -12,7 +12,7 @@
 "use client";
 
 import MesSeletor from "./MesSeletor";
-import { IconCalendar, IconDocument } from "./Icons";
+import { IconCalendar, IconDocument, IconAlert } from "./Icons";
 
 export default function ContratosNoMes({
   ano,
@@ -25,6 +25,7 @@ export default function ContratosNoMes({
   dataAte,
   onMudarDataAte,
   quantidade,
+  emAberto,
 }: {
   ano: number;
   mes: number;
@@ -36,6 +37,7 @@ export default function ContratosNoMes({
   dataAte: string;
   onMudarDataAte: (valor: string) => void;
   quantidade: number;
+  emAberto: number;
 }) {
   return (
     <div className="px-5 mt-5 space-y-3">
@@ -84,6 +86,17 @@ export default function ContratosNoMes({
             {periodoPersonalizado ? "CONTRATOS NO PERÍODO" : "CONTRATOS NESTE MÊS"}
           </p>
           <p className="font-bold text-lg">{quantidade} contrato(s)</p>
+        </div>
+      </div>
+
+      <div className="card flex items-center gap-3">
+        <div className="w-12 h-12 rounded-md bg-background flex items-center justify-center text-warning">
+          <IconAlert size={22} />
+        </div>
+        <div>
+          <p className="text-xs font-semibold tracking-wide text-muted">CONTRATOS EM ABERTO</p>
+          <p className="font-bold text-lg">{emAberto} contrato(s)</p>
+          <p className="text-xs text-muted mt-0.5">Com parcela em aberto ou atrasada no período</p>
         </div>
       </div>
     </div>

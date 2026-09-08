@@ -20,16 +20,12 @@ import Link from "next/link";
 import { formatarMoeda, statusDaParcela, statusDoContrato, formatarData } from "../../lib/calculos";
 import { calcularIntervaloPeriodo, isoHoje } from "../../lib/periodo";
 import Badge, { tomEStatusContrato } from "../../components/Badge";
-import ResumoContratos from "../../components/ResumoContratos";
+import PainelContratosResumo from "../../components/PainelContratosResumo";
 import ContratosNoMes from "../../components/ContratosNoMes";
 import {
   IconHistory,
-  IconReceipt,
-  IconWallet,
-  IconUsers,
   IconChevronLeft,
   IconChevronRight,
-  IconChart,
 } from "../../components/Icons";
 
 type Parcela = { status: string; vencimento: string; valor: string; valorPago: string | null };
@@ -91,15 +87,32 @@ function ListaContratos() {
       });
   }, []);
 
-  // --- Contratos dentro do mês/período selecionado — base do resumo, das
-  // abas (com contagem) e da lista abaixo. ---------------------------------
+  // --- Contratos do mês/período selecionado --------------------------------
+  // "Criados no período" alimenta só o card "Contratos neste mês" (contagem
+  // estrita de novos contratos). "Relevantes ao período" é mais abrangente —
+  // também entra quem tem parcela VENCENDO no período — e é o que alimenta o
+  // resumo, as abas e a lista abaixo. Sem isso, um mês futuro sem contrato
+  // novo aparecia zerado mesmo tendo contratos antigos com parcela em aberto
+  // vencendo ali (o problema reportado ao selecionar o próximo mês).
+  const intervalo = useMemo(
+    () => calcularIntervaloPeriodo({ personalizado: periodoPersonalizado, ano, mes, dataDe, dataAte }),
+    [periodoPersonalizado, ano, mes, dataDe, dataAte]
+  );
+  const contratosCriadosNoPeriodo = useMemo(
+    () => contratos.filter((c) => { const d = new Date(c.criadoEm); return d >= intervalo.inicio && d <= intervalo.fim; }),
+    [contratos, intervalo]
+  );
   const contratosNoPeriodo = useMemo(() => {
-    const { inicio, fim } = calcularIntervaloPeriodo({ personalizado: periodoPersonalizado, ano, mes, dataDe, dataAte });
     return contratos.filter((c) => {
-      const d = new Date(c.criadoEm);
-      return d >= inicio && d <= fim;
+      const criado = new Date(c.criadoEm);
+      const criadoNoPeriodo = criado >= intervalo.inicio && criado <= intervalo.fim;
+      const temParcelaNoPeriodo = c.parcelas.some((p) => {
+        const v = new Date(p.vencimento);
+        return v >= intervalo.inicio && v <= intervalo.fim;
+      });
+      return criadoNoPeriodo || temParcelaNoPeriodo;
     });
-  }, [contratos, periodoPersonalizado, ano, mes, dataDe, dataAte]);
+  }, [contratos, intervalo]);
 
   // --- Resumo do período selecionado --------------------------------------
   const parcelasDoPeriodo = useMemo(() => contratosNoPeriodo.flatMap((c) => c.parcelas), [contratosNoPeriodo]);
@@ -117,8 +130,9 @@ function ListaContratos() {
     () => parcelasDoPeriodo.filter((p) => p.status !== "pago").reduce((s, p) => s + Number(p.valor), 0),
     [parcelasDoPeriodo]
   );
-  // Status efetivo de cada contrato do período — alimenta o resumo E a
-  // contagem exibida em cada aba (Todos/Em dia/Atrasados/Quitados).
+  // Status efetivo de cada contrato do período — alimenta o resumo, a
+  // contagem de cada aba e o novo card "Contratos em aberto" (em_dia +
+  // atrasado = tem parcela em aberto ou atrasada; só quitado fica de fora).
   const statusPorContratoPeriodo = useMemo(
     () => contratosNoPeriodo.map((c) => statusDoContrato(c.parcelas.map((p) => ({ vencimento: p.vencimento, status: p.status })))),
     [contratosNoPeriodo]
@@ -129,6 +143,7 @@ function ListaContratos() {
     atrasado: statusPorContratoPeriodo.filter((s) => s === "atrasado").length,
     quitado: statusPorContratoPeriodo.filter((s) => s === "quitado").length,
   };
+  const contratosEmAberto = contagemPorAba.em_dia + contagemPorAba.atrasado;
 
   // "Parcelas de hoje" independe do período selecionado (é sempre hoje).
   const hojeStr = hoje.toDateString();
@@ -168,48 +183,18 @@ function ListaContratos() {
       </div>
 
       {/* Resumo geral + parcelas de hoje + acesso rápido — migrado de
-          "/emprestimos" (ver comentário no topo do arquivo). */}
-      <div className="loans-dashboard px-5 mt-5 space-y-5">
-        <ResumoContratos
-          total={totalContratos}
-          recebido={recebido}
-          pendente={aReceber}
-          lucro={lucro}
-          atrasado={atrasado}
-          emDia={contagemPorAba.em_dia}
-          atrasados={contagemPorAba.atrasado}
-          quitados={contagemPorAba.quitado}
-        />
-
-        <div className="loans-today card flex items-center gap-3">
-          <div className="w-12 h-12 rounded-md bg-background flex items-center justify-center text-primary">
-            <IconReceipt size={22} />
-          </div>
-          <div>
-            <p className="text-xs font-semibold tracking-wide text-muted">PARCELAS DE HOJE</p>
-            {parcelasHoje.length === 0 ? (
-              <>
-                <p className="font-bold">Não temos parcelas hoje</p>
-                <p className="text-sm text-muted">Nenhum vencimento para hoje</p>
-              </>
-            ) : (
-              <p className="font-bold">
-                {parcelasHoje.length} parcela(s) — {formatarMoeda(parcelasHoje.reduce((s, p) => s + Number(p.valor), 0))}
-              </p>
-            )}
-          </div>
-        </div>
-
-        <div className="loans-shortcuts">
-          <p className="text-xs font-semibold tracking-wide text-muted mb-3">ACESSO RÁPIDO</p>
-          <div className="grid grid-cols-4 gap-3 text-center">
-            <AtalhoRapido href="/financeiro" icon={<IconWallet size={22} />} label="Financeiro" />
-            <AtalhoRapido href="/clientes" icon={<IconUsers size={22} />} label="Clientes" />
-            <AtalhoRapido href="/parcelas" icon={<IconReceipt size={22} />} label="Parcelas" />
-            <AtalhoRapido href="/historico?entidade=Contrato&voltar=/contratos" icon={<IconChart size={22} />} label="Histórico" />
-          </div>
-        </div>
-      </div>
+          "/emprestimos" (ver components/PainelContratosResumo.tsx). */}
+      <PainelContratosResumo
+        total={totalContratos}
+        recebido={recebido}
+        pendente={aReceber}
+        lucro={lucro}
+        atrasado={atrasado}
+        emDia={contagemPorAba.em_dia}
+        atrasados={contagemPorAba.atrasado}
+        quitados={contagemPorAba.quitado}
+        parcelasHoje={parcelasHoje}
+      />
 
       {/* Contratos no mês/período — controla o resumo acima e as abas/lista
           abaixo (ver components/ContratosNoMes.tsx). */}
@@ -223,7 +208,8 @@ function ListaContratos() {
         onMudarDataDe={setDataDe}
         dataAte={dataAte}
         onMudarDataAte={setDataAte}
-        quantidade={contratosNoPeriodo.length}
+        quantidade={contratosCriadosNoPeriodo.length}
+        emAberto={contratosEmAberto}
       />
 
       <div className="contracts-list px-5 mt-5 space-y-4">
@@ -322,14 +308,5 @@ function ListaContratos() {
         )}
       </div>
     </div>
-  );
-}
-
-function AtalhoRapido({ href, icon, label }: { href: string; icon: React.ReactNode; label: string }) {
-  return (
-    <Link href={href} className="flex flex-col items-center gap-2">
-      <div className="quick-tile text-primary">{icon}</div>
-      <span className="text-xs font-medium">{label}</span>
-    </Link>
   );
 }
