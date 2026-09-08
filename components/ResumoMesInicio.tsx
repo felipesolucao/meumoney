@@ -64,13 +64,13 @@ export default function ResumoMesInicio({ carteiraId }: { carteiraId?: string | 
   }, [carteiraId]);
 
   return (
-    <div>
-      <div className="card space-y-3">
+    <div className="home-month-summary">
+      <div className="home-month-selector card space-y-3">
         <p className="text-xs font-semibold tracking-wide text-muted">MÊS</p>
         <MesSeletor ano={ano} mes={mes} onMudar={(a, m) => { setAno(a); setMes(m); }} />
       </div>
 
-      <div className="mt-4">
+      <div className="home-month-balance mt-4">
         <CardSaldo
           label="SALDO DO MÊS"
           valor={carregando ? "R$ —" : formatarMoeda(resumo?.balanco ?? 0)}
@@ -78,7 +78,7 @@ export default function ResumoMesInicio({ carteiraId }: { carteiraId?: string | 
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-3 mt-4">
+      <div className="home-month-stats grid grid-cols-2 gap-3 mt-4">
         <Link href="/financeiro/receber" className="card stat-card" style={tonCss("var(--color-primary)", "var(--color-primary-subtle)")}>
           <div className="stat-icon">
             <IconTrendUp size={18} />
@@ -117,7 +117,7 @@ export default function ResumoMesInicio({ carteiraId }: { carteiraId?: string | 
           diferente do "Saldo do mês" acima, que só olha o que já ACONTECEU
           (pago), este aqui projeta o mês inteiro como se tudo fosse
           resolvido (recebido/pago). */}
-      <div className="mt-4">
+      <div className="home-month-projection mt-4">
         <CardSaldo
           label="RECEITAS − DESPESAS DO MÊS"
           valor={carregando ? "R$ —" : formatarMoeda((resumo?.totalReceitasDoMes ?? 0) - (resumo?.totalDespesasDoMes ?? 0))}

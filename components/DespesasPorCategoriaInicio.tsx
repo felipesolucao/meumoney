@@ -39,7 +39,7 @@ export default function DespesasPorCategoriaInicio() {
   const categorias = (resumo?.categorias ?? []).slice(0, 4);
 
   return (
-    <div>
+    <div className="home-categories">
       <div className="flex items-center justify-between mb-3">
         <p className="text-xs font-semibold tracking-wide text-muted">DESPESAS POR CATEGORIA (MÊS)</p>
         <Link href="/financeiro/relatorios" className="text-primary text-sm font-semibold flex items-center gap-1">

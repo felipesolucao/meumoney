@@ -49,7 +49,7 @@ export default function CarteirasInicio() {
   }
 
   return (
-    <div>
+    <div className="home-wallets">
       <div className="mb-5">
         <div className="wallet-tabs" role="tablist" aria-label="Selecionar carteira">
           <button type="button" role="tab" aria-selected={selecionada === null} onClick={() => setSelecionada(null)} className={selecionada === null ? "wallet-tab wallet-tab-active" : "wallet-tab"}>

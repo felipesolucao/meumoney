@@ -42,7 +42,7 @@ export default function AppShell({ children, nome }: { children: React.ReactNode
           </nav>
         </aside>
       )}
-      <div className={`app-shell${contratos ? " contracts-shell" : ""}`}>{children}</div>
+      <div className={`app-shell${contratos ? " contracts-shell" : ""}${pathname === "/" ? " home-shell" : ""}`}>{children}</div>
     </div>
   );
 }

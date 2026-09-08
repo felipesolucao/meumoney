@@ -47,7 +47,7 @@ export default async function Inicio() {
         <HeaderTopo nome={sessao.nome} />
       </div>
 
-      <div className="px-5 mt-5 space-y-5">
+      <div className="home-dashboard px-5 mt-5 space-y-5">
         {/* Carteiras + resumo do mês — "Geral" soma tudo; as demais filtram
             as contas vinculadas a cada carteira. */}
         <CarteirasInicio />
@@ -57,7 +57,7 @@ export default async function Inicio() {
         <DespesasPorCategoriaInicio />
 
         {/* Recebíveis e pendências — geral, juntando os dois módulos */}
-        <div>
+        <div className="home-pending">
           <p className="text-xs font-semibold tracking-wide text-muted mb-3">RECEBÍVEIS E PENDÊNCIAS</p>
           <div className="grid grid-cols-2 gap-3">
             <Link href="/financeiro/receber" className="card stat-card" style={tonCss("var(--color-primary)", "var(--color-primary-subtle)")}>
@@ -101,7 +101,7 @@ export default async function Inicio() {
         </div>
 
         {/* Todas as movimentações — financeiro + empréstimos, por data */}
-        <div>
+        <div className="home-activity">
           <div className="flex items-center justify-between mb-3">
             <p className="text-xs font-semibold tracking-wide text-muted">MOVIMENTAÇÕES RECENTES</p>
             <Link href="/historico" className="text-primary text-sm font-semibold">
