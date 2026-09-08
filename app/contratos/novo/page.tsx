@@ -8,6 +8,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { calcularParcelasDoContrato, formatarMoeda, Frequencia, TipoEmprestimo } from "../../../lib/calculos";
 import BotaoVoltar from "../../../components/BotaoVoltar";
+import { IconHome } from "../../../components/Icons";
 
 type Cliente = { id: string; nome: string };
 
@@ -111,10 +112,11 @@ function NovoContrato() {
     <div>
       <div className="header-gradient flex items-center gap-3">
         <BotaoVoltar href="/contratos" />
+        <Link href="/" aria-label="Ir para o início" className="desktop-home icon-btn text-foreground"><IconHome size={19} /></Link>
         <h1 className="text-2xl font-bold">Novo contrato</h1>
       </div>
 
-      <div className="px-5 mt-6 space-y-5 overflow-x-hidden">
+      <div className="contract-form px-5 mt-6 space-y-5 overflow-x-hidden">
         <div>
           <p className="text-xs font-semibold tracking-wide text-muted mb-2">CLIENTE</p>
           <select

@@ -121,7 +121,7 @@ export default function BottomNav() {
   }
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 flex justify-center pointer-events-none z-50">
+    <nav className="mobile-bottom-nav fixed bottom-0 left-0 right-0 flex justify-center pointer-events-none z-50">
       <div className="bottom-nav-shell">
         <div
           className="pointer-events-auto mx-4 liquid-glass-bar flex items-center justify-between relative"

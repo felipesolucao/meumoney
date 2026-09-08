@@ -56,8 +56,8 @@ export default async function DetalheContrato({ params }: { params: { id: string
         </div>
       </div>
 
-      <div className="px-5 mt-5 space-y-5">
-        <div className="card" style={{ background: "var(--color-primary-surface)" }}>
+      <div className="contract-detail px-5 mt-5 space-y-5">
+        <div className="contract-summary card" style={{ background: "var(--color-primary-surface)" }}>
           <div className="flex items-center justify-between">
             <p className="text-xs font-semibold tracking-wide text-muted">VALOR DO CONTRATO</p>
             <Badge tom={statusInfo.tom}>{statusInfo.texto}</Badge>

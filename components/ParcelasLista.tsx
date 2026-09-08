@@ -104,7 +104,7 @@ export default function ParcelasLista({
   }
 
   return (
-    <div className="space-y-3">
+    <div className="contract-installments space-y-3">
       {parcelas.map((p) => {
         const efetivo = statusDaParcela(new Date(p.vencimento), p.status === "pago");
         const { tom, texto } = tomEStatusParcela(efetivo);

@@ -7,6 +7,8 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import BottomNav from "../components/BottomNav";
+import AppShell from "../components/AppShell";
+import { obterSessao } from "../lib/auth";
 import ToastProvider from "../components/ToastProvider";
 import ThemeProvider, { SCRIPT_TEMA_INICIAL } from "../components/ThemeProvider";
 
@@ -76,7 +78,8 @@ export const viewport: Viewport = {
   themeColor: "#1EAC60",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const sessao = await obterSessao();
   return (
     <html lang="pt-BR">
       <head>
@@ -87,7 +90,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="font-sans">
         <ThemeProvider>
           <ToastProvider>
-            <div className="app-shell">{children}</div>
+            <AppShell nome={sessao?.nome}>{children}</AppShell>
             <BottomNav />
           </ToastProvider>
         </ThemeProvider>

@@ -49,7 +49,7 @@ export default function ContratoAcoes({
   }
 
   return (
-    <div className="space-y-3">
+    <div className="contract-actions space-y-3">
       <button onClick={() => setModalAberto(true)} className="btn-primary flex items-center justify-center gap-2">
         <IconSend size={18} /> Enviar cobrança
       </button>

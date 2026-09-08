@@ -63,8 +63,8 @@ export default function Contratos() {
         </Link>
       </div>
 
-      <div className="px-5 mt-5 space-y-4">
-        <Link href="/contratos/novo" className="btn-primary">
+      <div className="contracts-list px-5 mt-5 space-y-4">
+        <Link href="/contratos/novo" className="contracts-create btn-primary">
           + Novo contrato
         </Link>
 
@@ -72,10 +72,10 @@ export default function Contratos() {
           value={busca}
           onChange={(e) => setBusca(e.target.value)}
           placeholder="Pesquisar por nome do cliente..."
-          className="w-full rounded-md border border-border px-4 py-3.5 outline-none focus:border-primary"
+          className="contracts-search w-full rounded-md border border-border px-4 py-3.5 outline-none focus:border-primary"
         />
 
-        <div className="flex gap-2 overflow-x-auto pb-1">
+        <div className="contracts-filters flex gap-2 overflow-x-auto pb-1">
           {ABAS.map((a) => (
             <button
               key={a.valor}
@@ -94,7 +94,7 @@ export default function Contratos() {
           <div className="card text-center text-muted text-sm">Nenhum contrato encontrado.</div>
         )}
 
-        <div className="space-y-3">
+        <div className="contracts-grid space-y-3">
           {filtrados.map((c) => {
             const pagas = c.parcelas.filter((p) => p.status === "pago").length;
             const proxima = c.parcelas.find((p) => p.status !== "pago");
