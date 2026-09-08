@@ -18,6 +18,7 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { formatarMoeda, statusDaParcela, statusDoContrato, formatarData } from "../../lib/calculos";
+import { calcularIntervaloPeriodo, isoHoje } from "../../lib/periodo";
 import Badge, { tomEStatusContrato } from "../../components/Badge";
 import ResumoContratos from "../../components/ResumoContratos";
 import ContratosNoMes from "../../components/ContratosNoMes";
@@ -67,6 +68,15 @@ function ListaContratos() {
   const [carregando, setCarregando] = useState(true);
   const [pagina, setPagina] = useState(1);
 
+  // Seletor "Contratos no mês/período" — controla o resumo, as abas e a
+  // lista logo abaixo (ver components/ContratosNoMes.tsx e lib/periodo.ts).
+  const hoje = new Date();
+  const [ano, setAno] = useState(hoje.getFullYear());
+  const [mes, setMes] = useState(hoje.getMonth());
+  const [periodoPersonalizado, setPeriodoPersonalizado] = useState(false);
+  const [dataDe, setDataDe] = useState(isoHoje(-30));
+  const [dataAte, setDataAte] = useState(isoHoje());
+
   useEffect(() => {
     const status = searchParams.get("status");
     setAba(ABAS.find((a) => a.valor === status)?.valor ?? "todos");
@@ -81,46 +91,65 @@ function ListaContratos() {
       });
   }, []);
 
-  // --- Resumo geral (todo o histórico, igual ao antigo /emprestimos) ------
-  const todasParcelas = useMemo(() => contratos.flatMap((c) => c.parcelas), [contratos]);
-  const totalContratos = useMemo(() => contratos.reduce((soma, c) => soma + Number(c.valorTotal), 0), [contratos]);
-  const lucro = useMemo(() => contratos.reduce((soma, c) => soma + Number(c.valorLucro), 0), [contratos]);
+  // --- Contratos dentro do mês/período selecionado — base do resumo, das
+  // abas (com contagem) e da lista abaixo. ---------------------------------
+  const contratosNoPeriodo = useMemo(() => {
+    const { inicio, fim } = calcularIntervaloPeriodo({ personalizado: periodoPersonalizado, ano, mes, dataDe, dataAte });
+    return contratos.filter((c) => {
+      const d = new Date(c.criadoEm);
+      return d >= inicio && d <= fim;
+    });
+  }, [contratos, periodoPersonalizado, ano, mes, dataDe, dataAte]);
+
+  // --- Resumo do período selecionado --------------------------------------
+  const parcelasDoPeriodo = useMemo(() => contratosNoPeriodo.flatMap((c) => c.parcelas), [contratosNoPeriodo]);
+  const totalContratos = useMemo(() => contratosNoPeriodo.reduce((soma, c) => soma + Number(c.valorTotal), 0), [contratosNoPeriodo]);
+  const lucro = useMemo(() => contratosNoPeriodo.reduce((soma, c) => soma + Number(c.valorLucro), 0), [contratosNoPeriodo]);
   const atrasado = useMemo(
-    () => todasParcelas.filter((p) => statusDaParcela(new Date(p.vencimento), p.status === "pago") === "atrasado").reduce((s, p) => s + Number(p.valor), 0),
-    [todasParcelas]
+    () => parcelasDoPeriodo.filter((p) => statusDaParcela(new Date(p.vencimento), p.status === "pago") === "atrasado").reduce((s, p) => s + Number(p.valor), 0),
+    [parcelasDoPeriodo]
   );
   const recebido = useMemo(
-    () => todasParcelas.filter((p) => p.status === "pago").reduce((s, p) => s + Number(p.valorPago ?? p.valor), 0),
-    [todasParcelas]
+    () => parcelasDoPeriodo.filter((p) => p.status === "pago").reduce((s, p) => s + Number(p.valorPago ?? p.valor), 0),
+    [parcelasDoPeriodo]
   );
   const aReceber = useMemo(
-    () => todasParcelas.filter((p) => p.status !== "pago").reduce((s, p) => s + Number(p.valor), 0),
-    [todasParcelas]
+    () => parcelasDoPeriodo.filter((p) => p.status !== "pago").reduce((s, p) => s + Number(p.valor), 0),
+    [parcelasDoPeriodo]
   );
-  const statusValues = useMemo(
-    () => contratos.map((c) => statusDoContrato(c.parcelas.map((p) => ({ vencimento: p.vencimento, status: p.status })))),
-    [contratos]
+  // Status efetivo de cada contrato do período — alimenta o resumo E a
+  // contagem exibida em cada aba (Todos/Em dia/Atrasados/Quitados).
+  const statusPorContratoPeriodo = useMemo(
+    () => contratosNoPeriodo.map((c) => statusDoContrato(c.parcelas.map((p) => ({ vencimento: p.vencimento, status: p.status })))),
+    [contratosNoPeriodo]
   );
+  const contagemPorAba: Record<string, number> = {
+    todos: contratosNoPeriodo.length,
+    em_dia: statusPorContratoPeriodo.filter((s) => s === "em_dia").length,
+    atrasado: statusPorContratoPeriodo.filter((s) => s === "atrasado").length,
+    quitado: statusPorContratoPeriodo.filter((s) => s === "quitado").length,
+  };
 
-  const hojeStr = new Date().toDateString();
+  // "Parcelas de hoje" independe do período selecionado (é sempre hoje).
+  const hojeStr = hoje.toDateString();
   const parcelasHoje = useMemo(
-    () => todasParcelas.filter((p) => p.status !== "pago" && new Date(p.vencimento).toDateString() === hojeStr),
-    [todasParcelas, hojeStr]
+    () => contratos.flatMap((c) => c.parcelas).filter((p) => p.status !== "pago" && new Date(p.vencimento).toDateString() === hojeStr),
+    [contratos, hojeStr]
   );
 
-  // --- Lista filtrada por aba/busca + paginação ----------------------------
+  // --- Lista filtrada por período + aba/busca + paginação ------------------
   const filtrados = useMemo(() => {
-    return contratos.filter((c) => {
+    return contratosNoPeriodo.filter((c) => {
       const statusEfetivo = statusDoContrato(c.parcelas.map((p) => ({ vencimento: p.vencimento, status: p.status })));
       const passaAba = aba === "todos" || statusEfetivo === aba;
       const passaBusca = c.cliente.nome.toLowerCase().includes(busca.toLowerCase());
       return passaAba && passaBusca;
     });
-  }, [contratos, aba, busca]);
+  }, [contratosNoPeriodo, aba, busca]);
 
   useEffect(() => {
     setPagina(1);
-  }, [aba, busca]);
+  }, [aba, busca, periodoPersonalizado, ano, mes, dataDe, dataAte]);
 
   const totalPaginas = Math.max(1, Math.ceil(filtrados.length / ITENS_POR_PAGINA));
   const paginaAtual = Math.min(pagina, totalPaginas);
@@ -147,9 +176,9 @@ function ListaContratos() {
           pendente={aReceber}
           lucro={lucro}
           atrasado={atrasado}
-          emDia={statusValues.filter((s) => s === "em_dia").length}
-          atrasados={statusValues.filter((s) => s === "atrasado").length}
-          quitados={statusValues.filter((s) => s === "quitado").length}
+          emDia={contagemPorAba.em_dia}
+          atrasados={contagemPorAba.atrasado}
+          quitados={contagemPorAba.quitado}
         />
 
         <div className="loans-today card flex items-center gap-3">
@@ -182,9 +211,20 @@ function ListaContratos() {
         </div>
       </div>
 
-      {/* Contratos no mês — mesmo seletor de mês da Início/Financeiro, com
-          opção de período personalizado (ver components/ContratosNoMes.tsx). */}
-      <ContratosNoMes contratos={contratos} />
+      {/* Contratos no mês/período — controla o resumo acima e as abas/lista
+          abaixo (ver components/ContratosNoMes.tsx). */}
+      <ContratosNoMes
+        ano={ano}
+        mes={mes}
+        onMudarMes={(a, m) => { setAno(a); setMes(m); }}
+        periodoPersonalizado={periodoPersonalizado}
+        onTogglePersonalizado={() => setPeriodoPersonalizado((v) => !v)}
+        dataDe={dataDe}
+        onMudarDataDe={setDataDe}
+        dataAte={dataAte}
+        onMudarDataAte={setDataAte}
+        quantidade={contratosNoPeriodo.length}
+      />
 
       <div className="contracts-list px-5 mt-5 space-y-4">
         <Link href="/contratos/novo" className="contracts-create btn-primary">
@@ -207,7 +247,7 @@ function ListaContratos() {
                 aba === a.valor ? "bg-primary text-white" : "bg-card border border-border text-foreground"
               }`}
             >
-              {a.label}
+              {a.label} ({contagemPorAba[a.valor]})
             </button>
           ))}
         </div>
