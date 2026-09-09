@@ -31,6 +31,7 @@ export async function GET(req: NextRequest) {
   const tipo = (params.get("tipo") as TipoLancamento) || "despesa";
   const deParam = params.get("de");
   const ateParam = params.get("ate");
+  const carteiraId = params.get("carteiraId");
 
   let inicio: Date;
   let fim: Date;
@@ -48,12 +49,16 @@ export async function GET(req: NextRequest) {
     fim = new Date(ano, mes + 1, 0, 23, 59, 59);
   }
 
+  // O lançamento herda a carteira da conta selecionada — mesmo filtro usado
+  // em /api/financeiro/resumo (ver comentário lá).
+  const filtroCarteira = carteiraId ? { conta: { carteiraId } } : {};
   const lancamentos = await prisma.lancamento.findMany({
     where: {
       usuarioId: sessao.id,
       tipo,
       status: "pago",
       dataVencimento: { gte: inicio, lte: fim },
+      ...filtroCarteira,
     },
     include: { categoria: true },
     orderBy: { dataVencimento: "desc" },

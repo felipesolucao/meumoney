@@ -8,8 +8,16 @@
 //
 // O saldo de cada conta é sempre derivado, nunca gravado direto:
 //   saldoAtual = saldoInicial + receitas PAGAS dessa conta - despesas PAGAS dessa conta
+//                - (empréstimos descontados dessa conta - parcelas já pagas desses empréstimos)
 // Lançamentos pendentes/atrasados não entram na conta, porque ainda não
 // "aconteceram" de fato no banco/carteira.
+//
+// O último termo é o desconto de contratos "descontados de uma conta" (ver
+// Contrato.contaDesembolsoId, criado em /contratos/novo) — de propósito NÃO
+// é um Lancamento (um empréstimo não é uma "despesa"/"receita" do dia a dia,
+// não deve aparecer nas telas de Despesas/Receitas), mas ainda precisa
+// mexer no saldo: o valor emprestado desconta na hora e volta aos poucos
+// conforme cada parcela é paga.
 // ============================================================================
 import { NextResponse } from "next/server";
 import { prisma } from "../../../../lib/prisma";
@@ -21,11 +29,15 @@ export async function GET(req: Request) {
 
   const carteiraId = new URL(req.url).searchParams.get("carteiraId");
   const filtroCarteira = carteiraId ? { carteiraId } : {};
-  const [contas, lancamentosPagos] = await Promise.all([
+  const [contas, lancamentosPagos, contratosDesembolso] = await Promise.all([
     prisma.conta.findMany({ where: { usuarioId: sessao.id, ...filtroCarteira }, orderBy: { nome: "asc" } }),
     prisma.lancamento.findMany({
       where: { usuarioId: sessao.id, status: "pago", contaId: { not: null } },
       select: { contaId: true, tipo: true, valorPago: true, valor: true },
+    }),
+    prisma.contrato.findMany({
+      where: { usuarioId: sessao.id, contaDesembolsoId: { not: null } },
+      select: { contaDesembolsoId: true, valorEmprestado: true, parcelas: { select: { status: true, valor: true, valorPago: true } } },
     }),
   ]);
 
@@ -37,6 +49,18 @@ export async function GET(req: Request) {
     const valor = Number(l.valorPago ?? l.valor);
     const delta = l.tipo === "receita" ? valor : -valor;
     movimentoPorConta.set(l.contaId, (movimentoPorConta.get(l.contaId) ?? 0) + delta);
+  }
+
+  // Cada contrato descontado de uma conta tira o valor emprestado na hora e
+  // devolve conforme as parcelas vão sendo pagas — o saldo "em aberto" do
+  // empréstimo (valorEmprestado - já devolvido) é o que ainda falta voltar.
+  for (const c of contratosDesembolso) {
+    if (!c.contaDesembolsoId) continue;
+    const jaDevolvido = c.parcelas
+      .filter((p) => p.status === "pago")
+      .reduce((s, p) => s + Number(p.valorPago ?? p.valor), 0);
+    const delta = jaDevolvido - Number(c.valorEmprestado);
+    movimentoPorConta.set(c.contaDesembolsoId, (movimentoPorConta.get(c.contaDesembolsoId) ?? 0) + delta);
   }
 
   const contasComSaldo = contas.map((conta) => {

@@ -115,7 +115,15 @@ export async function POST(req: NextRequest) {
     codigo = gerarCodigoContrato();
   }
 
-  let contrato = await prisma.contrato.create({
+  // O desconto na conta (quando contaDesembolsoId é escolhido) NÃO cria um
+  // Lancamento despesa — um empréstimo não é uma "conta a pagar" do dia a
+  // dia, então não deve aparecer nas telas de Despesas. O valor emprestado
+  // entra direto no cálculo do saldo da conta (ver
+  // app/api/financeiro/contas-resumo/route.ts, que soma valorEmprestado -
+  // parcelas pagas de todo contrato com essa contaDesembolsoId) e o
+  // histórico abaixo (CONTRATO_CRIADO) já registra os detalhes, num
+  // histórico separado do financeiro.
+  const contrato = await prisma.contrato.create({
     data: {
       codigo,
       clienteId,
@@ -150,33 +158,6 @@ export async function POST(req: NextRequest) {
     },
     include: { parcelas: true, cliente: true },
   });
-
-  // --- Desconta o valor emprestado da conta escolhida (NOVO) --------------
-  // Um Lancamento despesa já pago, dessa conta, no valor total emprestado —
-  // reaproveita o mesmo saldo calculado (saldoInicial + receitas pagas -
-  // despesas pagas) que a tela de Contas já usa, sem duplicar lógica. Ver
-  // Parcela.lancamentoRetornoId em app/api/parcelas/[id]/route.ts pro
-  // caminho inverso (o valor volta pra conta conforme as parcelas são pagas).
-  if (contaDesembolsoId) {
-    const lancamentoDesembolso = await prisma.lancamento.create({
-      data: {
-        descricao: `Empréstimo concedido - contrato ${contrato.codigo} (${cliente.nome})`,
-        valor: Number(valorEmprestado),
-        tipo: "despesa",
-        status: "pago",
-        dataVencimento: new Date(),
-        dataPagamento: new Date(),
-        valorPago: Number(valorEmprestado),
-        contaId: contaDesembolsoId,
-        usuarioId: sessao.id,
-      },
-    });
-    contrato = await prisma.contrato.update({
-      where: { id: contrato.id },
-      data: { lancamentoDesembolsoId: lancamentoDesembolso.id },
-      include: { parcelas: true, cliente: true },
-    });
-  }
 
   await registrarAcao(prisma, {
     usuarioId: sessao.id,

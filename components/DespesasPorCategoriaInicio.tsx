@@ -11,30 +11,38 @@
 // a tela que já existe com o histórico de lançamentos daquela categoria,
 // com seletor de mês (mesmo MesSeletor usado em Contas a pagar/receber).
 // Antes, essas linhas não levavam a lugar nenhum.
+//
+// CORRIGIDO: agora filtra pela carteira selecionada no seletor da Início
+// (ver CarteirasInicio + CarteiraContext) — antes sempre somava despesas de
+// TODAS as carteiras, mesmo com uma carteira específica escolhida.
 // ============================================================================
 "use client";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { formatarMoeda } from "../lib/financeiro";
+import { useCarteiraSelecionada } from "./CarteiraContext";
 import { IconChart } from "./Icons";
 
 type CategoriaResumo = { id: string; nome: string; icone: string; cor: string; total: number; percentual: number };
 type Resumo = { total: number; categorias: CategoriaResumo[] };
 
 export default function DespesasPorCategoriaInicio() {
+  const { carteiraId } = useCarteiraSelecionada();
   const [resumo, setResumo] = useState<Resumo | null>(null);
   const [carregando, setCarregando] = useState(true);
 
   useEffect(() => {
+    setCarregando(true);
     const hoje = new Date();
-    fetch(`/api/financeiro/categorias-resumo?tipo=despesa&ano=${hoje.getFullYear()}&mes=${hoje.getMonth()}`)
+    const carteiraQuery = carteiraId ? `&carteiraId=${encodeURIComponent(carteiraId)}` : "";
+    fetch(`/api/financeiro/categorias-resumo?tipo=despesa&ano=${hoje.getFullYear()}&mes=${hoje.getMonth()}${carteiraQuery}`)
       .then((r) => r.json())
       .then((data: Resumo) => {
         setResumo(data);
         setCarregando(false);
       });
-  }, []);
+  }, [carteiraId]);
 
   const categorias = (resumo?.categorias ?? []).slice(0, 4);
 

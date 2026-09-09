@@ -2,13 +2,18 @@
 
 import { useEffect, useState } from "react";
 import ResumoMesInicio from "./ResumoMesInicio";
+import { useCarteiraSelecionada } from "./CarteiraContext";
 import { IconEdit, IconPlus, IconTrash } from "./Icons";
 
 type Carteira = { id: string; nome: string };
 
 export default function CarteirasInicio() {
   const [carteiras, setCarteiras] = useState<Carteira[]>([]);
-  const [selecionada, setSelecionada] = useState<string | null>(null);
+  // Compartilhado com DespesasPorCategoriaInicio e MovimentacoesRecentesInicio
+  // via CarteiraContext (ver components/CarteiraContext.tsx) — antes era um
+  // useState local aqui, e trocar de carteira não refletia nas outras seções
+  // da Início, que continuavam mostrando dados de todas as carteiras.
+  const { carteiraId: selecionada, setCarteiraId: setSelecionada } = useCarteiraSelecionada();
   const [gerenciando, setGerenciando] = useState(false);
   const [nome, setNome] = useState("");
   const [editando, setEditando] = useState<string | null>(null);
