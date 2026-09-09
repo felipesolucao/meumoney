@@ -3,10 +3,9 @@
 // ----------------------------------------------------------------------------
 // Mesmo seletor de mês usado em "Transações" (app/financeiro), só que aqui
 // dentro da Início. Mostra, para o mês selecionado:
-//   - Saldo do mês (balanço: receitas pagas - despesas pagas) — card grande
-//   - A receber no mês (pendente, com vencimento dentro do mês)
-//   - Saldo atual em todas as contas (não é "do mês" — é o saldo corrente
-//     de todas as carteiras/contas bancárias, somado)
+//   - Saldo em contas (saldo corrente de todas as carteiras/contas
+//     bancárias, somado — não é "do mês") — card grande, com badge de
+//     "tudo em dia"/"N em atraso" e o par recebido/a receber no mês
 //   - Despesas pagas no mês
 //   - Total de despesas no mês (pagas + ainda pendentes)
 //   - Receitas − despesas do mês (total de receitas do mês, pagas + a
@@ -23,15 +22,18 @@ import Link from "next/link";
 import { formatarMoeda } from "../lib/financeiro";
 import MesSeletor from "./MesSeletor";
 import CardSaldo from "./CardSaldo";
+import Badge from "./Badge";
 import { tonCss } from "../lib/estiloCard";
-import { IconTrendUp, IconTrendDown, IconBuilding, IconWallet } from "./Icons";
+import { IconTrendUp, IconTrendDown, IconWallet } from "./Icons";
 
 type ResumoMes = {
   balanco: number;
   aReceberDoMes: number;
+  receitasDoMes: number;
   despesasDoMes: number;
   totalDespesasDoMes: number;
   totalReceitasDoMes: number;
+  atrasadas: number;
 };
 
 export default function ResumoMesInicio({ carteiraId }: { carteiraId?: string | null }) {
@@ -72,29 +74,34 @@ export default function ResumoMesInicio({ carteiraId }: { carteiraId?: string | 
 
       <div className="home-month-balance mt-4">
         <CardSaldo
-          label="SALDO DO MÊS"
-          valor={carregando ? "R$ —" : formatarMoeda(resumo?.balanco ?? 0)}
-          corValor={(resumo?.balanco ?? 0) >= 0 ? "var(--color-success)" : "var(--color-error)"}
-        />
+          label="SALDO EM CONTAS"
+          valor={saldoContas === null ? "R$ —" : formatarMoeda(saldoContas)}
+          badge={
+            <Badge tom={(resumo?.atrasadas ?? 0) > 0 ? "vermelho" : "verde"}>
+              {carregando ? "Carregando…" : (resumo?.atrasadas ?? 0) > 0 ? `${resumo?.atrasadas} em atraso` : "Tudo em dia"}
+            </Badge>
+          }
+        >
+          <div className="balance-split mt-4 relative">
+            <Link href="/financeiro/receber?aba=recebidas" className="balance-split-item" style={{ "--tone": "var(--color-success)", "--tone-subtle": "var(--color-success-subtle)" } as React.CSSProperties}>
+              <span className="balance-split-icon"><IconTrendUp size={16} /></span>
+              <span className="balance-split-text">
+                <span className="balance-split-label">RECEBIDO</span>
+                <span className="balance-split-value">{carregando ? "—" : formatarMoeda(resumo?.receitasDoMes ?? 0)}</span>
+              </span>
+            </Link>
+            <Link href="/financeiro/receber" className="balance-split-item" style={{ "--tone": "var(--color-warning)", "--tone-subtle": "var(--color-warning-subtle)" } as React.CSSProperties}>
+              <span className="balance-split-icon"><IconTrendDown size={16} /></span>
+              <span className="balance-split-text">
+                <span className="balance-split-label">A RECEBER</span>
+                <span className="balance-split-value">{carregando ? "—" : formatarMoeda(resumo?.aReceberDoMes ?? 0)}</span>
+              </span>
+            </Link>
+          </div>
+        </CardSaldo>
       </div>
 
       <div className="home-month-stats grid grid-cols-2 gap-3 mt-4">
-        <Link href="/financeiro/receber" className="card stat-card" style={tonCss("var(--color-primary)", "var(--color-primary-subtle)")}>
-          <div className="stat-icon">
-            <IconTrendUp size={18} />
-          </div>
-          <p className="text-[11px] font-semibold tracking-wide text-muted">A RECEBER NO MÊS</p>
-          <p className="font-extrabold mt-1">{carregando ? "—" : formatarMoeda(resumo?.aReceberDoMes ?? 0)}</p>
-        </Link>
-
-        <Link href="/financeiro/contas" className="card stat-card" style={tonCss("var(--color-accent)", "var(--color-accent-subtle)")}>
-          <div className="stat-icon">
-            <IconBuilding size={18} />
-          </div>
-          <p className="text-[11px] font-semibold tracking-wide text-muted">SALDO EM CONTAS</p>
-          <p className="font-extrabold mt-1">{saldoContas === null ? "—" : formatarMoeda(saldoContas)}</p>
-        </Link>
-
         <Link href="/financeiro/pagar?aba=pagas" className="card stat-card" style={tonCss("var(--color-error)", "var(--color-error-subtle)")}>
           <div className="stat-icon">
             <IconTrendDown size={18} />

@@ -18,11 +18,13 @@ export default function CardSaldo({
   label,
   valor,
   corValor = "inherit",
+  badge,
   children,
 }: {
   label: string;
   valor: string;
   corValor?: string;
+  badge?: React.ReactNode;
   children?: React.ReactNode;
 }) {
   const [oculto, setOculto] = useState(false);
@@ -58,6 +60,8 @@ export default function CardSaldo({
       <p className="text-4xl font-extrabold mt-1 relative" style={{ color: corValor }}>
         {oculto ? "R$ ••••••" : valor}
       </p>
+
+      {badge && <div className="relative mt-2">{badge}</div>}
 
       {children}
     </div>

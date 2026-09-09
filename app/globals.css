@@ -271,6 +271,29 @@ h6 {
   padding-bottom: var(--shell-bottom-space);
 }
 
+/* Transição leve ao trocar de página (mesma sensação de "show up" de app
+   nativo): a tela nova entra com um fade + leve subida, sem depender de
+   nenhuma lib — só troca de key no AppShell (ver components/AppShell.tsx)
+   remonta este nó e reinicia a animação a cada navegação. */
+@keyframes page-transition-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.page-transition {
+  animation: page-transition-in 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .page-transition {
+    animation: none;
+  }
+}
+
 /* Largura útil do menu flutuante inferior — igual ao .app-shell (mesmo
    max-width, centralizado), mas SEM background e SEM min-height. É um
    elemento próprio (e não uma reaproveitação do .app-shell) porque o
@@ -761,6 +784,62 @@ a {
   color: var(--tone, var(--color-primary));
   position: relative;
   margin-bottom: 10px;
+}
+
+/* ============================================================================
+   BALANCE-SPLIT — par recebido/a receber dentro do CardSaldo grande
+   ----------------------------------------------------------------------------
+   Uso: <Link className="balance-split-item" style={{ "--tone": ..., "--tone-subtle": ... }}>
+   ========================================================================== */
+.balance-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.balance-split-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--tone-subtle, var(--color-border));
+  background: var(--color-card);
+  box-shadow: var(--shadow-sm);
+  min-width: 0;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.balance-split-item:active {
+  transform: scale(0.98);
+}
+.balance-split-icon {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-pill);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--tone-subtle, var(--color-primary-subtle));
+  color: var(--tone, var(--color-primary));
+}
+.balance-split-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.balance-split-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--color-muted);
+}
+.balance-split-value {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--color-foreground);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Ações do popup de cobrança: tamanho compacto e alinhamento consistente
