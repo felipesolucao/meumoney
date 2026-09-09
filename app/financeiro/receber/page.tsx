@@ -8,6 +8,13 @@
 // outras telas (ex: o bloco "RECEITAS" do card de balanço em /financeiro)
 // já abram direto na aba certa, em vez de sempre cair em "Pendentes".
 //
+// Também aceita ?de=AAAA-MM-DD&ate=AAAA-MM-DD — usado pelos cards da Início
+// (ver components/ResumoMesInicio.tsx) pra abrir aqui já filtrado pelo mesmo
+// período escolhido lá (que pode não ser um mês inteiro). Quando presentes,
+// esses dois parâmetros substituem o seletor de mês e valem pra QUALQUER
+// aba, inclusive Atrasadas/Todas (que, sem eles, ignoram período de
+// propósito — ver usaFiltroPeriodo abaixo).
+//
 // useSearchParams() exige um <Suspense> ao redor quando a página é
 // pré-renderizada no build (mesmo motivo de app/historico/page.tsx), por
 // isso a lógica fica num componente filho e a exportação padrão só monta
@@ -31,9 +38,18 @@ function pad(n: number) {
   return String(n).padStart(2, "0");
 }
 
+function formatarPeriodo(de: string, ate: string) {
+  const formatar = (iso: string) => new Date(`${iso}T00:00:00`).toLocaleDateString("pt-BR");
+  return de === ate ? formatar(de) : `${formatar(de)} – ${formatar(ate)}`;
+}
+
 function ContasAReceberConteudo() {
   const params = useSearchParams();
   const abaInicial = ABAS_VALIDAS.includes(params.get("aba") as Aba) ? (params.get("aba") as Aba) : "pendentes";
+  // Período customizado vindo da Início (ver comentário no topo do arquivo).
+  const deQuery = params.get("de");
+  const ateQuery = params.get("ate");
+  const periodoCustomizado = Boolean(deQuery && ateQuery);
 
   const [aba, setAba] = useState<Aba>(abaInicial);
   const hoje = new Date();
@@ -42,7 +58,11 @@ function ContasAReceberConteudo() {
   const [lancamentos, setLancamentos] = useState<LancamentoItem[]>([]);
   const [carregando, setCarregando] = useState(true);
 
-  const usaFiltroMes = aba === "pendentes" || aba === "recebidas";
+  // Sem período customizado, só Pendentes/Recebidas filtram por mês (como
+  // antes). Com período customizado, o filtro vale pra QUALQUER aba — é o
+  // que o usuário escolheu na Início, inclusive pra Atrasadas/Todas.
+  const usaFiltroPeriodo = periodoCustomizado || aba === "pendentes" || aba === "recebidas";
+  const mostraSeletorMes = !periodoCustomizado && (aba === "pendentes" || aba === "recebidas");
 
   useEffect(() => {
     setCarregando(true);
@@ -51,11 +71,15 @@ function ContasAReceberConteudo() {
     else if (aba === "atrasadas") url += "&status=atrasado";
     else if (aba === "recebidas") url += "&status=pago";
 
-    if (usaFiltroMes) {
-      const inicio = new Date(ano, mes, 1);
-      const fim = new Date(ano, mes + 1, 0);
-      url += `&de=${inicio.getFullYear()}-${pad(inicio.getMonth() + 1)}-${pad(inicio.getDate())}`;
-      url += `&ate=${fim.getFullYear()}-${pad(fim.getMonth() + 1)}-${pad(fim.getDate())}`;
+    if (usaFiltroPeriodo) {
+      if (periodoCustomizado) {
+        url += `&de=${deQuery}&ate=${ateQuery}`;
+      } else {
+        const inicio = new Date(ano, mes, 1);
+        const fim = new Date(ano, mes + 1, 0);
+        url += `&de=${inicio.getFullYear()}-${pad(inicio.getMonth() + 1)}-${pad(inicio.getDate())}`;
+        url += `&ate=${fim.getFullYear()}-${pad(fim.getMonth() + 1)}-${pad(fim.getDate())}`;
+      }
     }
 
     fetch(url)
@@ -67,7 +91,7 @@ function ContasAReceberConteudo() {
         setLancamentos(ordenado);
         setCarregando(false);
       });
-  }, [aba, ano, mes, usaFiltroMes]);
+  }, [aba, ano, mes, usaFiltroPeriodo, periodoCustomizado, deQuery, ateQuery]);
 
   // ----------------------------------------------------------------------------
   // BUG CORRIGIDO: mesmo problema do espelho em app/financeiro/pagar/page.tsx —
@@ -113,9 +137,14 @@ function ContasAReceberConteudo() {
       </div>
 
       <div className="px-5 mt-5 space-y-4">
-        {usaFiltroMes && (
+        {mostraSeletorMes && (
           <div className="card">
             <MesSeletor ano={ano} mes={mes} onMudar={(a, m) => { setAno(a); setMes(m); }} />
+          </div>
+        )}
+        {deQuery && ateQuery && (
+          <div className="card text-sm text-muted">
+            Período: <span className="font-semibold text-foreground">{formatarPeriodo(deQuery, ateQuery)}</span>
           </div>
         )}
 

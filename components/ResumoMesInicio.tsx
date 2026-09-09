@@ -77,6 +77,12 @@ export default function ResumoMesInicio({ carteiraId }: { carteiraId?: string | 
       .then((data: { totalGeral: number }) => setSaldoContas(data.totalGeral));
   }, [carteiraId]);
 
+  // Anexado nos 4 links abaixo pra abrir /financeiro/receber e
+  // /financeiro/pagar já filtrados pelo mesmo período escolhido aqui, em vez
+  // de sempre caírem no mês atual (ver app/financeiro/receber/page.tsx e
+  // app/financeiro/pagar/page.tsx, que agora entendem esses parâmetros).
+  const queryPeriodo = `de=${formatarISO(inicio)}&ate=${formatarISO(fim)}`;
+
   return (
     <div className="home-month-summary">
       <div className="home-month-selector">
@@ -101,28 +107,28 @@ export default function ResumoMesInicio({ carteiraId }: { carteiraId?: string | 
           }
         >
           <div className="balance-split mt-4 relative">
-            <Link href="/financeiro/receber?aba=recebidas" className="balance-split-item" style={{ "--tone": "var(--color-success)", "--tone-subtle": "var(--color-success-subtle)" } as React.CSSProperties}>
+            <Link href={`/financeiro/receber?aba=recebidas&${queryPeriodo}`} className="balance-split-item" style={{ "--tone": "var(--color-success)", "--tone-subtle": "var(--color-success-subtle)" } as React.CSSProperties}>
               <span className="balance-split-icon"><IconTrendUp size={16} /></span>
               <span className="balance-split-text">
                 <span className="balance-split-label">RECEBIDO</span>
                 <span className="balance-split-value">{carregando ? "—" : formatarMoeda(resumo?.receitasDoMes ?? 0)}</span>
               </span>
             </Link>
-            <Link href="/financeiro/receber" className="balance-split-item" style={{ "--tone": "var(--color-warning)", "--tone-subtle": "var(--color-warning-subtle)" } as React.CSSProperties}>
+            <Link href={`/financeiro/receber?aba=pendentes&${queryPeriodo}`} className="balance-split-item" style={{ "--tone": "var(--color-warning)", "--tone-subtle": "var(--color-warning-subtle)" } as React.CSSProperties}>
               <span className="balance-split-icon"><IconTrendDown size={16} /></span>
               <span className="balance-split-text">
                 <span className="balance-split-label">A RECEBER</span>
                 <span className="balance-split-value">{carregando ? "—" : formatarMoeda(resumo?.aReceberDoMes ?? 0)}</span>
               </span>
             </Link>
-            <Link href="/financeiro/pagar?aba=pagas" className="balance-split-item" style={{ "--tone": "var(--color-error)", "--tone-subtle": "var(--color-error-subtle)" } as React.CSSProperties}>
+            <Link href={`/financeiro/pagar?aba=pagas&${queryPeriodo}`} className="balance-split-item" style={{ "--tone": "var(--color-error)", "--tone-subtle": "var(--color-error-subtle)" } as React.CSSProperties}>
               <span className="balance-split-icon"><IconTrendDown size={16} /></span>
               <span className="balance-split-text">
                 <span className="balance-split-label">DESPESAS PAGAS</span>
                 <span className="balance-split-value">{carregando ? "—" : formatarMoeda(resumo?.despesasDoMes ?? 0)}</span>
               </span>
             </Link>
-            <Link href="/financeiro/pagar" className="balance-split-item" style={{ "--tone": "var(--color-muted)", "--tone-subtle": "var(--color-muted-surface)" } as React.CSSProperties}>
+            <Link href={`/financeiro/pagar?aba=todas&${queryPeriodo}`} className="balance-split-item" style={{ "--tone": "var(--color-muted)", "--tone-subtle": "var(--color-muted-surface)" } as React.CSSProperties}>
               <span className="balance-split-icon"><IconWallet size={16} /></span>
               <span className="balance-split-text">
                 <span className="balance-split-label">DESPESAS TOTAL</span>

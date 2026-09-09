@@ -907,7 +907,10 @@ a {
   left: 0;
   right: 0;
   z-index: 30;
-  background: linear-gradient(180deg, var(--color-primary-surface), var(--color-card) 65%);
+  /* Sólido (não gradiente translúcido) — no tema escuro, --color-primary-surface
+     é um rgba() semitransparente e deixava o topo do popover "vazando" o fundo
+     por trás em vez de cobrir com a cor do card. */
+  background: var(--color-card);
   border: 1px solid var(--color-primary-border);
   border-radius: 22px;
   box-shadow: var(--shadow-overlay);
@@ -933,7 +936,7 @@ a {
 .mini-calendar-nav {
   width: 32px;
   height: 32px;
-  border: none;
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-pill);
   background: var(--color-card);
   box-shadow: var(--shadow-sm);
