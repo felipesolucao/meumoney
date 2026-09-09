@@ -1,11 +1,18 @@
 // ============================================================================
 // COMPONENTE: Lista de parcelas de um contrato, com ações
 // ----------------------------------------------------------------------------
+// Mesmo padrão visual de cartão usado em /parcelas (badge numerado
+// arredondado, valor em destaque, Badge de status, linha de vencimento/
+// prazo) — ver app/parcelas/page.tsx.
+//
 // Cobrar     -> abre o WhatsApp com uma mensagem de cobrança pronta
-// Editar     -> corrige valor e/ou vencimento da parcela (para erros de
-//               digitação, sem precisar excluir/recriar o contrato inteiro)
+// Editar (ícone lápis) -> abre EditarParcelaModal: corrige valor/vencimento
+//               se ainda não paga, ou mostra a data do pagamento + botão
+//               "Estornar" se já paga (antes esse botão ficava solto no
+//               card — ver comentário em EditarParcelaModal.tsx).
 // Renegociar -> pede uma nova data e atualiza o vencimento da parcela
-// Pagar      -> marca a parcela como paga
+// Pagar      -> abre ReceberPagamentoModal (data + valor recebido, com
+//               suporte a pagamento parcial — ver esse componente).
 // Todas as ações ficam registradas no Histórico do contrato e podem ser
 // desfeitas por lá (ver /historico?entidade=Contrato).
 // ============================================================================
@@ -16,14 +23,18 @@ import { useState } from "react";
 import { formatarMoeda, formatarData, statusDaParcela } from "../lib/calculos";
 import Badge, { tomEStatusParcela } from "./Badge";
 import { useToast } from "./ToastProvider";
+import EditarParcelaModal from "./EditarParcelaModal";
+import ReceberPagamentoModal from "./ReceberPagamentoModal";
 import { IconChat, IconRefresh, IconCash, IconEdit } from "./Icons";
 
 type Parcela = {
   id: string;
   numero: number;
   valor: string;
+  valorPago?: string | null;
   vencimento: string;
   status: string;
+  pagoEm?: string | null;
 };
 
 export default function ParcelasLista({
@@ -40,16 +51,32 @@ export default function ParcelasLista({
   const router = useRouter();
   const showToast = useToast();
   const [carregandoId, setCarregandoId] = useState<string | null>(null);
+  const [parcelaEditando, setParcelaEditando] = useState<Parcela | null>(null);
+  const [parcelaRecebendo, setParcelaRecebendo] = useState<Parcela | null>(null);
 
-  async function pagar(id: string) {
+  async function pagar(id: string, dataRecebimento: string, valorRecebido: number) {
     setCarregandoId(id);
     const res = await fetch(`/api/parcelas/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ acao: "pagar" }),
+      body: JSON.stringify({ acao: "pagar", dataRecebimento, valorRecebido }),
     });
     setCarregandoId(null);
-    showToast(res.ok ? "Parcela paga!" : "Não foi possível marcar a parcela como paga.", res.ok ? "sucesso" : "erro");
+    showToast(res.ok ? "Pagamento registrado!" : "Não foi possível registrar o pagamento.", res.ok ? "sucesso" : "erro");
+    if (res.ok) setParcelaRecebendo(null);
+    router.refresh();
+  }
+
+  async function estornar(id: string) {
+    setCarregandoId(id);
+    const res = await fetch(`/api/parcelas/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ acao: "reabrir" }),
+    });
+    setCarregandoId(null);
+    showToast(res.ok ? "Pagamento estornado." : "Não foi possível estornar o pagamento.", res.ok ? "sucesso" : "erro");
+    if (res.ok) setParcelaEditando(null);
     router.refresh();
   }
 
@@ -72,25 +99,16 @@ export default function ParcelasLista({
 
   // Edição livre: corrige valor e/ou data, sem alterar o status da parcela.
   // Útil para erros de digitação (ex: valor com centavos trocados).
-  async function editar(p: Parcela) {
-    const novoValorStr = window.prompt("Valor da parcela (R$):", String(p.valor).replace(".", ","));
-    if (novoValorStr === null) return;
-    const novoValor = parseFloat(novoValorStr.replace(",", "."));
-    if (!novoValor || novoValor <= 0) return window.alert("Valor inválido.");
-
-    const novaDataStr = window.prompt("Data de vencimento (dd/mm/aaaa):", formatarData(p.vencimento));
-    if (novaDataStr === null) return;
-    const isoData = converterParaIso(novaDataStr);
-    if (!isoData) return window.alert("Data inválida. Use o formato dd/mm/aaaa.");
-
-    setCarregandoId(p.id);
-    const res = await fetch(`/api/parcelas/${p.id}`, {
+  async function editar(id: string, novoValor: number, novoVencimento: string) {
+    setCarregandoId(id);
+    const res = await fetch(`/api/parcelas/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ acao: "editar", valor: novoValor, novoVencimento: isoData }),
+      body: JSON.stringify({ acao: "editar", valor: novoValor, novoVencimento }),
     });
     setCarregandoId(null);
     showToast(res.ok ? "Parcela atualizada." : "Não foi possível atualizar a parcela.", res.ok ? "sucesso" : "erro");
+    if (res.ok) setParcelaEditando(null);
     router.refresh();
   }
 
@@ -106,68 +124,107 @@ export default function ParcelasLista({
   return (
     <div className="contract-installments space-y-3">
       {parcelas.map((p) => {
-        const efetivo = statusDaParcela(new Date(p.vencimento), p.status === "pago");
-        const { tom, texto } = tomEStatusParcela(efetivo);
+        const paga = p.status === "pago";
+        const jaRecebido = Number(p.valorPago ?? 0);
+        const parcial = !paga && jaRecebido > 0;
+        const efetivo = statusDaParcela(new Date(p.vencimento), paga);
+        const { tom, texto } = parcial ? { tom: "amber" as const, texto: "Pagamento parcial" } : tomEStatusParcela(efetivo);
         const desabilitado = carregandoId === p.id;
+
         return (
-          <div
-            key={p.id}
-            className="card"
-            style={p.status === "pago" ? { borderLeft: "4px solid var(--color-success)" } : undefined}
-          >
-            <div className="flex items-center gap-3">
+          <div key={p.id} className="card border border-border">
+            <div className="flex items-start gap-3">
               <div
-                className="w-11 h-11 rounded-sm flex items-center justify-center font-bold text-white flex-shrink-0"
-                style={{ background: p.status === "pago" ? "var(--color-success)" : "var(--color-accent-strong)" }}
+                className="w-11 h-11 rounded-xl flex items-center justify-center font-bold flex-shrink-0"
+                style={{
+                  background: paga ? "var(--color-success-subtle)" : "var(--color-warning-subtle)",
+                  color: paga ? "var(--color-success)" : "var(--color-warning)",
+                }}
               >
                 {p.numero}
               </div>
-              <div className="flex-1">
-                <p className="font-bold text-lg">{formatarMoeda(p.valor)}</p>
-                <p className="text-sm text-muted">Vence {formatarData(p.vencimento)}</p>
+              <div className="flex-1 min-w-0">
+                <p className="font-bold text-lg tabular-nums">{formatarMoeda(paga ? p.valorPago ?? p.valor : p.valor)}</p>
+                {paga ? (
+                  <p className="text-sm text-muted mt-0.5">Pago em {formatarData(p.pagoEm ?? p.vencimento)}</p>
+                ) : (
+                  <>
+                    <p className="text-sm text-muted mt-0.5">Vence {formatarData(p.vencimento)}</p>
+                    {parcial && (
+                      <p className="text-xs font-semibold mt-0.5" style={{ color: "var(--color-primary)" }}>
+                        {formatarMoeda(jaRecebido)} já recebido
+                      </p>
+                    )}
+                  </>
+                )}
               </div>
-              <Badge tom={tom}>{texto}</Badge>
-              <button
-                onClick={() => editar(p)}
-                disabled={carregandoId === p.id}
-                aria-label="Editar parcela"
-                className="w-9 h-9 rounded-pill bg-background flex items-center justify-center flex-shrink-0 text-muted"
-              >
-                <IconEdit size={15} />
-              </button>
+              <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                <Badge tom={tom}>{texto}</Badge>
+                <button
+                  onClick={() => setParcelaEditando(p)}
+                  disabled={desabilitado}
+                  aria-label="Editar parcela"
+                  className="w-8 h-8 rounded-pill bg-background flex items-center justify-center text-muted"
+                >
+                  <IconEdit size={14} />
+                </button>
+              </div>
             </div>
 
-            {p.status !== "pago" && (
+            {!paga && (
               <div className="grid grid-cols-3 gap-2 mt-3">
                 <button
                   onClick={() => cobrar(p)}
                   disabled={desabilitado}
-                  className="btn-chip"
+                  className="btn-chip-sm"
                   style={{ background: "var(--color-success-subtle)", color: "var(--color-success)" }}
                 >
-                  <IconChat size={15} /> Cobrar
+                  <IconChat size={14} /> Cobrar
                 </button>
                 <button
                   onClick={() => renegociar(p.id, p.vencimento)}
                   disabled={desabilitado}
-                  className="btn-chip"
+                  className="btn-chip-sm"
                   style={{ background: "var(--color-warning-subtle)", color: "var(--color-warning)" }}
                 >
-                  <IconRefresh size={15} /> Renegociar
+                  <IconRefresh size={14} /> Renegociar
                 </button>
                 <button
-                  onClick={() => pagar(p.id)}
+                  onClick={() => setParcelaRecebendo(p)}
                   disabled={desabilitado}
-                  className="btn-chip text-white"
+                  className="btn-chip-sm text-white"
                   style={{ background: "var(--gradient-primary)" }}
                 >
-                  <IconCash size={15} /> Pagar
+                  <IconCash size={14} /> Pagar
                 </button>
               </div>
             )}
           </div>
         );
       })}
+
+      <EditarParcelaModal
+        aberto={parcelaEditando !== null}
+        parcela={parcelaEditando}
+        onFechar={() => setParcelaEditando(null)}
+        onSalvar={async (valor, novoVencimento) => {
+          if (parcelaEditando) await editar(parcelaEditando.id, valor, novoVencimento);
+        }}
+        onEstornar={async () => {
+          if (parcelaEditando) await estornar(parcelaEditando.id);
+        }}
+      />
+
+      <ReceberPagamentoModal
+        aberto={parcelaRecebendo !== null}
+        parcela={parcelaRecebendo}
+        clienteNome={clienteNome}
+        codigoContrato={codigoContrato}
+        onFechar={() => setParcelaRecebendo(null)}
+        onConfirmar={async (data, valor) => {
+          if (parcelaRecebendo) await pagar(parcelaRecebendo.id, data, valor);
+        }}
+      />
     </div>
   );
 }

@@ -9,6 +9,7 @@ import Link from "next/link";
 import { calcularParcelasDoContrato, formatarMoeda, Frequencia, TipoEmprestimo } from "../../../lib/calculos";
 import BotaoVoltar from "../../../components/BotaoVoltar";
 import SeletorClienteBusca from "../../../components/SeletorClienteBusca";
+import CampoMoeda, { valorFormatadoParaNumero } from "../../../components/CampoMoeda";
 import { IconHome } from "../../../components/Icons";
 
 type Cliente = { id: string; nome: string };
@@ -294,19 +295,6 @@ function NovoContrato() {
       </div>
     </div>
   );
-}
-
-function CampoMoeda({ value, onChange }: { value: string; onChange: (valor: string) => void }) {
-  return <div className="relative min-w-0"><span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-xl font-extrabold text-primary">R$</span><input value={value} onChange={(e) => { const digitos = e.target.value.replace(/\D/g, ""); onChange(digitos ? digitosParaValorFormatado(digitos) : ""); }} placeholder="0,00" inputMode="numeric" className="w-full rounded-md border-2 border-transparent bg-card pl-14 pr-4 py-4 text-3xl font-extrabold text-primary outline-none focus:border-primary" /></div>;
-}
-
-function digitosParaValorFormatado(digitos: string) {
-  return (Number(digitos || "0") / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
-
-function valorFormatadoParaNumero(valor: string) {
-  const digitos = valor.replace(/\D/g, "");
-  return digitos ? Number(digitos) / 100 : 0;
 }
 
 function BotaoToggle({

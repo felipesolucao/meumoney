@@ -629,6 +629,69 @@ a {
 }
 
 /* ============================================================================
+   BOTÕES "REFINADOS" — versões menores de .btn-primary/.btn-outline/.btn-chip,
+   usadas no detalhe do contrato (ver ContratoAcoes e ParcelasLista): mesma
+   linguagem visual (pill, sombra leve), só que mais discretas — não devem
+   dominar a tela como os botões grandes de formulário.
+   ========================================================================== */
+.btn-primary-sm {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: var(--gradient-primary);
+  color: white;
+  font-weight: 700;
+  font-size: 14px;
+  border-radius: var(--radius-pill);
+  padding: 12px 20px;
+  min-height: 44px;
+  box-shadow: var(--shadow-primary);
+  transition: transform 0.05s ease, background-color 0.1s ease;
+}
+.btn-primary-sm:active {
+  transform: scale(0.98);
+  background: var(--color-primary-hover);
+}
+
+.btn-outline-sm {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1.5px solid var(--color-border-strong);
+  color: var(--color-foreground);
+  background: var(--color-card);
+  font-weight: 600;
+  font-size: 14px;
+  border-radius: var(--radius-pill);
+  padding: 11px 20px;
+  min-height: 44px;
+  transition: transform 0.05s ease, background-color 0.1s ease;
+}
+.btn-outline-sm:active {
+  transform: scale(0.98);
+  background: var(--color-muted-surface);
+}
+
+.btn-chip-sm {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border-radius: var(--radius-pill);
+  padding: 8px 10px;
+  min-height: 36px;
+  font-weight: 600;
+  font-size: 12px;
+  white-space: nowrap;
+  transition: transform 0.05s ease;
+}
+.btn-chip-sm:active {
+  transform: scale(0.96);
+}
+
+/* ============================================================================
    SELETOR "CHIP" — grupo de botões pequenos e refinados (Empréstimo/Despesa/
    Receita em "Nova transação", Pendentes/Atrasadas/Recebidas em "Contas a
    receber/pagar"). Mais compacto que .btn-primary/.btn-outline (altura 40px
@@ -1220,9 +1283,9 @@ a {
   .contract-summary > .text-4xl { font-size: 32px; margin-top: 8px; }
   .contract-summary > .grid > div { border-color: var(--color-border); border-radius: 12px; }
   .contract-summary > .card { background: var(--color-surface-inset); border-color: var(--color-primary-border); padding: 12px; margin-top: 24px; box-shadow: none; }
-  .contract-detail .contract-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
-  .contract-detail .contract-actions > .grid { display: contents; }
-  .contract-detail .contract-actions .btn-primary, .contract-detail .contract-actions .btn-outline { display: flex; min-height: 48px; margin: 0; padding: 12px; border-radius: 12px; font-size: 14px; }
+  .contract-detail .contract-actions { display: flex; flex-direction: column; gap: 12px; }
+  .contract-detail .contract-actions > .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+  .contract-detail .contract-actions .btn-primary-sm, .contract-detail .contract-actions .btn-outline-sm { min-height: 46px; padding: 10px 14px; border-radius: 12px; font-size: 13px; }
   .contract-detail .contract-installments { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
   .contract-detail .contract-installments > .card { margin: 0; min-width: 0; padding: 12px; border-color: var(--color-primary-border); }
   .contract-detail .contract-installments .text-lg { font-size: 14px; }

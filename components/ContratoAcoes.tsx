@@ -7,7 +7,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useToast } from "./ToastProvider";
-import { IconSend, IconTrash, IconHistory } from "./Icons";
+import { IconSend, IconTrash, IconHistory, IconEdit } from "./Icons";
 import EnviarCobrancaModal from "./EnviarCobrancaModal";
 
 export default function ContratoAcoes({
@@ -49,25 +49,25 @@ export default function ContratoAcoes({
   }
 
   return (
-    <div className="contract-actions space-y-3">
-      <button onClick={() => setModalAberto(true)} className="btn-primary flex items-center justify-center gap-2">
-        <IconSend size={18} /> Enviar cobrança
+    <div className="contract-actions space-y-2.5">
+      <button onClick={() => setModalAberto(true)} className="btn-primary-sm w-full">
+        <IconSend size={16} /> Enviar cobrança
       </button>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-3 gap-2">
+        <Link href={`/contratos/${contratoId}/editar`} className="btn-outline-sm">
+          <IconEdit size={14} /> Editar
+        </Link>
+        <Link href={`/historico?entidade=Contrato&voltar=/contratos/${contratoId}`} className="btn-outline-sm">
+          <IconHistory size={14} /> Histórico
+        </Link>
         <button
           onClick={excluir}
           disabled={excluindo}
-          className="btn-outline text-error flex items-center justify-center gap-2"
+          className="btn-outline-sm text-error"
           style={{ borderColor: "var(--color-border-error)" }}
         >
-          <IconTrash size={16} /> {excluindo ? "Excluindo..." : "Excluir"}
+          <IconTrash size={14} /> {excluindo ? "..." : "Excluir"}
         </button>
-        <Link
-          href={`/historico?entidade=Contrato&voltar=/contratos/${contratoId}`}
-          className="btn-outline flex items-center justify-center gap-2"
-        >
-          <IconHistory size={16} /> Histórico
-        </Link>
       </div>
       <EnviarCobrancaModal aberto={modalAberto} onFechar={() => setModalAberto(false)} clienteNome={clienteNome} clienteTelefone={clienteTelefone} parcelas={parcelas} valorContrato={valorTotal} multaAtraso={multaAtraso} tipoMultaAtraso={tipoMultaAtraso} valorMultaAtraso={valorMultaAtraso} />
     </div>
