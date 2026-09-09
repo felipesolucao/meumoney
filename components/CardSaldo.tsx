@@ -30,7 +30,7 @@ export default function CardSaldo({
   const [oculto, setOculto] = useState(false);
 
   return (
-    <div className="rounded-lg p-5 relative overflow-hidden" style={{ background: "var(--gradient-surface)" }}>
+    <div className="card-saldo p-5 relative overflow-hidden" style={{ background: "var(--gradient-surface)" }}>
       {/* Padrão decorativo — linhas onduladas sutis no canto do card */}
       <svg
         className="absolute -top-2 -right-6 pointer-events-none text-primary"

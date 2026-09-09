@@ -1,17 +1,19 @@
 // ============================================================================
 // COMPONENTE: Resumo do mês (tela Início)
 // ----------------------------------------------------------------------------
-// Mesmo seletor de mês usado em "Transações" (app/financeiro), só que aqui
-// dentro da Início. Mostra, para o mês selecionado:
+// Mostra, para o mês da data selecionada:
 //   - Saldo em contas (saldo corrente de todas as carteiras/contas
 //     bancárias, somado — não é "do mês") — card grande, com badge de
-//     "tudo em dia"/"N em atraso" e o par recebido/a receber no mês
-//   - Despesas pagas no mês
-//   - Total de despesas no mês (pagas + ainda pendentes)
+//     "tudo em dia"/"N em atraso" e a grade recebido/a receber/despesas
+//     pagas/despesas total do mês, tudo no mesmo padrão visual (pills)
 //   - Receitas − despesas do mês (total de receitas do mês, pagas + a
 //     receber, menos o total de despesas do mês, pagas + a pagar)
 //
-// Client component porque o mês navega sem recarregar a página — os dados
+// A data é escolhida pelo SeletorData (barra "08 de setembro de 2026" que
+// abre um mini calendário) — só o mês/ano da data escolhida importa para os
+// filtros abaixo, o dia em si é só para o usuário "apontar" um período.
+//
+// Client component porque a data navega sem recarregar a página — os dados
 // vêm de duas APIs já existentes: /api/financeiro/resumo (mês) e
 // /api/financeiro/contas-resumo (saldo total em contas, não muda com o mês).
 // ============================================================================
@@ -20,10 +22,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { formatarMoeda } from "../lib/financeiro";
-import MesSeletor from "./MesSeletor";
+import SeletorData from "./SeletorData";
 import CardSaldo from "./CardSaldo";
 import Badge from "./Badge";
-import { tonCss } from "../lib/estiloCard";
 import { IconTrendUp, IconTrendDown, IconWallet } from "./Icons";
 
 type ResumoMes = {
@@ -37,9 +38,7 @@ type ResumoMes = {
 };
 
 export default function ResumoMesInicio({ carteiraId }: { carteiraId?: string | null }) {
-  const hoje = new Date();
-  const [ano, setAno] = useState(hoje.getFullYear());
-  const [mes, setMes] = useState(hoje.getMonth());
+  const [dataSelecionada, setDataSelecionada] = useState(() => new Date());
 
   const [resumo, setResumo] = useState<ResumoMes | null>(null);
   const [saldoContas, setSaldoContas] = useState<number | null>(null);
@@ -47,6 +46,8 @@ export default function ResumoMesInicio({ carteiraId }: { carteiraId?: string | 
 
   useEffect(() => {
     setCarregando(true);
+    const ano = dataSelecionada.getFullYear();
+    const mes = dataSelecionada.getMonth();
     const carteiraQuery = carteiraId ? `&carteiraId=${encodeURIComponent(carteiraId)}` : "";
     fetch(`/api/financeiro/resumo?ano=${ano}&mes=${mes}${carteiraQuery}`)
       .then((r) => r.json())
@@ -54,7 +55,7 @@ export default function ResumoMesInicio({ carteiraId }: { carteiraId?: string | 
         setResumo(data);
         setCarregando(false);
       });
-  }, [ano, mes, carteiraId]);
+  }, [dataSelecionada, carteiraId]);
 
   // Saldo em contas não depende do mês selecionado (é o saldo corrente),
   // então busca uma vez só, fora do efeito acima.
@@ -67,9 +68,8 @@ export default function ResumoMesInicio({ carteiraId }: { carteiraId?: string | 
 
   return (
     <div className="home-month-summary">
-      <div className="home-month-selector card space-y-3">
-        <p className="text-xs font-semibold tracking-wide text-muted">MÊS</p>
-        <MesSeletor ano={ano} mes={mes} onMudar={(a, m) => { setAno(a); setMes(m); }} />
+      <div className="home-month-selector">
+        <SeletorData valor={dataSelecionada} onSelecionar={setDataSelecionada} />
       </div>
 
       <div className="home-month-balance mt-4">
@@ -97,33 +97,28 @@ export default function ResumoMesInicio({ carteiraId }: { carteiraId?: string | 
                 <span className="balance-split-value">{carregando ? "—" : formatarMoeda(resumo?.aReceberDoMes ?? 0)}</span>
               </span>
             </Link>
+            <Link href="/financeiro/pagar?aba=pagas" className="balance-split-item" style={{ "--tone": "var(--color-error)", "--tone-subtle": "var(--color-error-subtle)" } as React.CSSProperties}>
+              <span className="balance-split-icon"><IconTrendDown size={16} /></span>
+              <span className="balance-split-text">
+                <span className="balance-split-label">DESPESAS PAGAS</span>
+                <span className="balance-split-value">{carregando ? "—" : formatarMoeda(resumo?.despesasDoMes ?? 0)}</span>
+              </span>
+            </Link>
+            <Link href="/financeiro/pagar" className="balance-split-item" style={{ "--tone": "var(--color-muted)", "--tone-subtle": "var(--color-muted-surface)" } as React.CSSProperties}>
+              <span className="balance-split-icon"><IconWallet size={16} /></span>
+              <span className="balance-split-text">
+                <span className="balance-split-label">DESPESAS TOTAL</span>
+                <span className="balance-split-value">{carregando ? "—" : formatarMoeda(resumo?.totalDespesasDoMes ?? 0)}</span>
+              </span>
+            </Link>
           </div>
         </CardSaldo>
       </div>
 
-      <div className="home-month-stats grid grid-cols-2 gap-3 mt-4">
-        <Link href="/financeiro/pagar?aba=pagas" className="card stat-card" style={tonCss("var(--color-error)", "var(--color-error-subtle)")}>
-          <div className="stat-icon">
-            <IconTrendDown size={18} />
-          </div>
-          <p className="text-[11px] font-semibold tracking-wide text-muted">DESPESAS PAGAS NO MÊS</p>
-          <p className="font-extrabold mt-1">{carregando ? "—" : formatarMoeda(resumo?.despesasDoMes ?? 0)}</p>
-        </Link>
-
-        <Link href="/financeiro/pagar" className="card stat-card" style={tonCss("var(--color-warning)", "var(--color-warning-subtle)")}>
-          <div className="stat-icon">
-            <IconWallet size={18} />
-          </div>
-          <p className="text-[11px] font-semibold tracking-wide text-muted">TOTAL DE DESPESAS NO MÊS</p>
-          <p className="font-extrabold mt-1">{carregando ? "—" : formatarMoeda(resumo?.totalDespesasDoMes ?? 0)}</p>
-        </Link>
-      </div>
-
       {/* Receitas - despesas do mês: total de receitas do mês (pagas + a
           receber) menos o total de despesas do mês (pagas + a pagar) —
-          diferente do "Saldo do mês" acima, que só olha o que já ACONTECEU
-          (pago), este aqui projeta o mês inteiro como se tudo fosse
-          resolvido (recebido/pago). */}
+          projeta o mês inteiro como se tudo fosse resolvido (recebido/pago),
+          diferente do saldo em contas acima, que é o saldo corrente. */}
       <div className="home-month-projection mt-4">
         <CardSaldo
           label="RECEITAS − DESPESAS DO MÊS"
