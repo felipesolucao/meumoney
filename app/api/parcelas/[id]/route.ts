@@ -42,13 +42,45 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       where: { id: params.id },
       data: { status: "pago", pagoEm: new Date(), valorPago: parcelaAtual.valor },
     });
+
+    // --- Devolve o valor pra conta de desembolso, se o contrato tiver uma
+    // vinculada (NOVO — ver Contrato.contaDesembolsoId, criado em
+    // app/api/contratos/route.ts). Um Lancamento receita pago, dessa conta,
+    // no valor da parcela — o dinheiro que "volta" quando o cliente paga.
+    if (parcelaAtual.contrato.contaDesembolsoId) {
+      const lancamentoRetorno = await prisma.lancamento.create({
+        data: {
+          descricao: `Retorno de empréstimo - ${numeroLabel} (${parcelaAtual.contrato.cliente.nome})`,
+          valor: Number(parcelaAtual.valor),
+          tipo: "receita",
+          status: "pago",
+          dataVencimento: new Date(),
+          dataPagamento: new Date(),
+          valorPago: Number(parcelaAtual.valor),
+          contaId: parcelaAtual.contrato.contaDesembolsoId,
+          usuarioId: sessao.id,
+        },
+      });
+      await prisma.parcela.update({
+        where: { id: params.id },
+        data: { lancamentoRetornoId: lancamentoRetorno.id },
+      });
+    }
+
     tipoHistorico = "PARCELA_PAGA";
     descricaoHistorico = `${numeroLabel} paga`;
   } else if (acao === "reabrir") {
     await prisma.parcela.update({
       where: { id: params.id },
-      data: { status: "a_vencer", pagoEm: null, valorPago: null },
+      data: { status: "a_vencer", pagoEm: null, valorPago: null, lancamentoRetornoId: null },
     });
+
+    // Desfaz a devolução criada acima, se existir — senão o dinheiro ficaria
+    // contado na conta mesmo com o pagamento desfeito.
+    if (parcelaAtual.lancamentoRetornoId) {
+      await prisma.lancamento.delete({ where: { id: parcelaAtual.lancamentoRetornoId } }).catch(() => {});
+    }
+
     tipoHistorico = "PARCELA_REABERTA";
     descricaoHistorico = `${numeroLabel} reaberta (pagamento desfeito)`;
   } else if (acao === "renegociar") {

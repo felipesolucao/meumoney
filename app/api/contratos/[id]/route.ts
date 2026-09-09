@@ -63,11 +63,26 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
 
   const existente = await prisma.contrato.findFirst({
     where: { id: params.id, usuarioId: sessao.id },
-    include: { cliente: true },
+    include: { cliente: true, parcelas: true },
   });
   if (!existente) return NextResponse.json({ error: "Contrato não encontrado." }, { status: 404 });
 
+  // Lançamentos de desconto/devolução na conta bancária (ver
+  // Contrato.contaDesembolsoId e Parcela.lancamentoRetornoId) não são
+  // apagados em cascata pelo Prisma — a FK vai de Contrato/Parcela PARA
+  // Lancamento, não o contrário. Sem isso, excluir o contrato deixaria o
+  // valor descontado "preso" na conta pra sempre, mesmo sem o empréstimo
+  // mais existir.
+  const lancamentosParaExcluir = [
+    existente.lancamentoDesembolsoId,
+    ...existente.parcelas.map((p) => p.lancamentoRetornoId),
+  ].filter((id): id is string => Boolean(id));
+
   await prisma.contrato.delete({ where: { id: params.id } });
+
+  if (lancamentosParaExcluir.length > 0) {
+    await prisma.lancamento.deleteMany({ where: { id: { in: lancamentosParaExcluir } } });
+  }
 
   await registrarAcao(prisma, {
     usuarioId: sessao.id,

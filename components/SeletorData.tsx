@@ -19,16 +19,19 @@ function diasAtras(base: Date, n: number) {
   return d;
 }
 
+// Cada atalho é sempre "hoje" (atual, calculado na hora do clique — nunca
+// fica parado numa data antiga) menos a quantidade de dias do rótulo, até
+// hoje. "Ontem" é só o dia anterior isolado, não um período.
 function criarAtalhos(hoje: Date) {
   const ontem = diasAtras(hoje, 1);
   return [
     { rotulo: "Hoje", inicio: hoje, fim: hoje },
     { rotulo: "Ontem", inicio: ontem, fim: ontem },
-    { rotulo: "7 dias", inicio: diasAtras(hoje, 6), fim: hoje },
-    { rotulo: "15 dias", inicio: diasAtras(hoje, 14), fim: hoje },
-    { rotulo: "30 dias", inicio: diasAtras(hoje, 29), fim: hoje },
-    { rotulo: "60 dias", inicio: diasAtras(hoje, 59), fim: hoje },
-    { rotulo: "90 dias", inicio: diasAtras(hoje, 89), fim: hoje },
+    { rotulo: "7 dias", inicio: diasAtras(hoje, 7), fim: hoje },
+    { rotulo: "15 dias", inicio: diasAtras(hoje, 15), fim: hoje },
+    { rotulo: "30 dias", inicio: diasAtras(hoje, 30), fim: hoje },
+    { rotulo: "60 dias", inicio: diasAtras(hoje, 60), fim: hoje },
+    { rotulo: "90 dias", inicio: diasAtras(hoje, 90), fim: hoje },
   ];
 }
 

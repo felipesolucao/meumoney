@@ -1,16 +1,31 @@
 // ============================================================================
 // PÁGINA: Novo cliente (formulário)
+// ----------------------------------------------------------------------------
+// Aceita ?voltar=/contratos/novo — usado pelo seletor de cliente de "Novo
+// contrato" (ver app/contratos/novo/page.tsx), que manda pra cá quando o
+// usuário toca em "+ Adicionar cliente" no meio do cadastro do contrato.
+// Com esse parâmetro, salvar aqui volta pra lá já com ?clienteId=<novo id>
+// em vez de ir para o perfil do cliente — sem "voltar" o comportamento
+// continua o de sempre.
+//
+// useSearchParams() exige um <Suspense> ao redor quando a página é
+// pré-renderizada no build (mesmo motivo de app/historico/page.tsx), por
+// isso a lógica fica num componente filho e a exportação padrão só monta
+// o Suspense em volta dele.
 // ============================================================================
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import BotaoVoltar from "../../../components/BotaoVoltar";
 import { useToast } from "../../../components/ToastProvider";
 
-export default function NovoCliente() {
+function NovoClienteConteudo() {
   const router = useRouter();
   const showToast = useToast();
+  const searchParams = useSearchParams();
+  const voltar = searchParams.get("voltar");
+
   const [nome, setNome] = useState("");
   const [telefone, setTelefone] = useState("");
   const [cpf, setCpf] = useState("");
@@ -34,7 +49,12 @@ export default function NovoCliente() {
     if (res.ok) {
       const cliente = await res.json();
       showToast("Cliente cadastrado com sucesso!");
-      router.push(`/clientes/${cliente.id}`);
+      if (voltar) {
+        const separador = voltar.includes("?") ? "&" : "?";
+        router.push(`${voltar}${separador}clienteId=${cliente.id}`);
+      } else {
+        router.push(`/clientes/${cliente.id}`);
+      }
     } else {
       const data = await res.json();
       setErro(data.error || "Não foi possível salvar o cliente.");
@@ -45,7 +65,7 @@ export default function NovoCliente() {
   return (
     <div>
       <div className="header-gradient flex items-center gap-3">
-        <BotaoVoltar href="/clientes" />
+        <BotaoVoltar href={voltar || "/clientes"} />
         <h1 className="text-2xl font-bold">Novo cliente</h1>
       </div>
 
@@ -81,6 +101,14 @@ export default function NovoCliente() {
         </button>
       </div>
     </div>
+  );
+}
+
+export default function NovoCliente() {
+  return (
+    <Suspense fallback={<div className="px-5 pt-10 text-center text-muted">Carregando...</div>}>
+      <NovoClienteConteudo />
+    </Suspense>
   );
 }
 

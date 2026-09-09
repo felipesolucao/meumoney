@@ -209,6 +209,18 @@ model Contrato {
   usuarioId            String
   usuario              Usuario        @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 
+  // --- Empréstimo descontado de uma conta bancária (NOVO) -------------------
+  // Quando o usuário marca "descontar da conta" ao cadastrar o contrato, o
+  // valor emprestado é debitado da conta escolhida (um Lancamento despesa
+  // pago automático, criado em app/api/contratos/route.ts) e devolvido aos
+  // poucos conforme as parcelas são pagas — um Lancamento receita por
+  // parcela paga, criado em app/api/parcelas/[id]/route.ts, que também
+  // desfaz (apaga) esse lançamento se o pagamento for reaberto.
+  contaDesembolsoId      String?
+  contaDesembolso        Conta?      @relation(fields: [contaDesembolsoId], references: [id], onDelete: SetNull)
+  lancamentoDesembolsoId String?     @unique
+  lancamentoDesembolso   Lancamento? @relation(fields: [lancamentoDesembolsoId], references: [id])
+
   @@map("contratos")
 }
 
@@ -226,6 +238,12 @@ model Parcela {
   status      StatusParcela @default(a_vencer)
   pagoEm      DateTime?
   valorPago   Decimal?      @db.Decimal(12, 2)
+
+  // Preenchido quando esta parcela é paga E o contrato tem uma conta de
+  // desembolso vinculada (ver Contrato.contaDesembolsoId) — aponta pro
+  // Lancamento (receita) que devolve esse valor à conta.
+  lancamentoRetornoId String?     @unique
+  lancamentoRetorno   Lancamento? @relation(fields: [lancamentoRetornoId], references: [id])
 
   @@map("parcelas")
 }
@@ -343,6 +361,9 @@ model Conta {
   // Cartões cuja fatura é debitada desta conta quando marcada como paga
   // (NOVO — ver model CartaoCredito, abaixo).
   cartoesCredito        CartaoCredito[]
+  // Contratos de empréstimo desembolsados a partir desta conta (NOVO — ver
+  // Contrato.contaDesembolsoId).
+  contratosDesembolso   Contrato[]
 
   @@map("contas")
 }
@@ -439,6 +460,12 @@ model Lancamento {
   // Preenchido só nos Lancamentos GERADOS AUTOMATICAMENTE pelo fechamento de
   // uma fatura de cartão (ver FaturaCartao.lancamentoId, abaixo) — NOVO.
   faturaCartao    FaturaCartao?
+
+  // Preenchidos só nos Lancamentos gerados automaticamente pelo desconto/
+  // devolução de um empréstimo numa conta bancária (NOVO — ver
+  // Contrato.contaDesembolsoId e Parcela.lancamentoRetornoId).
+  contratoDesembolso Contrato?
+  parcelaRetorno     Parcela?
 
   @@map("lancamentos")
 }

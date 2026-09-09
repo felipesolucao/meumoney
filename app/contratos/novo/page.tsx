@@ -8,9 +8,11 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { calcularParcelasDoContrato, formatarMoeda, Frequencia, TipoEmprestimo } from "../../../lib/calculos";
 import BotaoVoltar from "../../../components/BotaoVoltar";
+import SeletorClienteBusca from "../../../components/SeletorClienteBusca";
 import { IconHome } from "../../../components/Icons";
 
 type Cliente = { id: string; nome: string };
+type Conta = { id: string; nome: string; icone: string; saldoAtual: number };
 
 // O Next.js exige que qualquer componente que use useSearchParams() esteja
 // dentro de um <Suspense>, senão a geração estática da página falha no build.
@@ -29,6 +31,9 @@ function NovoContrato() {
 
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [clienteId, setClienteId] = useState(clienteIdInicial);
+  const [contas, setContas] = useState<Conta[]>([]);
+  const [descontarConta, setDescontarConta] = useState(false);
+  const [contaDesembolsoId, setContaDesembolsoId] = useState("");
   const [valorEmprestado, setValorEmprestado] = useState("");
   const [valorEntrada, setValorEntrada] = useState("");
   const [temEntrada, setTemEntrada] = useState(false);
@@ -51,11 +56,16 @@ function NovoContrato() {
   useEffect(() => {
     fetch("/api/clientes")
       .then((r) => r.json())
-      .then((data) => {
-        setClientes(data);
-        if (!clienteIdInicial && data.length > 0) setClienteId(data[0].id);
-      });
-  }, [clienteIdInicial]);
+      .then((data: Cliente[]) => setClientes(data));
+  }, []);
+
+  // Contas bancárias, para o bloco "Descontar da conta" — já vêm com o
+  // saldo atual calculado (ver app/api/financeiro/contas-resumo/route.ts).
+  useEffect(() => {
+    fetch("/api/financeiro/contas-resumo")
+      .then((r) => r.json())
+      .then((data: { contas: Conta[] }) => setContas(data.contas));
+  }, []);
 
   // --- Simulação em tempo real, igual à prévia que o usuário veria no app --
   const valorNum = valorFormatadoParaNumero(valorEmprestado);
@@ -73,6 +83,7 @@ function NovoContrato() {
     if (jurosAtraso && !(tipoJurosAtraso === "fixo" ? valorFormatadoParaNumero(valorJurosAtraso) : Number(valorJurosAtraso.replace(",", ".")))) return setErro("Informe o valor dos juros por atraso.");
     if (multaAtraso && !valorFormatadoParaNumero(valorMultaAtraso)) return setErro("Informe o valor da multa por atraso.");
     if (!parcelasNum) return setErro("Informe o número de parcelas.");
+    if (descontarConta && !contaDesembolsoId) return setErro("Selecione a conta bancária para descontar o valor.");
 
     setErro("");
     setSalvando(true);
@@ -96,6 +107,7 @@ function NovoContrato() {
         numeroParcelas: parcelasNum,
         frequencia,
         dataPrimeiraParcela,
+        contaDesembolsoId: descontarConta ? contaDesembolsoId : undefined,
       }),
     });
     setSalvando(false);
@@ -117,26 +129,38 @@ function NovoContrato() {
       </div>
 
       <div className="contract-form px-5 mt-6 space-y-5 overflow-x-hidden">
-        <div>
-          <p className="text-xs font-semibold tracking-wide text-muted mb-2">CLIENTE</p>
-          <select
-            value={clienteId}
-            onChange={(e) => setClienteId(e.target.value)}
-            className="form-input w-full"
-          >
-            {clientes.length === 0 && <option value="">Nenhum cliente cadastrado</option>}
-            {clientes.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.nome}
-              </option>
-            ))}
-          </select>
-          {clientes.length === 0 && (
-            <Link href="/clientes/novo" className="text-primary text-sm font-semibold mt-2 inline-block">
-              + Cadastrar um cliente primeiro
-            </Link>
-          )}
-        </div>
+        <label className="card flex min-w-0 items-center justify-between gap-3 cursor-pointer">
+          <span className="min-w-0"><span className="font-semibold block">Descontar de uma conta</span><span className="text-xs text-muted block truncate">O valor emprestado sai do saldo agora e volta conforme as parcelas forem pagas</span></span>
+          <input type="checkbox" checked={descontarConta} onChange={(e) => setDescontarConta(e.target.checked)} className="w-6 h-6 accent-primary" />
+        </label>
+
+        {descontarConta && (
+          <div className="card space-y-3" style={{ background: "var(--color-primary-surface)" }}>
+            <p className="text-xs font-semibold tracking-wide text-muted">CONTA BANCÁRIA</p>
+            {contas.length === 0 ? (
+              <p className="text-sm text-muted">
+                Nenhuma conta cadastrada.{" "}
+                <Link href="/financeiro/contas" className="text-primary font-semibold">Cadastrar conta</Link>
+              </p>
+            ) : (
+              <select value={contaDesembolsoId} onChange={(e) => setContaDesembolsoId(e.target.value)} className="form-input w-full">
+                <option value="">Selecione a conta</option>
+                {contas.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.icone} {c.nome} · {formatarMoeda(c.saldoAtual)}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+        )}
+
+        <SeletorClienteBusca
+          clientes={clientes}
+          clienteId={clienteId}
+          onSelecionar={setClienteId}
+          linkAdicionar="/clientes/novo?voltar=/contratos/novo"
+        />
 
         <div>
           <p className="text-xs font-semibold tracking-wide text-muted mb-2">VALOR DO CONTRATO</p>

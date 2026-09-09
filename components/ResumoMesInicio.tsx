@@ -33,6 +33,8 @@ import { IconTrendUp, IconTrendDown, IconWallet } from "./Icons";
 type ResumoMes = {
   balanco: number;
   aReceberDoMes: number;
+  aReceberContratosDoMes: number;
+  aReceberTotal: number;
   receitasDoMes: number;
   despesasDoMes: number;
   totalDespesasDoMes: number;
@@ -118,7 +120,7 @@ export default function ResumoMesInicio({ carteiraId }: { carteiraId?: string | 
               <span className="balance-split-icon"><IconTrendDown size={16} /></span>
               <span className="balance-split-text">
                 <span className="balance-split-label">A RECEBER</span>
-                <span className="balance-split-value">{carregando ? "—" : formatarMoeda(resumo?.aReceberDoMes ?? 0)}</span>
+                <span className="balance-split-value">{carregando ? "—" : formatarMoeda(resumo?.aReceberTotal ?? 0)}</span>
               </span>
             </Link>
             <Link href={`/financeiro/pagar?aba=pagas&${queryPeriodo}`} className="balance-split-item" style={{ "--tone": "var(--color-error)", "--tone-subtle": "var(--color-error-subtle)" } as React.CSSProperties}>

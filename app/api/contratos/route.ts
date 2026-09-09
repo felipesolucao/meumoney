@@ -43,6 +43,7 @@ export async function POST(req: NextRequest) {
     numeroParcelas,
     frequencia,
     dataPrimeiraParcela,
+    contaDesembolsoId,
   } = body as {
     clienteId: string;
     valorEmprestado: number;
@@ -60,6 +61,9 @@ export async function POST(req: NextRequest) {
     numeroParcelas: number;
     frequencia: Frequencia;
     dataPrimeiraParcela: string;
+    // Conta bancária de onde o valor emprestado é descontado na hora (NOVO)
+    // — ver app/contratos/novo/page.tsx e o bloco "Desconta da conta" abaixo.
+    contaDesembolsoId?: string;
   };
 
   // --- Validação básica dos campos obrigatórios --------------------------
@@ -85,6 +89,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Cliente não encontrado." }, { status: 404 });
   }
 
+  // Idem para a conta de desembolso, se escolhida — só pode debitar de uma
+  // conta que realmente pertence a este usuário.
+  if (contaDesembolsoId) {
+    const conta = await prisma.conta.findFirst({ where: { id: contaDesembolsoId, usuarioId: sessao.id } });
+    if (!conta) {
+      return NextResponse.json({ error: "Conta bancária não encontrada." }, { status: 404 });
+    }
+  }
+
   // O valor informado é o total da negociação. A entrada entra como a 1ª
   // parcela e o saldo é dividido entre as parcelas restantes.
   const resultado = calcularParcelasDoContrato({
@@ -102,7 +115,7 @@ export async function POST(req: NextRequest) {
     codigo = gerarCodigoContrato();
   }
 
-  const contrato = await prisma.contrato.create({
+  let contrato = await prisma.contrato.create({
     data: {
       codigo,
       clienteId,
@@ -125,6 +138,7 @@ export async function POST(req: NextRequest) {
       valorTotal: Number(valorEmprestado),
       valorLucro: 0,
       status: "em_dia",
+      contaDesembolsoId: contaDesembolsoId || null,
       parcelas: {
         create: resultado.parcelas.map((p) => ({
           numero: p.numero,
@@ -136,6 +150,33 @@ export async function POST(req: NextRequest) {
     },
     include: { parcelas: true, cliente: true },
   });
+
+  // --- Desconta o valor emprestado da conta escolhida (NOVO) --------------
+  // Um Lancamento despesa já pago, dessa conta, no valor total emprestado —
+  // reaproveita o mesmo saldo calculado (saldoInicial + receitas pagas -
+  // despesas pagas) que a tela de Contas já usa, sem duplicar lógica. Ver
+  // Parcela.lancamentoRetornoId em app/api/parcelas/[id]/route.ts pro
+  // caminho inverso (o valor volta pra conta conforme as parcelas são pagas).
+  if (contaDesembolsoId) {
+    const lancamentoDesembolso = await prisma.lancamento.create({
+      data: {
+        descricao: `Empréstimo concedido - contrato ${contrato.codigo} (${cliente.nome})`,
+        valor: Number(valorEmprestado),
+        tipo: "despesa",
+        status: "pago",
+        dataVencimento: new Date(),
+        dataPagamento: new Date(),
+        valorPago: Number(valorEmprestado),
+        contaId: contaDesembolsoId,
+        usuarioId: sessao.id,
+      },
+    });
+    contrato = await prisma.contrato.update({
+      where: { id: contrato.id },
+      data: { lancamentoDesembolsoId: lancamentoDesembolso.id },
+      include: { parcelas: true, cliente: true },
+    });
+  }
 
   await registrarAcao(prisma, {
     usuarioId: sessao.id,

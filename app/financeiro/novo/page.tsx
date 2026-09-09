@@ -331,7 +331,7 @@ function NovoLancamentoConteudo() {
             className="chip-toggle flex-col !gap-1 !py-2.5"
           >
             <IconDocument size={17} />
-            <span>Empréstimo</span>
+            <span>Contrato</span>
           </button>
           <button
             type="button"

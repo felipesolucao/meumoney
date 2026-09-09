@@ -55,10 +55,17 @@ export async function GET(req: NextRequest) {
   // O lançamento herda a carteira da conta selecionada. Lançamentos sem
   // conta continuam visíveis apenas no consolidado Geral.
   const filtroCarteira = carteiraId ? { conta: { carteiraId } } : {};
-  const [lancamentosDoMes, pendentesDespesa, pendentesReceita] = await Promise.all([
+  const [lancamentosDoMes, pendentesDespesa, pendentesReceita, parcelasDoMes] = await Promise.all([
     prisma.lancamento.findMany({ where: { usuarioId: sessao.id, ...filtroCarteira, dataVencimento: { gte: inicioMes, lte: fimMes } } }),
     prisma.lancamento.findMany({ where: { usuarioId: sessao.id, ...filtroCarteira, tipo: "despesa", status: "pendente" } }),
     prisma.lancamento.findMany({ where: { usuarioId: sessao.id, ...filtroCarteira, tipo: "receita", status: "pendente" } }),
+    // Parcelas de contratos (empréstimos) com vencimento dentro do período —
+    // entram no "saldo total a receber" junto com as receitas do financeiro
+    // (ver aReceberContratosDoMes/aReceberTotal abaixo). Carteira não se
+    // aplica aqui: contratos não têm conta bancária vinculada por padrão.
+    prisma.parcela.findMany({
+      where: { contrato: { usuarioId: sessao.id }, status: { not: "pago" }, vencimento: { gte: inicioMes, lte: fimMes } },
+    }),
   ]);
 
   const receitasDoMes = lancamentosDoMes
@@ -93,11 +100,19 @@ export async function GET(req: NextRequest) {
     (l) => statusEfetivoLancamento(l.status, l.dataVencimento) === "atrasado"
   ).length;
 
+  // Saldo total a receber no período = receitas do financeiro + parcelas de
+  // contratos (empréstimos) ainda não pagas — pedido explícito: juntar os
+  // dois módulos numa única visão de "quanto ainda vou receber".
+  const aReceberContratosDoMes = parcelasDoMes.reduce((s, p) => s + Number(p.valor), 0);
+  const aReceberTotal = aReceberDoMes + aReceberContratosDoMes;
+
   return NextResponse.json({
     receitasDoMes,
     despesasDoMes,
     balanco,
     aReceberDoMes,
+    aReceberContratosDoMes,
+    aReceberTotal,
     aPagarDoMes,
     totalDespesasDoMes,
     totalReceitasDoMes,
