@@ -767,6 +767,25 @@ a {
   }
 }
 
+/* Painel lateral (drawer) que desliza da esquerda — usado no menu mobile
+   (ver components/MenuLateralDrawer.tsx). */
+@keyframes slideInLeft {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 /* Interruptor (toggle switch) — substitui o checkbox simples em opções do
    tipo "já pago/recebido", mais fácil de ler/tocar num formulário mobile. */
 .switch {

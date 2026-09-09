@@ -1,39 +1,41 @@
 // ============================================================================
-// COMPONENTE: Popup "Editar parcela"
+// COMPONENTE: Popup "Editar lançamento" (financeiro)
 // ----------------------------------------------------------------------------
-// Abre ao tocar no ícone de lápis numa parcela (ver ParcelasLista).
-//   - Parcela ainda não paga: edita valor e/ou vencimento (substitui os
-//     antigos window.prompt() por um formulário de verdade).
-//   - Parcela já paga: mostra a data do pagamento e o botão "Estornar
-//     pagamento" — antes esse botão ficava solto no card; agora só aparece
-//     aqui dentro, pra não competir visualmente com Cobrar/Renegociar/Pagar.
+// Mesma ideia do EditarParcelaModal usado nos contratos:
+//   - Lançamento ainda pendente: edita valor e/ou vencimento rapidamente.
+//   - Lançamento já pago: mostra a data do pagamento e o botão "Estornar".
+// Para editar categoria/conta/observações (campos que este popup não cobre),
+// tem um link "Editar detalhes completos" que leva pra tela cheia de sempre
+// (/financeiro/[id]/editar).
 // ============================================================================
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
-import { formatarMoeda, formatarData } from "../lib/calculos";
+import { formatarMoeda } from "../lib/financeiro";
+import { formatarData } from "../lib/calculos";
 import CampoMoeda, { valorFormatadoParaNumero, numeroParaValorFormatado } from "./CampoMoeda";
 import { IconClose, IconUndo } from "./Icons";
 
-type Parcela = {
+type Lancamento = {
   id: string;
-  numero: number;
+  descricao: string;
   valor: string;
   valorPago?: string | null;
-  vencimento: string;
+  dataVencimento: string;
+  dataPagamento?: string | null;
   status: string;
-  pagoEm?: string | null;
 };
 
-export default function EditarParcelaModal({
+export default function EditarLancamentoModal({
   aberto,
-  parcela,
+  lancamento,
   onFechar,
   onSalvar,
   onEstornar,
 }: {
   aberto: boolean;
-  parcela: Parcela | null;
+  lancamento: Lancamento | null;
   onFechar: () => void;
   onSalvar: (valor: number, novoVencimento: string) => Promise<void> | void;
   onEstornar: () => Promise<void> | void;
@@ -42,20 +44,18 @@ export default function EditarParcelaModal({
   const [data, setData] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [confirmandoEstorno, setConfirmandoEstorno] = useState(false);
-  const [ultimaParcelaId, setUltimaParcelaId] = useState<string | null>(null);
+  const [ultimoId, setUltimoId] = useState<string | null>(null);
 
-  if (!aberto || !parcela) return null;
+  if (!aberto || !lancamento) return null;
 
-  // Mesma ideia do ReceberPagamentoModal: sincroniza os campos com a
-  // parcela atual no primeiro render dela, sem useEffect.
-  if (ultimaParcelaId !== parcela.id) {
-    setUltimaParcelaId(parcela.id);
-    setValorStr(numeroParaValorFormatado(Number(parcela.valor)));
-    setData(parcela.vencimento.slice(0, 10));
+  if (ultimoId !== lancamento.id) {
+    setUltimoId(lancamento.id);
+    setValorStr(numeroParaValorFormatado(Number(lancamento.valor)));
+    setData(lancamento.dataVencimento.slice(0, 10));
     setConfirmandoEstorno(false);
   }
 
-  const paga = parcela.status === "pago";
+  const pago = lancamento.status === "pago";
 
   async function salvar() {
     const valorNum = valorFormatadoParaNumero(valorStr);
@@ -79,27 +79,25 @@ export default function EditarParcelaModal({
         <div className="mx-auto mt-3 h-1.5 w-10 rounded-pill bg-muted-surface" />
 
         <div className="flex items-center justify-between px-5 pt-3 pb-2">
-          <h2 className="text-lg font-bold">Parcela {parcela.numero}</h2>
-          <button type="button" onClick={onFechar} className="icon-btn" aria-label="Fechar">
+          <h2 className="text-lg font-bold truncate">{lancamento.descricao}</h2>
+          <button type="button" onClick={onFechar} className="icon-btn flex-shrink-0" aria-label="Fechar">
             <IconClose size={18} />
           </button>
         </div>
 
         <div className="px-5 pb-[calc(1.5rem+var(--shell-bottom-space))] space-y-4">
-          {paga ? (
+          {pago ? (
             <>
               <div className="card !py-3" style={{ background: "var(--color-success-subtle)" }}>
                 <p className="text-sm font-bold" style={{ color: "var(--color-success)" }}>
-                  Paga em {parcela.pagoEm ? formatarData(parcela.pagoEm) : "—"}
+                  Pago em {lancamento.dataPagamento ? formatarData(lancamento.dataPagamento) : "—"}
                 </p>
-                <p className="text-xs text-muted mt-0.5">
-                  Valor recebido: {formatarMoeda(parcela.valorPago ?? parcela.valor)}
-                </p>
+                <p className="text-xs text-muted mt-0.5">Valor: {formatarMoeda(lancamento.valorPago ?? lancamento.valor)}</p>
               </div>
 
               {confirmandoEstorno ? (
                 <div className="card space-y-3" style={{ background: "var(--color-error-subtle)" }}>
-                  <p className="text-sm font-semibold text-error">Estornar este pagamento? A parcela volta a ficar em aberto.</p>
+                  <p className="text-sm font-semibold text-error">Estornar este pagamento? Volta a ficar pendente.</p>
                   <div className="grid grid-cols-2 gap-2">
                     <button type="button" onClick={() => setConfirmandoEstorno(false)} className="btn-outline-sm">
                       Cancelar
@@ -118,7 +116,7 @@ export default function EditarParcelaModal({
           ) : (
             <>
               <div>
-                <p className="text-xs font-semibold tracking-wide text-muted mb-2">VALOR DA PARCELA</p>
+                <p className="text-xs font-semibold tracking-wide text-muted mb-2">VALOR</p>
                 <CampoMoeda value={valorStr} onChange={setValorStr} />
               </div>
               <div>
@@ -130,6 +128,10 @@ export default function EditarParcelaModal({
               </button>
             </>
           )}
+
+          <Link href={`/financeiro/${lancamento.id}/editar`} onClick={onFechar} className="block text-center text-primary text-sm font-semibold">
+            Editar detalhes completos
+          </Link>
         </div>
       </div>
     </div>

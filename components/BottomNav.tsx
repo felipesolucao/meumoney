@@ -45,6 +45,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState } from "react";
+import MenuLateralDrawer from "./MenuLateralDrawer";
 
 const ITENS = [
   { href: "/", label: "Início", icon: IconInicio },
@@ -86,6 +88,10 @@ function itemEstaAtivo(item: (typeof ITENS)[number], pathname: string) {
 
 export default function BottomNav() {
   const pathname = usePathname();
+  // "Menu" no mobile abre este painel deslizante em vez de navegar pra
+  // /menu (ver MenuLateralDrawer.tsx) — pedido explícito de trocar a
+  // página cheia por um menu lateral mais rápido de abrir/fechar.
+  const [menuAberto, setMenuAberto] = useState(false);
 
   // Telas de autenticação e o painel de admin não usam o menu flutuante —
   // login/cadastro porque ainda não há sessão, e admin porque é uma área
@@ -94,28 +100,50 @@ export default function BottomNav() {
     return null;
   }
 
-  function ItemNav(item: (typeof ITENS)[number]) {
-    const ativo = itemEstaAtivo(item, pathname);
+  function conteudoItem(item: (typeof ITENS)[number], ativo: boolean) {
     const Icon = item.icon;
     return (
-      <Link key={item.href} href={item.href} className="flex-1 min-w-0 flex justify-center">
-        {/* A cápsula de vidro (.liquid-glass-item-ativo) só existe no item
-            ativo — é ela que faz o ícone atual parecer "circulado" em vidro
-            mais claro, como o "Home" na referência. */}
+      // A cápsula de vidro (.liquid-glass-item-ativo) só existe no item
+      // ativo — é ela que faz o ícone atual parecer "circulado" em vidro
+      // mais claro, como o "Home" na referência.
+      <span
+        className={`flex flex-col items-center justify-center gap-0.5 rounded-full px-2.5 py-1 min-w-0 ${
+          ativo ? "liquid-glass-item-ativo" : ""
+        }`}
+      >
+        <Icon ativo={ativo} />
         <span
-          className={`flex flex-col items-center justify-center gap-0.5 rounded-full px-2.5 py-1 min-w-0 ${
-            ativo ? "liquid-glass-item-ativo" : ""
+          className={`text-[9px] font-medium leading-none truncate ${
+            ativo ? "text-glass-ativo" : "text-glass-muted"
           }`}
         >
-          <Icon ativo={ativo} />
-          <span
-            className={`text-[9px] font-medium leading-none truncate ${
-              ativo ? "text-glass-ativo" : "text-glass-muted"
-            }`}
-          >
-            {item.label}
-          </span>
+          {item.label}
         </span>
+      </span>
+    );
+  }
+
+  function ItemNav(item: (typeof ITENS)[number]) {
+    const ativo = itemEstaAtivo(item, pathname);
+
+    if (item.href === "/menu") {
+      return (
+        <button
+          key={item.href}
+          type="button"
+          onClick={() => setMenuAberto(true)}
+          aria-haspopup="dialog"
+          aria-expanded={menuAberto}
+          className="flex-1 min-w-0 flex justify-center"
+        >
+          {conteudoItem(item, ativo)}
+        </button>
+      );
+    }
+
+    return (
+      <Link key={item.href} href={item.href} className="flex-1 min-w-0 flex justify-center">
+        {conteudoItem(item, ativo)}
       </Link>
     );
   }
@@ -154,6 +182,8 @@ export default function BottomNav() {
           {ITENS_DEPOIS_DO_BOTAO.map(ItemNav)}
         </div>
       </div>
+
+      <MenuLateralDrawer aberto={menuAberto} onFechar={() => setMenuAberto(false)} />
     </nav>
   );
 }

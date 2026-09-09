@@ -50,9 +50,9 @@ export default async function DetalheContrato({ params }: { params: { id: string
         <Link href="/" className="icon-btn text-foreground">
           <IconHome size={19} />
         </Link>
-        <div>
-          <h1 className="text-xl font-bold">{contrato.codigo}</h1>
-          <p className="text-muted text-sm">{contrato.cliente.nome}</p>
+        <div className="min-w-0">
+          <h1 className="text-xl font-bold truncate">{contrato.cliente.nome}</h1>
+          <p className="text-muted text-sm">{contrato.codigo}</p>
         </div>
       </div>
 

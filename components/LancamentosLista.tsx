@@ -8,33 +8,38 @@
 // A lista chega já ordenada por data decrescente (mais recente primeiro) e
 // aqui é agrupada por dia, no mesmo padrão do app de referência.
 //
-// Editar    -> abre a tela de edição do lançamento
-// Pagar/Receber -> marca o lançamento como pago
-// Reabrir   -> volta o lançamento para pendente (desfaz um pagamento)
-// Excluir   -> remove só esta ocorrência, ou a série inteira se for uma
-//              conta fixa/parcelada (o usuário escolhe na confirmação)
+// Editar        -> abre EditarLancamentoModal (valor/vencimento se pendente,
+//                  ou data do pagamento + "Estornar" se já pago — mesmo
+//                  padrão das parcelas de contrato, ver ParcelasLista).
+// Pagar/Receber -> abre ReceberLancamentoModal (data + valor, com suporte a
+//                  pagamento parcial).
+// Excluir       -> remove só esta ocorrência, ou a série inteira se for uma
+//                  conta fixa/parcelada (o usuário escolhe na confirmação)
 // Todas as ações acima ficam registradas no Histórico e podem ser revertidas
 // por lá (ver /historico).
 // ============================================================================
 "use client";
 
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { formatarMoeda, statusEfetivoLancamento } from "../lib/financeiro";
 import { agruparPorDia } from "../lib/calculos";
 import Badge, { tomEStatusLancamento } from "./Badge";
 import { useToast } from "./ToastProvider";
-import { IconWallet, IconReceipt, IconCheck, IconUndo, IconTrash, IconEdit } from "./Icons";
+import EditarLancamentoModal from "./EditarLancamentoModal";
+import ReceberLancamentoModal from "./ReceberLancamentoModal";
+import { IconWallet, IconReceipt, IconCheck, IconTrash, IconEdit } from "./Icons";
 
 export type LancamentoItem = {
   id: string;
   descricao: string;
   valor: string;
+  valorPago?: string | null;
   tipo: "receita" | "despesa";
   origem: "pessoal" | "empresarial";
   status: "pendente" | "pago";
   dataVencimento: string;
+  dataPagamento?: string | null;
   numeroParcela: number | null;
   categoria: { nome: string; icone: string } | null;
   conta: { nome: string; icone: string } | null;
@@ -50,46 +55,67 @@ export default function LancamentosLista({
   // lançamento foi pago/reaberto. As telas que mantêm a lista em estado
   // local (Contas a pagar/receber) usam isso pra tirar/atualizar o item na
   // hora, em vez de esperar a página recarregar — ver comentário em
-  // alternarStatus() logo abaixo. Quem não passa essa prop (ex: o histórico
-  // dentro de categorias) mantém o comportamento antigo, só com router.refresh().
+  // pagar()/estornar() logo abaixo. Quem não passa essa prop (ex: o
+  // histórico dentro de categorias) mantém o comportamento antigo, só com
+  // router.refresh().
   aoAlterarStatus?: (id: string, novoStatus: "pendente" | "pago") => void;
 }) {
   const router = useRouter();
   const showToast = useToast();
   const [carregandoId, setCarregandoId] = useState<string | null>(null);
+  const [editando, setEditando] = useState<LancamentoItem | null>(null);
+  const [recebendo, setRecebendo] = useState<LancamentoItem | null>(null);
 
   const grupos = useMemo(
     () => agruparPorDia(lancamentos, (item) => item.dataVencimento),
     [lancamentos]
   );
 
-  async function alternarStatus(item: LancamentoItem) {
-    const novoStatus: "pendente" | "pago" = item.status === "pago" ? "pendente" : "pago";
+  async function pagar(item: LancamentoItem, dataRecebimento: string, valorRecebido: number) {
     setCarregandoId(item.id);
     const res = await fetch(`/api/lancamentos/${item.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ acao: item.status === "pago" ? "reabrir" : "pagar" }),
+      body: JSON.stringify({ acao: "pagar", dataRecebimento, valorRecebido }),
     });
     setCarregandoId(null);
+    showToast(
+      res.ok ? (item.tipo === "receita" ? "Recebimento registrado!" : "Pagamento registrado!") : "Não foi possível registrar.",
+      res.ok ? "sucesso" : "erro"
+    );
     if (res.ok) {
-      showToast(
-        item.status === "pago"
-          ? "Lançamento reaberto."
-          : item.tipo === "receita"
-          ? "Recebimento confirmado!"
-          : "Pagamento confirmado!"
-      );
-      // BUG CORRIGIDO: antes só existia o router.refresh() abaixo, que não
-      // adianta nada aqui porque esta lista vem de um fetch client-side nas
-      // telas de Contas a pagar/receber (useEffect + setLancamentos), não de
-      // dado de servidor — então o item ficava na tela, parecendo que a ação
-      // não tinha funcionado, até o usuário trocar de aba/mês ou dar F5.
-      // Agora avisamos a tela pai na hora, que atualiza seu próprio estado.
-      aoAlterarStatus?.(item.id, novoStatus);
-    } else {
-      showToast("Não foi possível atualizar o lançamento.", "erro");
+      setRecebendo(null);
+      aoAlterarStatus?.(item.id, "pago");
     }
+    router.refresh();
+  }
+
+  async function estornar(item: LancamentoItem) {
+    setCarregandoId(item.id);
+    const res = await fetch(`/api/lancamentos/${item.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ acao: "reabrir" }),
+    });
+    setCarregandoId(null);
+    showToast(res.ok ? "Lançamento reaberto." : "Não foi possível reabrir o lançamento.", res.ok ? "sucesso" : "erro");
+    if (res.ok) {
+      setEditando(null);
+      aoAlterarStatus?.(item.id, "pendente");
+    }
+    router.refresh();
+  }
+
+  async function editar(item: LancamentoItem, novoValor: number, novoVencimento: string) {
+    setCarregandoId(item.id);
+    const res = await fetch(`/api/lancamentos/${item.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ valor: novoValor, dataVencimento: novoVencimento }),
+    });
+    setCarregandoId(null);
+    showToast(res.ok ? "Lançamento atualizado." : "Não foi possível atualizar o lançamento.", res.ok ? "sucesso" : "erro");
+    if (res.ok) setEditando(null);
     router.refresh();
   }
 
@@ -130,7 +156,9 @@ export default function LancamentosLista({
           <div className="space-y-3">
             {grupo.itens.map((item) => {
               const efetivo = statusEfetivoLancamento(item.status, item.dataVencimento);
-              const { tom, texto } = tomEStatusLancamento(efetivo);
+              const jaRecebido = Number(item.valorPago ?? 0);
+              const parcial = item.status !== "pago" && jaRecebido > 0;
+              const { tom, texto } = parcial ? { tom: "amber" as const, texto: "Pagamento parcial" } : tomEStatusLancamento(efetivo);
               const corValor = item.tipo === "receita" ? "text-primary" : "text-error";
               const ocupado = carregandoId === item.id;
 
@@ -155,34 +183,34 @@ export default function LancamentosLista({
                           .join(" · ")}
                       </p>
                       <p className={`font-bold mt-1 ${corValor}`}>
-                        {item.tipo === "receita" ? "+" : "-"} {formatarMoeda(item.valor)}
+                        {item.tipo === "receita" ? "+" : "-"} {formatarMoeda(item.status === "pago" ? item.valorPago ?? item.valor : item.valor)}
                       </p>
+                      {parcial && (
+                        <p className="text-xs font-semibold mt-0.5" style={{ color: "var(--color-primary)" }}>
+                          {formatarMoeda(jaRecebido)} já {item.tipo === "receita" ? "recebido" : "pago"}
+                        </p>
+                      )}
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-2">
-                    <Link
-                      href={`/financeiro/${item.id}/editar`}
+                  <div className={`grid gap-2 ${item.status === "pago" ? "grid-cols-2" : "grid-cols-3"}`}>
+                    <button
+                      onClick={() => setEditando(item)}
+                      disabled={ocupado}
                       className="btn-chip"
                       style={{ background: "var(--color-muted-surface)", color: "var(--color-foreground)" }}
                     >
                       <IconEdit size={14} /> Editar
-                    </Link>
-                    <button
-                      onClick={() => alternarStatus(item)}
-                      disabled={ocupado}
-                      className={`btn-chip ${item.status === "pago" ? "btn-outline !min-h-0" : "btn-primary !min-h-0"}`}
-                    >
-                      {item.status === "pago" ? (
-                        <>
-                          <IconUndo size={14} /> Reabrir
-                        </>
-                      ) : (
-                        <>
-                          <IconCheck size={14} /> {item.tipo === "receita" ? "Recebido" : "Pago"}
-                        </>
-                      )}
                     </button>
+                    {item.status !== "pago" && (
+                      <button
+                        onClick={() => setRecebendo(item)}
+                        disabled={ocupado}
+                        className="btn-chip btn-primary !min-h-0"
+                      >
+                        <IconCheck size={14} /> {item.tipo === "receita" ? "Recebido" : "Pago"}
+                      </button>
+                    )}
                     <button
                       onClick={() => excluir(item)}
                       disabled={ocupado}
@@ -198,6 +226,27 @@ export default function LancamentosLista({
           </div>
         </div>
       ))}
+
+      <EditarLancamentoModal
+        aberto={editando !== null}
+        lancamento={editando}
+        onFechar={() => setEditando(null)}
+        onSalvar={async (valor, novoVencimento) => {
+          if (editando) await editar(editando, valor, novoVencimento);
+        }}
+        onEstornar={async () => {
+          if (editando) await estornar(editando);
+        }}
+      />
+
+      <ReceberLancamentoModal
+        aberto={recebendo !== null}
+        lancamento={recebendo}
+        onFechar={() => setRecebendo(null)}
+        onConfirmar={async (data, valor) => {
+          if (recebendo) await pagar(recebendo, data, valor);
+        }}
+      />
     </div>
   );
 }

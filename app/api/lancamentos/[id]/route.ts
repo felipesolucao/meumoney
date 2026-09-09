@@ -53,8 +53,10 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (!existente) return NextResponse.json({ error: "Lançamento não encontrado." }, { status: 404 });
 
   const body = await req.json();
-  const { acao, ...campos } = body as {
+  const { acao, dataRecebimento, valorRecebido, ...campos } = body as {
     acao?: "pagar" | "reabrir";
+    dataRecebimento?: string;
+    valorRecebido?: number;
     descricao?: string;
     valor?: number;
     dataVencimento?: string;
@@ -66,19 +68,33 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   const sinal = existente.tipo === "receita" ? 1 : -1;
 
   // --- Ações rápidas usadas pelos botões da lista --------------------------
+  // "pagar" aceita dataRecebimento/valorRecebido (ver ReceberLancamentoModal)
+  // — sem valorRecebido, assume que recebeu o que falta (comportamento de
+  // sempre). Se o total recebido ficar abaixo do valor do lançamento, vira
+  // "pagamento parcial": continua pendente, só acumula o valor recebido —
+  // mesma lógica de app/api/parcelas/[id]/route.ts.
   if (acao === "pagar") {
+    const valorTotal = Number(existente.valor);
+    const jaRecebido = Number(existente.valorPago ?? 0);
+    const recebidoAgora = valorRecebido !== undefined ? Number(valorRecebido) : valorTotal - jaRecebido;
+    const novoValorPago = jaRecebido + recebidoAgora;
+    const dataPagamento = dataRecebimento ? new Date(dataRecebimento) : new Date();
+    const quitado = novoValorPago >= valorTotal;
+
     const lancamento = await prisma.lancamento.update({
       where: { id: params.id },
-      data: { status: "pago", dataPagamento: new Date(), valorPago: existente.valor },
+      data: quitado
+        ? { status: "pago", dataPagamento, valorPago: novoValorPago }
+        : { valorPago: novoValorPago },
     });
-    await sincronizarFaturaDoLancamento(lancamento.id, "pago");
+    if (quitado) await sincronizarFaturaDoLancamento(lancamento.id, "pago");
     await registrarAcao(prisma, {
       usuarioId: sessao.id,
-      tipo: "LANCAMENTO_PAGO",
+      tipo: quitado ? "LANCAMENTO_PAGO" : "LANCAMENTO_PAGAMENTO_PARCIAL",
       entidade: "Lancamento",
       entidadeId: lancamento.id,
-      descricao: `${existente.tipo === "receita" ? "Recebido" : "Pago"}: ${existente.descricao}`,
-      valor: Number(existente.valor) * sinal,
+      descricao: `${quitado ? (existente.tipo === "receita" ? "Recebido" : "Pago") : "Pagamento parcial"}: ${existente.descricao}`,
+      valor: recebidoAgora * sinal,
       dadosAntes: existente,
       dadosDepois: lancamento,
     });
@@ -97,7 +113,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       entidade: "Lancamento",
       entidadeId: lancamento.id,
       descricao: `Reaberto: ${existente.descricao}`,
-      valor: Number(existente.valor) * sinal,
+      valor: Number(existente.valorPago ?? existente.valor) * sinal * -1,
       dadosAntes: existente,
       dadosDepois: lancamento,
     });
