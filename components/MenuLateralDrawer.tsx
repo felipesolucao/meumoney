@@ -45,10 +45,11 @@ const FERRAMENTAS = [
 const CONFIGURACOES = [
   { href: "/perfil", icon: IconUser, label: "Perfil" },
   { href: "/modelos-cobranca", icon: IconChat, label: "Modelos de cobrança" },
+  { href: "/modelos-contrato", icon: IconDocument, label: "Modelos de contrato" },
   { href: "/contratos/novo", icon: IconDocument, label: "Novo contrato" },
 ];
 
-export default function MenuLateralDrawer({ aberto, onFechar }: { aberto: boolean; onFechar: () => void }) {
+export default function MenuLateralDrawer({ aberto, onFechar, ehAdmin }: { aberto: boolean; onFechar: () => void; ehAdmin?: boolean }) {
   // Trava o scroll do fundo enquanto o drawer está aberto — sem isso dava
   // pra rolar a página por trás junto com o painel.
   useEffect(() => {
@@ -87,6 +88,22 @@ export default function MenuLateralDrawer({ aberto, onFechar }: { aberto: boolea
         </div>
 
         <nav className="px-3 pb-[calc(2rem+env(safe-area-inset-bottom,0px))]">
+          {ehAdmin && (
+            <div className="mb-5">
+              <Link
+                href="/admin"
+                onClick={onFechar}
+                className="flex items-center gap-3 px-2 py-3 rounded-md active:bg-background"
+                style={{ background: "var(--color-primary-surface)" }}
+              >
+                <span className="w-10 h-10 rounded-md bg-card flex items-center justify-center text-primary flex-shrink-0">
+                  <IconUsers size={19} />
+                </span>
+                <span className="flex-1 font-semibold">Painel de administrador</span>
+                <IconChevronRight size={16} className="text-muted flex-shrink-0" />
+              </Link>
+            </div>
+          )}
           <GrupoMenu titulo="FERRAMENTAS" itens={FERRAMENTAS} onNavegar={onFechar} />
           <GrupoMenu titulo="CONFIGURAÇÕES" itens={CONFIGURACOES} onNavegar={onFechar} />
 
