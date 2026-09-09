@@ -63,6 +63,7 @@ model Usuario {
   cartoesCredito         CartaoCredito[]
   comprasCartao          CompraCartao[]
   modelosCobranca        CobrancaModelo[]
+  modelosContrato        ContratoModelo[]
 
   @@map("usuarios")
 }
@@ -81,6 +82,26 @@ model CobrancaModelo {
 
   @@unique([usuarioId, tipo])
   @@map("modelos_cobranca")
+}
+
+// Modelos de mensagem para o resumo do contrato (empréstimo ou venda),
+// enviados ao cliente na criação do contrato ou junto de uma cobrança. Ao
+// contrário dos modelos de cobrança (tipos fixos), aqui o usuário cria,
+// edita e exclui quantos modelos quiser — os dois primeiros ("Resumo do
+// contrato" e "Resumo da venda") são criados automaticamente na primeira
+// abertura da tela.
+model ContratoModelo {
+  id           String   @id @default(cuid())
+  titulo       String
+  categoria    String   @default("emprestimo") // emprestimo | venda
+  mensagem     String   @db.Text
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  usuarioId String
+  usuario   Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@map("modelos_contrato")
 }
 
 // ----------------------------------------------------------------------------

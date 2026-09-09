@@ -38,6 +38,7 @@ const ITENS = [
   { href: "/clientes/novo", icon: IconUser, label: "Novo cliente", desc: "Cadastrar um novo cliente" },
   { href: "/contratos/novo", icon: IconDocument, label: "Novo contrato", desc: "Criar um novo empréstimo" },
   { href: "/modelos-cobranca", icon: IconChat, label: "Modelos de cobrança", desc: "Personalizar mensagens de cobrança" },
+  { href: "/modelos-contrato", icon: IconDocument, label: "Modelos de contrato", desc: "Mensagens para o envio de contrato" },
   { href: "/relatorios", icon: IconChart, label: "Relatórios", desc: "Visão geral da carteira" },
 ];
 

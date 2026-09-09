@@ -91,7 +91,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <ThemeProvider>
           <ToastProvider>
             <AppShell nome={sessao?.nome}>{children}</AppShell>
-            <BottomNav />
+            <BottomNav ehAdmin={sessao?.papel === "admin"} />
           </ToastProvider>
         </ThemeProvider>
       </body>

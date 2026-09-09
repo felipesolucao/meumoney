@@ -86,7 +86,7 @@ function itemEstaAtivo(item: (typeof ITENS)[number], pathname: string) {
   return maisEspecifico.href === item.href;
 }
 
-export default function BottomNav() {
+export default function BottomNav({ ehAdmin }: { ehAdmin?: boolean }) {
   const pathname = usePathname();
   // "Menu" no mobile abre este painel deslizante em vez de navegar pra
   // /menu (ver MenuLateralDrawer.tsx) — pedido explícito de trocar a
@@ -183,7 +183,7 @@ export default function BottomNav() {
         </div>
       </div>
 
-      <MenuLateralDrawer aberto={menuAberto} onFechar={() => setMenuAberto(false)} />
+      <MenuLateralDrawer aberto={menuAberto} onFechar={() => setMenuAberto(false)} ehAdmin={ehAdmin} />
     </nav>
   );
 }

@@ -196,6 +196,14 @@ export function iniciais(nome: string): string {
   return nome.trim().charAt(0).toUpperCase();
 }
 
+// Monta o texto do cronograma de vencimentos (uma linha por parcela), usado
+// na variável {cronograma} dos modelos de resumo de contrato.
+export function montarCronograma(
+  parcelas: { numero: number; valor: number | string | { toString(): string }; vencimento: Date | string }[]
+): string {
+  return parcelas.map((p) => `${p.numero}. ${formatarMoeda(p.valor)} - ${formatarData(p.vencimento)}`).join("\n");
+}
+
 // ----------------------------------------------------------------------------
 // Rótulo de dia usado para agrupar listas por data (ex: "Sábado, 19"),
 // no mesmo padrão do app de referência. Usado tanto na lista de lançamentos
