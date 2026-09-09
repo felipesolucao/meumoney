@@ -6,9 +6,11 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { Frequencia, TipoEmprestimo } from "../lib/calculos";
 import { useToast } from "./ToastProvider";
-import { IconSend, IconTrash, IconHistory, IconEdit } from "./Icons";
+import { IconSend, IconTrash, IconHistory, IconEdit, IconDocument } from "./Icons";
 import EnviarCobrancaModal from "./EnviarCobrancaModal";
+import EnviarResumoContratoModal from "./EnviarResumoContratoModal";
 
 export default function ContratoAcoes({
   contratoId,
@@ -19,6 +21,12 @@ export default function ContratoAcoes({
   multaAtraso,
   tipoMultaAtraso,
   valorMultaAtraso,
+  valorEmprestado,
+  tipoEmprestimo,
+  jurosAoMes,
+  frequencia,
+  numeroParcelas,
+  dataPrimeiraParcela,
 }: {
   contratoId: string;
   clienteNome: string;
@@ -28,12 +36,20 @@ export default function ContratoAcoes({
   multaAtraso: boolean;
   tipoMultaAtraso: string | null;
   valorMultaAtraso: string;
+  valorEmprestado: string;
+  tipoEmprestimo: TipoEmprestimo;
+  jurosAoMes: string;
+  frequencia: Frequencia;
+  numeroParcelas: number;
+  dataPrimeiraParcela: string;
 }) {
   const router = useRouter();
   const showToast = useToast();
   const [excluindo, setExcluindo] = useState(false);
 
   const [modalAberto, setModalAberto] = useState(false);
+  const [modalResumoAberto, setModalResumoAberto] = useState(false);
+  const primeiraParcela = parcelas[0];
 
   async function excluir() {
     if (!window.confirm("Tem certeza que deseja excluir este contrato? Essa ação não pode ser desfeita.")) return;
@@ -53,6 +69,9 @@ export default function ContratoAcoes({
       <button onClick={() => setModalAberto(true)} className="btn-primary-sm w-full">
         <IconSend size={16} /> Enviar cobrança
       </button>
+      <button onClick={() => setModalResumoAberto(true)} className="btn-outline-sm w-full">
+        <IconDocument size={16} /> Enviar resumo do contrato
+      </button>
       <div className="grid grid-cols-3 gap-2">
         <Link href={`/contratos/${contratoId}/editar`} className="btn-outline-sm">
           <IconEdit size={14} /> Editar
@@ -70,6 +89,21 @@ export default function ContratoAcoes({
         </button>
       </div>
       <EnviarCobrancaModal aberto={modalAberto} onFechar={() => setModalAberto(false)} clienteNome={clienteNome} clienteTelefone={clienteTelefone} parcelas={parcelas} valorContrato={valorTotal} multaAtraso={multaAtraso} tipoMultaAtraso={tipoMultaAtraso} valorMultaAtraso={valorMultaAtraso} />
+      <EnviarResumoContratoModal
+        aberto={modalResumoAberto}
+        onFechar={() => setModalResumoAberto(false)}
+        clienteNome={clienteNome}
+        clienteTelefone={clienteTelefone}
+        parcelas={parcelas}
+        valorEmprestado={valorEmprestado}
+        tipoEmprestimo={tipoEmprestimo}
+        jurosAoMes={jurosAoMes}
+        frequencia={frequencia}
+        numeroParcelas={numeroParcelas}
+        valorParcela={primeiraParcela?.valor ?? "0"}
+        dataPrimeiraParcela={dataPrimeiraParcela}
+        totalReceber={valorTotal}
+      />
     </div>
   );
 }
