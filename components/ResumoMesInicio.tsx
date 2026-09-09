@@ -1,21 +1,24 @@
 // ============================================================================
-// COMPONENTE: Resumo do mês (tela Início)
+// COMPONENTE: Resumo do período (tela Início)
 // ----------------------------------------------------------------------------
-// Mostra, para o mês da data selecionada:
+// Mostra, para o período selecionado (duas datas, para permitir comparar
+// períodos — ex.: 30 dias vs. os 30 dias anteriores, olhando o card duas
+// vezes):
 //   - Saldo em contas (saldo corrente de todas as carteiras/contas
-//     bancárias, somado — não é "do mês") — card grande, com badge de
-//     "tudo em dia"/"N em atraso" e a grade recebido/a receber/despesas
-//     pagas/despesas total do mês, tudo no mesmo padrão visual (pills)
-//   - Receitas − despesas do mês (total de receitas do mês, pagas + a
-//     receber, menos o total de despesas do mês, pagas + a pagar)
+//     bancárias, somado — não muda com o período) — card grande, com badge
+//     de "tudo em dia"/"N em atraso" e a grade recebido/a receber/despesas
+//     pagas/despesas total do período, tudo no mesmo padrão visual (pills)
+//   - Receitas − despesas do período (total de receitas, pagas + a receber,
+//     menos o total de despesas, pagas + a pagar)
 //
-// A data é escolhida pelo SeletorData (barra "08 de setembro de 2026" que
-// abre um mini calendário) — só o mês/ano da data escolhida importa para os
-// filtros abaixo, o dia em si é só para o usuário "apontar" um período.
+// O período é escolhido pelo SeletorData (barra "08 de setembro de 2026",
+// ou "08 set – 14 set 2026" quando é um intervalo, que abre atalhos rápidos
+// + um mini calendário para marcar duas datas) — ver components/SeletorData.tsx.
 //
-// Client component porque a data navega sem recarregar a página — os dados
-// vêm de duas APIs já existentes: /api/financeiro/resumo (mês) e
-// /api/financeiro/contas-resumo (saldo total em contas, não muda com o mês).
+// Client component porque o período navega sem recarregar a página — os
+// dados vêm de duas APIs já existentes: /api/financeiro/resumo (aceita um
+// período via ?de=&ate=) e /api/financeiro/contas-resumo (saldo total em
+// contas, não muda com o período).
 // ============================================================================
 "use client";
 
@@ -37,8 +40,16 @@ type ResumoMes = {
   atrasadas: number;
 };
 
+function formatarISO(data: Date) {
+  const ano = data.getFullYear();
+  const mes = String(data.getMonth() + 1).padStart(2, "0");
+  const dia = String(data.getDate()).padStart(2, "0");
+  return `${ano}-${mes}-${dia}`;
+}
+
 export default function ResumoMesInicio({ carteiraId }: { carteiraId?: string | null }) {
-  const [dataSelecionada, setDataSelecionada] = useState(() => new Date());
+  const [inicio, setInicio] = useState(() => new Date());
+  const [fim, setFim] = useState(() => new Date());
 
   const [resumo, setResumo] = useState<ResumoMes | null>(null);
   const [saldoContas, setSaldoContas] = useState<number | null>(null);
@@ -46,16 +57,16 @@ export default function ResumoMesInicio({ carteiraId }: { carteiraId?: string | 
 
   useEffect(() => {
     setCarregando(true);
-    const ano = dataSelecionada.getFullYear();
-    const mes = dataSelecionada.getMonth();
+    const de = formatarISO(inicio);
+    const ate = formatarISO(fim);
     const carteiraQuery = carteiraId ? `&carteiraId=${encodeURIComponent(carteiraId)}` : "";
-    fetch(`/api/financeiro/resumo?ano=${ano}&mes=${mes}${carteiraQuery}`)
+    fetch(`/api/financeiro/resumo?de=${de}&ate=${ate}${carteiraQuery}`)
       .then((r) => r.json())
       .then((data: ResumoMes) => {
         setResumo(data);
         setCarregando(false);
       });
-  }, [dataSelecionada, carteiraId]);
+  }, [inicio, fim, carteiraId]);
 
   // Saldo em contas não depende do mês selecionado (é o saldo corrente),
   // então busca uma vez só, fora do efeito acima.
@@ -69,7 +80,14 @@ export default function ResumoMesInicio({ carteiraId }: { carteiraId?: string | 
   return (
     <div className="home-month-summary">
       <div className="home-month-selector">
-        <SeletorData valor={dataSelecionada} onSelecionar={setDataSelecionada} />
+        <SeletorData
+          inicio={inicio}
+          fim={fim}
+          onSelecionar={(novoInicio, novoFim) => {
+            setInicio(novoInicio);
+            setFim(novoFim);
+          }}
+        />
       </div>
 
       <div className="home-month-balance mt-4">
@@ -115,13 +133,13 @@ export default function ResumoMesInicio({ carteiraId }: { carteiraId?: string | 
         </CardSaldo>
       </div>
 
-      {/* Receitas - despesas do mês: total de receitas do mês (pagas + a
-          receber) menos o total de despesas do mês (pagas + a pagar) —
-          projeta o mês inteiro como se tudo fosse resolvido (recebido/pago),
+      {/* Receitas - despesas do período: total de receitas (pagas + a
+          receber) menos o total de despesas (pagas + a pagar) — projeta o
+          período inteiro como se tudo fosse resolvido (recebido/pago),
           diferente do saldo em contas acima, que é o saldo corrente. */}
       <div className="home-month-projection mt-4">
         <CardSaldo
-          label="RECEITAS − DESPESAS DO MÊS"
+          label="RECEITAS − DESPESAS DO PERÍODO"
           valor={carregando ? "R$ —" : formatarMoeda((resumo?.totalReceitasDoMes ?? 0) - (resumo?.totalDespesasDoMes ?? 0))}
           corValor={
             (resumo?.totalReceitasDoMes ?? 0) - (resumo?.totalDespesasDoMes ?? 0) >= 0

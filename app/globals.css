@@ -354,9 +354,13 @@ h6 {
   .header-gradient p { font-size: 0.75rem; }
 }
 
-/* Cartão branco padrão usado em listas (clientes, contratos, parcelas) */
+/* Cartão branco padrão usado em listas (clientes, contratos, parcelas).
+   Borda fininha cinza-clara (além da sombra) pra destacar bem o contorno,
+   igual no print de referência — mesma cor nos dois temas (--color-border já
+   é sutil no claro e discreta no escuro). */
 .card {
   background: var(--color-card);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-md);
   padding: var(--space-card);
@@ -794,6 +798,7 @@ a {
    dentro dele.
    ========================================================================== */
 .card-saldo {
+  border: 1px solid var(--color-border);
   border-radius: 22px;
   box-shadow: var(--shadow-md);
 }
@@ -919,6 +924,12 @@ a {
 .mini-calendar-header p {
   font-size: 15px;
 }
+.mini-calendar-hint {
+  font-size: 11px;
+  color: var(--color-muted);
+  text-align: center;
+  margin: -6px 0 10px;
+}
 .mini-calendar-nav {
   width: 32px;
   height: 32px;
@@ -979,6 +990,58 @@ a {
   background: var(--color-primary);
   color: #fff;
   font-weight: 700;
+}
+/* Período com mais de um dia: os dois extremos ficam com "cápsula" — só
+   arredondados do lado de fora — e os dias entre eles formam uma barra
+   contínua encostando nas células vizinhas (sem gap entre colunas). */
+.mini-calendar-day-inicio {
+  background: var(--color-primary);
+  color: #fff;
+  font-weight: 700;
+  border-radius: var(--radius-pill) 0 0 var(--radius-pill);
+}
+.mini-calendar-day-fim {
+  background: var(--color-primary);
+  color: #fff;
+  font-weight: 700;
+  border-radius: 0 var(--radius-pill) var(--radius-pill) 0;
+}
+.mini-calendar-day-meio {
+  background: var(--color-primary-subtle);
+  color: var(--color-primary-dark);
+  border-radius: 0;
+  font-weight: 600;
+}
+
+/* Atalhos rápidos (Hoje, Ontem, 7/15/30/60/90 dias) acima do calendário —
+   linha com rolagem horizontal discreta, como .wallet-tabs. */
+.date-picker-atalhos {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  margin-bottom: 14px;
+  padding-bottom: 2px;
+}
+.date-picker-atalhos::-webkit-scrollbar {
+  display: none;
+}
+.date-picker-atalho {
+  flex-shrink: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: var(--color-card);
+  color: var(--color-foreground);
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 7px 12px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.date-picker-atalho:active {
+  background: var(--color-primary-subtle);
+  border-color: var(--color-primary-border);
+  color: var(--color-primary);
 }
 
 /* Ações do popup de cobrança: tamanho compacto e alinhamento consistente

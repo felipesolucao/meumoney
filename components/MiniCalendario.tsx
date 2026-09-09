@@ -1,10 +1,15 @@
 // ============================================================================
-// COMPONENTE: Mini calendário (grade de dias, com navegação de mês)
+// COMPONENTE: Mini calendário (grade de dias, com seleção de período)
 // ----------------------------------------------------------------------------
 // Calendário de verdade (dia a dia), diferente do MesSeletor (que só navega
 // mês inteiro com < >). Usado dentro do SeletorData para deixar o usuário
-// escolher qualquer dia, com o mês visível navegável independente do dia
-// já selecionado — só muda o que está selecionado quando o dia é clicado.
+// escolher um período (duas datas) para comparar, com o mês visível
+// navegável independente do período já selecionado.
+//
+// Seleção de intervalo: o primeiro clique começa um novo período (fica como
+// um "dia único" enquanto a segunda data não é escolhida); o segundo clique
+// fecha o período (ordenando as datas se o usuário clicar "para trás") e
+// avisa o pai via onSelecionar, que também fecha o popover.
 // ============================================================================
 "use client";
 
@@ -25,28 +30,56 @@ function gerarGrade(anoVisivel: number, mesVisivel: number): Date[] {
   });
 }
 
+// Compara só a data (sem hora), pra não depender de o Date recebido ter
+// vindo com hora zerada ou não (ex.: "hoje" traz a hora atual).
+function diaSemHora(d: Date) {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
 function mesmoDia(a: Date, b: Date) {
-  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+  return diaSemHora(a).getTime() === diaSemHora(b).getTime();
 }
 
 export default function MiniCalendario({
-  selecionado,
+  inicio,
+  fim,
   onSelecionar,
 }: {
-  selecionado: Date;
-  onSelecionar: (data: Date) => void;
+  inicio: Date;
+  fim: Date;
+  // completo=false é só a prévia do primeiro clique (ainda escolhendo a
+  // segunda data); completo=true é quando o período fecha (segundo clique).
+  onSelecionar: (inicio: Date, fim: Date, completo: boolean) => void;
 }) {
-  const [anoVisivel, setAnoVisivel] = useState(selecionado.getFullYear());
-  const [mesVisivel, setMesVisivel] = useState(selecionado.getMonth());
+  const [anoVisivel, setAnoVisivel] = useState(inicio.getFullYear());
+  const [mesVisivel, setMesVisivel] = useState(inicio.getMonth());
+  // Enquanto null, um clique começa um período novo. Depois de começado,
+  // guarda o primeiro dia clicado até o segundo clique fechar o período.
+  const [inicioEmEscolha, setInicioEmEscolha] = useState<Date | null>(null);
 
   const hoje = new Date();
   const dias = gerarGrade(anoVisivel, mesVisivel);
   const nomeMes = new Date(anoVisivel, mesVisivel, 1).toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
 
+  const inicioAtual = diaSemHora(inicioEmEscolha ?? inicio);
+  const fimAtual = diaSemHora(inicioEmEscolha ?? fim);
+  const eIntervalo = inicioAtual.getTime() !== fimAtual.getTime();
+
   function irPara(delta: number) {
     const data = new Date(anoVisivel, mesVisivel + delta, 1);
     setAnoVisivel(data.getFullYear());
     setMesVisivel(data.getMonth());
+  }
+
+  function aoClicarDia(dia: Date) {
+    if (inicioEmEscolha === null) {
+      setInicioEmEscolha(dia);
+      onSelecionar(dia, dia, false);
+      return;
+    }
+    const novoInicio = dia < inicioEmEscolha ? dia : inicioEmEscolha;
+    const novoFim = dia < inicioEmEscolha ? inicioEmEscolha : dia;
+    setInicioEmEscolha(null);
+    onSelecionar(novoInicio, novoFim, true);
   }
 
   return (
@@ -61,6 +94,10 @@ export default function MiniCalendario({
         </button>
       </div>
 
+      <p className="mini-calendar-hint">
+        {inicioEmEscolha === null ? "Toque numa data para começar um período" : "Toque na data final do período"}
+      </p>
+
       <div className="mini-calendar-weekdays">
         {DIAS_SEMANA.map((dia) => (
           <span key={dia}>{dia}</span>
@@ -70,19 +107,26 @@ export default function MiniCalendario({
       <div className="mini-calendar-grid">
         {dias.map((dia) => {
           const foraDoMes = dia.getMonth() !== mesVisivel;
-          const ehSelecionado = mesmoDia(dia, selecionado);
+          const diaAtual = diaSemHora(dia);
+          const ehInicio = diaAtual.getTime() === inicioAtual.getTime();
+          const ehFim = diaAtual.getTime() === fimAtual.getTime();
+          const ehMeio = eIntervalo && diaAtual > inicioAtual && diaAtual < fimAtual;
           const ehHoje = mesmoDia(dia, hoje);
+
+          let classeExtra = "";
+          if (ehInicio && ehFim) classeExtra = " mini-calendar-day-selecionado";
+          else if (ehInicio) classeExtra = " mini-calendar-day-inicio";
+          else if (ehFim) classeExtra = " mini-calendar-day-fim";
+          else if (ehMeio) classeExtra = " mini-calendar-day-meio";
+          else if (ehHoje) classeExtra = " mini-calendar-day-hoje";
+
           return (
             <button
               key={dia.toISOString()}
               type="button"
-              onClick={() => onSelecionar(dia)}
-              aria-current={ehSelecionado ? "date" : undefined}
-              className={
-                "mini-calendar-day" +
-                (foraDoMes ? " mini-calendar-day-fora" : "") +
-                (ehSelecionado ? " mini-calendar-day-selecionado" : ehHoje ? " mini-calendar-day-hoje" : "")
-              }
+              onClick={() => aoClicarDia(dia)}
+              aria-current={ehInicio || ehFim ? "date" : undefined}
+              className={"mini-calendar-day" + (foraDoMes ? " mini-calendar-day-fora" : "") + classeExtra}
             >
               {dia.getDate()}
             </button>
