@@ -49,9 +49,19 @@ function formatarISO(data: Date) {
   return `${ano}-${mes}-${dia}`;
 }
 
+function inicioDoMesAtual() {
+  const hoje = new Date();
+  return new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+}
+
+function fimDoMesAtual() {
+  const hoje = new Date();
+  return new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0);
+}
+
 export default function ResumoMesInicio({ carteiraId }: { carteiraId?: string | null }) {
-  const [inicio, setInicio] = useState(() => new Date());
-  const [fim, setFim] = useState(() => new Date());
+  const [inicio, setInicio] = useState(inicioDoMesAtual);
+  const [fim, setFim] = useState(fimDoMesAtual);
 
   const [resumo, setResumo] = useState<ResumoMes | null>(null);
   const [saldoContas, setSaldoContas] = useState<number | null>(null);

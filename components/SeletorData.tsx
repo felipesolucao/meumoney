@@ -19,19 +19,27 @@ function diasAtras(base: Date, n: number) {
   return d;
 }
 
+function diasAFrente(base: Date, n: number) {
+  const d = new Date(base);
+  d.setDate(d.getDate() + n);
+  return d;
+}
+
 // Cada atalho é sempre "hoje" (atual, calculado na hora do clique — nunca
-// fica parado numa data antiga) menos a quantidade de dias do rótulo, até
-// hoje. "Ontem" é só o dia anterior isolado, não um período.
+// fica parado numa data antiga). "Ontem" é só o dia anterior isolado, não
+// um período. Os atalhos de N dias vão de hoje até hoje + (N-1) dias, pra
+// totalizar N dias corridos contando o próprio dia de hoje — ex.: hoje dia
+// 9, "7 dias" = 9 a 15 (9, 10, 11, 12, 13, 14, 15 = 7 dias).
 function criarAtalhos(hoje: Date) {
   const ontem = diasAtras(hoje, 1);
   return [
     { rotulo: "Hoje", inicio: hoje, fim: hoje },
     { rotulo: "Ontem", inicio: ontem, fim: ontem },
-    { rotulo: "7 dias", inicio: diasAtras(hoje, 7), fim: hoje },
-    { rotulo: "15 dias", inicio: diasAtras(hoje, 15), fim: hoje },
-    { rotulo: "30 dias", inicio: diasAtras(hoje, 30), fim: hoje },
-    { rotulo: "60 dias", inicio: diasAtras(hoje, 60), fim: hoje },
-    { rotulo: "90 dias", inicio: diasAtras(hoje, 90), fim: hoje },
+    { rotulo: "7 dias", inicio: hoje, fim: diasAFrente(hoje, 6) },
+    { rotulo: "15 dias", inicio: hoje, fim: diasAFrente(hoje, 14) },
+    { rotulo: "30 dias", inicio: hoje, fim: diasAFrente(hoje, 29) },
+    { rotulo: "60 dias", inicio: hoje, fim: diasAFrente(hoje, 59) },
+    { rotulo: "90 dias", inicio: hoje, fim: diasAFrente(hoje, 89) },
   ];
 }
 

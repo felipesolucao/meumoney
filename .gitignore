@@ -4,6 +4,7 @@ node_modules/
 .env*.local
 .DS_Store
 npm-debug.log*
+tsconfig.tsbuildinfo
 
 # Service worker do PWA — gerado a cada "next build" por @ducanh2912/next-pwa
 # (ver next.config.js). Nunca commitar: seria sempre sobrescrito no próximo
