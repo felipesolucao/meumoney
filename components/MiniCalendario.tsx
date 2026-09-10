@@ -44,6 +44,7 @@ export default function MiniCalendario({
   fim,
   onSelecionar,
   modoUnico = false,
+  compacto = false,
 }: {
   inicio: Date;
   fim: Date;
@@ -54,6 +55,10 @@ export default function MiniCalendario({
   // primeiro clique já fecha a seleção, sem esperar um segundo toque pra
   // formar um período.
   modoUnico?: boolean;
+  // Versão menor (grade mais estreita) pra caber inteira sem rolagem dentro
+  // de popups mais apertados, como o de "Receber pagamento" — ver
+  // components/SeletorDataUnica.tsx.
+  compacto?: boolean;
 }) {
   const [anoVisivel, setAnoVisivel] = useState(inicio.getFullYear());
   const [mesVisivel, setMesVisivel] = useState(inicio.getMonth());
@@ -92,7 +97,7 @@ export default function MiniCalendario({
   }
 
   return (
-    <div className="mini-calendar">
+    <div className={"mini-calendar" + (compacto ? " mini-calendar-compacto" : "")}>
       <div className="mini-calendar-header">
         <button type="button" className="mini-calendar-nav" onClick={() => irPara(-1)} aria-label="Mês anterior">
           <IconChevronLeft size={16} />

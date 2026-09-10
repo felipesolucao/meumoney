@@ -61,11 +61,12 @@ export default function SeletorDataUnica({
       </button>
 
       {aberto && (
-        <div className="date-picker-popover">
+        <div className="date-picker-popover date-picker-popover--compacto">
           <MiniCalendario
             inicio={data}
             fim={data}
             modoUnico
+            compacto
             onSelecionar={(novaData) => {
               onSelecionar(formatarISO(novaData));
               setAberto(false);

@@ -42,14 +42,19 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 
   // --- Saldo atual (mesmo cálculo de /api/financeiro/contas-resumo, sem o
   // filtro de período — o saldo é sempre o corrente, não o do período) -----
-  const [todosLancamentosPagos, todosContratosDesembolso] = await Promise.all([
+  const [todosLancamentosPagos, todosContratos] = await Promise.all([
     prisma.lancamento.findMany({
       where: { usuarioId: sessao.id, status: "pago", contaId: conta.id },
       select: { tipo: true, valorPago: true, valor: true },
     }),
+    // BUGFIX: antes filtrava contratos por contaDesembolsoId=conta.id, o que
+    // deixava de fora parcelas com uma conta de destino escolhida (Parcela.
+    // contaId) diferente da conta de desembolso do contrato (ou de contratos
+    // sem conta de desembolso nenhuma) — busca todos os contratos do usuário
+    // e decide dentro do loop o que entra no saldo desta conta.
     prisma.contrato.findMany({
-      where: { usuarioId: sessao.id, contaDesembolsoId: conta.id },
-      select: { valorEmprestado: true, parcelas: { select: { status: true, valor: true, valorPago: true, contaId: true } } },
+      where: { usuarioId: sessao.id },
+      select: { contaDesembolsoId: true, valorEmprestado: true, parcelas: { select: { status: true, valor: true, valorPago: true, contaId: true } } },
     }),
   ]);
 
@@ -58,11 +63,11 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     const valor = Number(l.valorPago ?? l.valor);
     saldoAtual += l.tipo === "receita" ? valor : -valor;
   }
-  for (const c of todosContratosDesembolso) {
-    saldoAtual -= Number(c.valorEmprestado);
+  for (const c of todosContratos) {
+    if (c.contaDesembolsoId === conta.id) saldoAtual -= Number(c.valorEmprestado);
     for (const p of c.parcelas) {
       if (p.status !== "pago") continue;
-      const contaDestino = p.contaId ?? conta.id;
+      const contaDestino = p.contaId ?? c.contaDesembolsoId;
       if (contaDestino !== conta.id) continue;
       saldoAtual += Number(p.valorPago ?? p.valor);
     }

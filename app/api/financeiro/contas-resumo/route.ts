@@ -37,8 +37,15 @@ export async function GET(req: Request) {
       where: { usuarioId: sessao.id, status: "pago", contaId: { not: null } },
       select: { contaId: true, tipo: true, valorPago: true, valor: true },
     }),
+    // BUGFIX: antes filtrava só contratos com contaDesembolsoId definido —
+    // mas uma parcela pode ter uma conta de destino escolhida (Parcela.
+    // contaId) mesmo em contratos SEM conta de desembolso vinculada (o
+    // usuário simplesmente não marcou "descontar de uma conta" ao criar o
+    // contrato). Filtrar aqui fazia o pagamento sumir do saldo da conta
+    // escolhida no popup "Receber pagamento". Busca todos os contratos do
+    // usuário; o "if" dentro do loop abaixo decide o que cada um credita.
     prisma.contrato.findMany({
-      where: { usuarioId: sessao.id, contaDesembolsoId: { not: null } },
+      where: { usuarioId: sessao.id },
       select: {
         contaDesembolsoId: true,
         valorEmprestado: true,
@@ -63,14 +70,16 @@ export async function GET(req: Request) {
   // explícita (pagamentos antigos, antes desse campo existir), cai na conta
   // de desembolso do contrato, mantendo o comportamento de sempre.
   for (const c of contratosDesembolso) {
-    if (!c.contaDesembolsoId) continue;
-    movimentoPorConta.set(
-      c.contaDesembolsoId,
-      (movimentoPorConta.get(c.contaDesembolsoId) ?? 0) - Number(c.valorEmprestado)
-    );
+    if (c.contaDesembolsoId) {
+      movimentoPorConta.set(
+        c.contaDesembolsoId,
+        (movimentoPorConta.get(c.contaDesembolsoId) ?? 0) - Number(c.valorEmprestado)
+      );
+    }
     for (const p of c.parcelas) {
       if (p.status !== "pago") continue;
       const contaDestino = p.contaId ?? c.contaDesembolsoId;
+      if (!contaDestino) continue; // sem conta escolhida e sem conta de desembolso: não mexe em saldo
       const valorDevolvido = Number(p.valorPago ?? p.valor);
       movimentoPorConta.set(contaDestino, (movimentoPorConta.get(contaDestino) ?? 0) + valorDevolvido);
     }
