@@ -43,12 +43,17 @@ export default function MiniCalendario({
   inicio,
   fim,
   onSelecionar,
+  modoUnico = false,
 }: {
   inicio: Date;
   fim: Date;
   // completo=false é só a prévia do primeiro clique (ainda escolhendo a
   // segunda data); completo=true é quando o período fecha (segundo clique).
   onSelecionar: (inicio: Date, fim: Date, completo: boolean) => void;
+  // Pra uso como seletor de UMA data só (ex: data de um pagamento) — o
+  // primeiro clique já fecha a seleção, sem esperar um segundo toque pra
+  // formar um período.
+  modoUnico?: boolean;
 }) {
   const [anoVisivel, setAnoVisivel] = useState(inicio.getFullYear());
   const [mesVisivel, setMesVisivel] = useState(inicio.getMonth());
@@ -71,6 +76,10 @@ export default function MiniCalendario({
   }
 
   function aoClicarDia(dia: Date) {
+    if (modoUnico) {
+      onSelecionar(dia, dia, true);
+      return;
+    }
     if (inicioEmEscolha === null) {
       setInicioEmEscolha(dia);
       onSelecionar(dia, dia, false);
@@ -95,7 +104,11 @@ export default function MiniCalendario({
       </div>
 
       <p className="mini-calendar-hint">
-        {inicioEmEscolha === null ? "Toque numa data para começar um período" : "Toque na data final do período"}
+        {modoUnico
+          ? "Toque numa data para selecionar"
+          : inicioEmEscolha === null
+          ? "Toque numa data para começar um período"
+          : "Toque na data final do período"}
       </p>
 
       <div className="mini-calendar-weekdays">

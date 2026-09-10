@@ -24,10 +24,13 @@ const LABEL_FREQ: Record<string, string> = {
 export default async function DetalheContrato({ params }: { params: { id: string } }) {
   const sessao = await exigirSessao();
 
-  const contratoRaw = await prisma.contrato.findFirst({
-    where: { id: params.id, usuarioId: sessao.id },
-    include: { cliente: true, parcelas: { orderBy: { numero: "asc" } } },
-  });
+  const [contratoRaw, contas] = await Promise.all([
+    prisma.contrato.findFirst({
+      where: { id: params.id, usuarioId: sessao.id },
+      include: { cliente: true, parcelas: { orderBy: { numero: "asc" } } },
+    }),
+    prisma.conta.findMany({ where: { usuarioId: sessao.id }, orderBy: { nome: "asc" } }),
+  ]);
 
   if (!contratoRaw) notFound();
 
@@ -130,6 +133,8 @@ export default async function DetalheContrato({ params }: { params: { id: string
             clienteNome={contrato.cliente.nome}
             clienteTelefone={contrato.cliente.telefone}
             codigoContrato={contrato.codigo}
+            contas={JSON.parse(JSON.stringify(contas))}
+            contaDesembolsoId={contrato.contaDesembolsoId}
           />
         </div>
       </div>

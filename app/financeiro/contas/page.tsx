@@ -381,7 +381,10 @@ export default function ContasPage() {
                     onSalvar={salvarEdicao}
                   />
                 ) : (
-                  <div key={conta.id} className="card !py-2.5 flex items-center gap-3">
+                  // O card inteiro é um link pro extrato (/financeiro/contas/[id],
+                  // mesmo padrão do cartão) — os botões de editar/excluir chamam
+                  // preventDefault() pra não disparar a navegação do Link.
+                  <Link key={conta.id} href={`/financeiro/contas/${conta.id}`} className="card !py-2.5 flex items-center gap-3">
                     <span className="w-10 h-10 rounded-md bg-primary-subtle flex items-center justify-center text-lg shrink-0">
                       {conta.icone}
                     </span>
@@ -396,7 +399,10 @@ export default function ContasPage() {
                     </div>
                     <button
                       type="button"
-                      onClick={() => iniciarEdicao(conta)}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        iniciarEdicao(conta);
+                      }}
                       className="icon-btn !w-9 !h-9 text-muted shrink-0"
                       aria-label={`Editar ${conta.nome}`}
                     >
@@ -404,13 +410,16 @@ export default function ContasPage() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setConfirmarExclusaoId(conta.id)}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setConfirmarExclusaoId(conta.id);
+                      }}
                       className="icon-btn !w-9 !h-9 text-error shrink-0"
                       aria-label={`Excluir ${conta.nome}`}
                     >
                       <IconTrash size={15} />
                     </button>
-                  </div>
+                  </Link>
                 )
               )}
             </div>

@@ -16,8 +16,10 @@
 // Contrato.contaDesembolsoId, criado em /contratos/novo) — de propósito NÃO
 // é um Lancamento (um empréstimo não é uma "despesa"/"receita" do dia a dia,
 // não deve aparecer nas telas de Despesas/Receitas), mas ainda precisa
-// mexer no saldo: o valor emprestado desconta na hora e volta aos poucos
-// conforme cada parcela é paga.
+// mexer no saldo: o valor emprestado desconta na hora da conta de
+// desembolso, e cada parcela paga devolve o valor pra conta escolhida no
+// popup "Receber pagamento" (Parcela.contaId — pode ser uma conta diferente
+// da de desembolso; sem escolha, cai na própria conta de desembolso).
 // ============================================================================
 import { NextResponse } from "next/server";
 import { prisma } from "../../../../lib/prisma";
@@ -37,7 +39,11 @@ export async function GET(req: Request) {
     }),
     prisma.contrato.findMany({
       where: { usuarioId: sessao.id, contaDesembolsoId: { not: null } },
-      select: { contaDesembolsoId: true, valorEmprestado: true, parcelas: { select: { status: true, valor: true, valorPago: true } } },
+      select: {
+        contaDesembolsoId: true,
+        valorEmprestado: true,
+        parcelas: { select: { status: true, valor: true, valorPago: true, contaId: true } },
+      },
     }),
   ]);
 
@@ -51,16 +57,23 @@ export async function GET(req: Request) {
     movimentoPorConta.set(l.contaId, (movimentoPorConta.get(l.contaId) ?? 0) + delta);
   }
 
-  // Cada contrato descontado de uma conta tira o valor emprestado na hora e
-  // devolve conforme as parcelas vão sendo pagas — o saldo "em aberto" do
-  // empréstimo (valorEmprestado - já devolvido) é o que ainda falta voltar.
+  // Cada contrato descontado de uma conta tira o valor emprestado dessa
+  // conta na hora. Cada parcela paga devolve o valor recebido pra conta
+  // escolhida no popup "Receber pagamento" (Parcela.contaId) — sem escolha
+  // explícita (pagamentos antigos, antes desse campo existir), cai na conta
+  // de desembolso do contrato, mantendo o comportamento de sempre.
   for (const c of contratosDesembolso) {
     if (!c.contaDesembolsoId) continue;
-    const jaDevolvido = c.parcelas
-      .filter((p) => p.status === "pago")
-      .reduce((s, p) => s + Number(p.valorPago ?? p.valor), 0);
-    const delta = jaDevolvido - Number(c.valorEmprestado);
-    movimentoPorConta.set(c.contaDesembolsoId, (movimentoPorConta.get(c.contaDesembolsoId) ?? 0) + delta);
+    movimentoPorConta.set(
+      c.contaDesembolsoId,
+      (movimentoPorConta.get(c.contaDesembolsoId) ?? 0) - Number(c.valorEmprestado)
+    );
+    for (const p of c.parcelas) {
+      if (p.status !== "pago") continue;
+      const contaDestino = p.contaId ?? c.contaDesembolsoId;
+      const valorDevolvido = Number(p.valorPago ?? p.valor);
+      movimentoPorConta.set(contaDestino, (movimentoPorConta.get(contaDestino) ?? 0) + valorDevolvido);
+    }
   }
 
   const contasComSaldo = contas.map((conta) => {

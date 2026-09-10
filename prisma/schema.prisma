@@ -260,6 +260,13 @@ model Parcela {
   pagoEm      DateTime?
   valorPago   Decimal?      @db.Decimal(12, 2)
 
+  // Conta que recebeu o valor deste pagamento (escolhida no popup "Receber
+  // pagamento" — ver ReceberPagamentoModal). Sem valor definido, o retorno
+  // do pagamento entra na conta de desembolso do contrato (Contrato.
+  // contaDesembolsoId), se houver — ver app/api/financeiro/contas-resumo.
+  contaId     String?
+  conta       Conta?        @relation(fields: [contaId], references: [id], onDelete: SetNull)
+
   @@map("parcelas")
 }
 
@@ -379,6 +386,9 @@ model Conta {
   // Contratos de empréstimo desembolsados a partir desta conta (NOVO — ver
   // Contrato.contaDesembolsoId).
   contratosDesembolso   Contrato[]
+  // Pagamentos de parcelas de contrato recebidos nesta conta (NOVO — ver
+  // Parcela.contaId).
+  parcelas              Parcela[]
 
   @@map("contas")
 }
