@@ -65,10 +65,14 @@ export async function GET(req: NextRequest) {
     // carteira específica ("sub conta") continuava somando parcelas de
     // TODOS os contratos do usuário no card "A RECEBER" da Início, vazando
     // dado de fora da carteira selecionada. Só entram na visão Geral.
+    // Busca TODAS as parcelas do período (pagas + pendentes), não só as
+    // pendentes — precisa das pagas também pro card "Saldo final" (soma o
+    // total de contratos do mês, igual totalReceitasDoMes/totalDespesasDoMes
+    // já fazem pago + pendente).
     carteiraId
       ? Promise.resolve([])
       : prisma.parcela.findMany({
-          where: { contrato: { usuarioId: sessao.id }, status: { not: "pago" }, vencimento: { gte: inicioMes, lte: fimMes } },
+          where: { contrato: { usuarioId: sessao.id }, vencimento: { gte: inicioMes, lte: fimMes } },
         }),
   ]);
 
@@ -107,8 +111,15 @@ export async function GET(req: NextRequest) {
   // Saldo total a receber no período = receitas do financeiro + parcelas de
   // contratos (empréstimos) ainda não pagas — pedido explícito: juntar os
   // dois módulos numa única visão de "quanto ainda vou receber".
-  const aReceberContratosDoMes = parcelasDoMes.reduce((s, p) => s + Number(p.valor), 0);
+  const parcelasPendentesDoMes = parcelasDoMes.filter((p) => p.status !== "pago");
+  const aReceberContratosDoMes = parcelasPendentesDoMes.reduce((s, p) => s + Number(p.valor), 0);
   const aReceberTotal = aReceberDoMes + aReceberContratosDoMes;
+
+  // Total de contratos do período (pagas + pendentes) — usado no card
+  // "Saldo final" da Início, que só aparece quando existem parcelas de
+  // contratos vencendo dentro do período selecionado.
+  const totalContratosDoMes = parcelasDoMes.reduce((s, p) => s + Number(p.valor), 0);
+  const temContratosNoMes = parcelasDoMes.length > 0;
 
   return NextResponse.json({
     receitasDoMes,
@@ -120,6 +131,8 @@ export async function GET(req: NextRequest) {
     aPagarDoMes,
     totalDespesasDoMes,
     totalReceitasDoMes,
+    totalContratosDoMes,
+    temContratosNoMes,
     totalAPagar,
     totalAReceber,
     contasAPagar: pendentesDespesa.length,
