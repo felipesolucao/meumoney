@@ -1367,11 +1367,40 @@ a {
   .clients-grid > .card { padding: 20px; }
   .clients-grid .avatar { width: 56px; height: 56px; font-size: 20px; }
   .clients-grid .font-bold { font-size: 17px; }
+
+  /* --------------------------------------------------------------------------
+     ABA "PARCELAS" — mesma receita visual de Contratos/Clientes acima
+     (cabeçalho alto com gradiente, cards com borda, badges menores). A lista
+     aqui é agrupada por dia de vencimento (ver GrupoParcelas em
+     app/parcelas/page.tsx), então o grid NÃO entra na lista toda — entra
+     dentro de cada dia (".parcelas-day-grid"), pra manter os grupos em ordem
+     cronológica. O cartão de filtro (mês/período) e o cartão de total ficam
+     lado a lado numa linha (".parcelas-top-row").
+     -------------------------------------------------------------------------- */
+  .desktop-layout > .parcelas-shell { max-width: 1350px; width: calc(100% - 64px); background: transparent; }
+  .parcelas-shell .header-gradient { height: 94px; max-height: 94px; padding: 22px 24px; background: linear-gradient(165deg, var(--color-card), var(--color-primary-surface)); border: 1px solid var(--color-primary-border); border-top: 0; box-shadow: var(--shadow-md); }
+  .parcelas-shell .header-gradient h1 { font-size: 24px; }
+  .parcelas-shell .header-gradient .icon-btn { width: 44px; height: 44px; border: 1px solid var(--color-border); }
+  .parcelas-shell .card { border: 1px solid var(--color-border); border-radius: 16px; }
+  .parcelas-shell .badge { font-size: 11px; padding: 5px 10px; gap: 5px; }
+  .parcelas-shell .badge-dot { width: 6px; height: 6px; }
+  .parcelas-list { margin-top: 32px; }
+  .parcelas-filters { justify-content: center; padding-bottom: 0; }
+  .parcelas-top-row { display: flex; align-items: stretch; gap: 20px; }
+  .parcelas-top-row > * { margin-top: 0 !important; min-width: 0; }
+  .parcelas-config { flex: 0 0 380px; }
+  .parcelas-total { flex: 1; }
+  .parcelas-day-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+  .parcelas-day-grid > * { margin-top: 0 !important; min-width: 0; }
+  .parcelas-day-grid > .card { padding: 20px; }
+  .parcelas-day-grid .text-xl { font-size: 26px; }
+  .parcelas-day-grid .font-bold { font-size: 17px; }
 }
 
 @media (min-width: 1440px) {
   .contracts-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .clients-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .parcelas-day-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 /* Início: painel amplo somente no desktop; ordem e medidas mobile preservadas. */
 @media (min-width: 1024px) {

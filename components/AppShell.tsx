@@ -18,6 +18,7 @@ export default function AppShell({ children, nome }: { children: React.ReactNode
   const semMenu = pathname === "/login" || pathname === "/cadastro" || pathname.startsWith("/admin");
   const contratos = pathname === "/contratos" || pathname.startsWith("/contratos/");
   const clientes = pathname === "/clientes";
+  const parcelas = pathname === "/parcelas";
 
   return (
     <div className={semMenu ? "" : "desktop-layout"}>
@@ -43,7 +44,7 @@ export default function AppShell({ children, nome }: { children: React.ReactNode
           </nav>
         </aside>
       )}
-      <div key={pathname} className={`app-shell page-transition${contratos ? " contracts-shell" : ""}${clientes ? " clients-shell" : ""}${pathname === "/" ? " home-shell" : ""}`}>{children}</div>
+      <div key={pathname} className={`app-shell page-transition${contratos ? " contracts-shell" : ""}${clientes ? " clients-shell" : ""}${parcelas ? " parcelas-shell" : ""}${pathname === "/" ? " home-shell" : ""}`}>{children}</div>
     </div>
   );
 }

@@ -1,5 +1,13 @@
 // ============================================================================
 // PÁGINA: Parcelas (todas as parcelas, com filtros de período)
+// ----------------------------------------------------------------------------
+// Desktop (>=1024px): mesma receita visual de Contratos/Clientes — cabeçalho
+// mais alto com gradiente, cards com borda e badges menores (ver
+// ".parcelas-shell" em app/globals.css). Como a lista aqui é agrupada por dia
+// de vencimento (ver GrupoParcelas), o grid entra DENTRO de cada dia — não na
+// lista toda — pra manter a ordem cronológica dos grupos. O cartão de
+// filtro (seletor de mês / período por data) e o cartão de total ficam
+// lado a lado no desktop (".parcelas-top-row"). Layout mobile intacto.
 // ============================================================================
 "use client";
 
@@ -113,8 +121,8 @@ function ListaParcelas() {
         </div>
       </div>
 
-      <div className="px-5 mt-5 space-y-4">
-        <div className="flex flex-wrap gap-2">
+      <div className="parcelas-list px-5 mt-5 space-y-4">
+        <div className="parcelas-filters flex flex-wrap gap-2">
           {(
             [
               { valor: "hoje", label: "Hoje" },
@@ -138,26 +146,30 @@ function ListaParcelas() {
           ))}
         </div>
 
-        {usaFiltroMes && (
-          <div className="card">
-            <MesSeletor ano={ano} mes={mes} onMudar={(a, m) => { setAno(a); setMes(m); }} />
-          </div>
-        )}
-        {aba === "por_data" && (
-          <div className="card grid grid-cols-1 min-[380px]:grid-cols-2 gap-3">
-            <label className="min-w-0 text-xs font-semibold text-muted">De
-              <input type="date" value={de} max={ate} onChange={(e) => setDe(e.target.value)} className="mt-1 block w-full min-w-0 rounded-md border border-border p-2 text-sm text-foreground outline-none" />
-            </label>
-            <label className="min-w-0 text-xs font-semibold text-muted">Até
-              <input type="date" value={ate} min={de} onChange={(e) => setAte(e.target.value)} className="mt-1 block w-full min-w-0 rounded-md border border-border p-2 text-sm text-foreground outline-none" />
-            </label>
-          </div>
-        )}
+        {/* Cartão de filtro (mês/período) + total — empilhados no mobile,
+            lado a lado no desktop (ver ".parcelas-top-row" no globals.css). */}
+        <div className="parcelas-top-row space-y-4">
+          {usaFiltroMes && (
+            <div className="parcelas-config card">
+              <MesSeletor ano={ano} mes={mes} onMudar={(a, m) => { setAno(a); setMes(m); }} />
+            </div>
+          )}
+          {aba === "por_data" && (
+            <div className="parcelas-config card grid grid-cols-1 min-[380px]:grid-cols-2 gap-3">
+              <label className="min-w-0 text-xs font-semibold text-muted">De
+                <input type="date" value={de} max={ate} onChange={(e) => setDe(e.target.value)} className="mt-1 block w-full min-w-0 rounded-md border border-border p-2 text-sm text-foreground outline-none" />
+              </label>
+              <label className="min-w-0 text-xs font-semibold text-muted">Até
+                <input type="date" value={ate} min={de} onChange={(e) => setAte(e.target.value)} className="mt-1 block w-full min-w-0 rounded-md border border-border p-2 text-sm text-foreground outline-none" />
+              </label>
+            </div>
+          )}
 
-        <div className="card" style={{ background: "var(--color-primary-surface)" }}>
-          <p className="text-xs font-semibold tracking-wide text-muted">{aba === "recebidas" ? "TOTAL RECEBIDO" : "TOTAL A RECEBER"}</p>
-          <p className="text-3xl font-extrabold text-primary mt-1">{carregando ? "R$ —" : formatarMoeda(aba === "recebidas" ? parcelas.reduce((s, p) => s + Number(p.valorPago ?? p.valor), 0) : totalAReceber)}</p>
-          <p className="text-sm text-muted mt-0.5">{carregando ? "—" : aba === "recebidas" ? parcelas.length : pendentes.length} parcela(s)</p>
+          <div className="parcelas-total card" style={{ background: "var(--color-primary-surface)" }}>
+            <p className="text-xs font-semibold tracking-wide text-muted">{aba === "recebidas" ? "TOTAL RECEBIDO" : "TOTAL A RECEBER"}</p>
+            <p className="text-3xl font-extrabold text-primary mt-1">{carregando ? "R$ —" : formatarMoeda(aba === "recebidas" ? parcelas.reduce((s, p) => s + Number(p.valorPago ?? p.valor), 0) : totalAReceber)}</p>
+            <p className="text-sm text-muted mt-0.5">{carregando ? "—" : aba === "recebidas" ? parcelas.length : pendentes.length} parcela(s)</p>
+          </div>
         </div>
 
         {carregando && <p className="text-center text-muted text-sm">Carregando...</p>}
@@ -166,7 +178,7 @@ function ListaParcelas() {
           <div className="card text-center text-muted text-sm">Nenhuma parcela neste período.</div>
         )}
 
-        <div className="space-y-6">
+        <div className="parcelas-groups space-y-6">
           {!carregando && !erro && grupos.map((grupo) => (
             <GrupoParcelas key={grupo.itens[0].vencimento.slice(0, 10)} parcelas={grupo.itens} />
           ))}
@@ -187,7 +199,7 @@ function GrupoParcelas({ parcelas }: { parcelas: ParcelaComContrato[] }) {
   const dias = Math.round((dia.getTime() - new Date(`${isoHoje()}T00:00:00Z`).getTime()) / 86400000);
   const prazo = dias === 0 ? "Vence hoje" : dias === 1 ? "Falta 1 dia" : dias > 1 ? `Faltam ${dias} dias` : `Há ${Math.abs(dias)} ${dias === -1 ? "dia" : "dias"} em atraso`;
   return (
-    <section key={data} aria-label={rotulo} className="space-y-3">
+    <section key={data} aria-label={rotulo} className="parcelas-day space-y-3">
       <div className="flex items-start justify-between gap-3 border-b border-border pb-2">
         <h2 className="min-w-0 text-sm font-semibold text-muted first-letter:uppercase">{rotulo}</h2>
         <div className="shrink-0 text-right">
@@ -195,35 +207,40 @@ function GrupoParcelas({ parcelas }: { parcelas: ParcelaComContrato[] }) {
           <p className="text-sm font-bold tabular-nums">{formatarMoeda(totalDia)}</p>
         </div>
       </div>
-      {parcelas.map((p) => {
-        const efetivo = p.status === "pago" ? "pago" : dias < 0 ? "atrasado" : "a_vencer";
-        const { tom, texto } = tomEStatusParcela(efetivo);
-        return (
-          <Link key={p.id} href={`/contratos/${p.contrato.id}`}
-            className="card block border border-border transition-colors hover:border-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
-          >
-            <div className="flex items-start gap-3">
-              <div className="w-11 h-11 rounded-xl flex items-center justify-center font-bold flex-shrink-0"
-                style={{ background: p.status === "pago" ? "var(--color-success-subtle)" : "var(--color-warning-subtle)", color: p.status === "pago" ? "var(--color-success)" : "var(--color-warning)" }}>
-                {p.numero}
+      {/* Grid só entra aqui dentro (por dia) — não na lista toda — pra manter
+          os grupos em ordem cronológica no desktop (ver ".parcelas-day-grid"
+          no globals.css). No mobile continua uma coluna só, sem alteração. */}
+      <div className="parcelas-day-grid space-y-3">
+        {parcelas.map((p) => {
+          const efetivo = p.status === "pago" ? "pago" : dias < 0 ? "atrasado" : "a_vencer";
+          const { tom, texto } = tomEStatusParcela(efetivo);
+          return (
+            <Link key={p.id} href={`/contratos/${p.contrato.id}`}
+              className="card block border border-border transition-colors hover:border-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+            >
+              <div className="flex items-start gap-3">
+                <div className="w-11 h-11 rounded-xl flex items-center justify-center font-bold flex-shrink-0"
+                  style={{ background: p.status === "pago" ? "var(--color-success-subtle)" : "var(--color-warning-subtle)", color: p.status === "pago" ? "var(--color-success)" : "var(--color-warning)" }}>
+                  {p.numero}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold leading-snug [overflow-wrap:anywhere]">{p.contrato.cliente.nome}</p>
+                  <p className="text-xs text-muted mt-1">Parcela {p.numero} · Contrato {p.contrato.codigo}</p>
+                </div>
+                <IconChevronRight size={16} className="text-muted flex-shrink-0 mt-3" />
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-bold leading-snug [overflow-wrap:anywhere]">{p.contrato.cliente.nome}</p>
-                <p className="text-xs text-muted mt-1">Parcela {p.numero} · Contrato {p.contrato.codigo}</p>
+              <div className="flex flex-wrap items-center justify-between gap-2 mt-4">
+                <p className="text-xl font-bold text-primary tabular-nums">{formatarMoeda(p.status === "pago" ? p.valorPago ?? p.valor : p.valor)}</p>
+                <Badge tom={tom}>{texto}</Badge>
               </div>
-              <IconChevronRight size={16} className="text-muted flex-shrink-0 mt-3" />
-            </div>
-            <div className="flex flex-wrap items-center justify-between gap-2 mt-4">
-              <p className="text-xl font-bold text-primary tabular-nums">{formatarMoeda(p.status === "pago" ? p.valorPago ?? p.valor : p.valor)}</p>
-              <Badge tom={tom}>{texto}</Badge>
-            </div>
-            <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 mt-2 text-xs">
-              <p className="text-muted">Vence {formatarData(p.vencimento)}</p>
-              {p.status !== "pago" && <p className={`font-semibold ${dias < 0 ? "text-error" : "text-muted"}`}>{prazo}</p>}
-            </div>
-          </Link>
-        );
-      })}
+              <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 mt-2 text-xs">
+                <p className="text-muted">Vence {formatarData(p.vencimento)}</p>
+                {p.status !== "pago" && <p className={`font-semibold ${dias < 0 ? "text-error" : "text-muted"}`}>{prazo}</p>}
+              </div>
+            </Link>
+          );
+        })}
+      </div>
     </section>
   );
 }
