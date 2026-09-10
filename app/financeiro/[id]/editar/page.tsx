@@ -214,7 +214,7 @@ export default function EditarLancamentoPage() {
           <input
             value={descricao}
             onChange={(e) => setDescricao(e.target.value)}
-            className="w-full rounded-md border border-border px-4 py-3.5 outline-none focus:border-primary"
+            className="w-full rounded-md border border-border px-4 py-3.5 outline-none focus:border-primary bg-card"
           />
         </div>
 
@@ -231,7 +231,7 @@ export default function EditarLancamentoPage() {
             type="date"
             value={dataVencimento}
             onChange={(e) => setDataVencimento(e.target.value)}
-            className="w-full rounded-md border border-border px-4 py-3.5 outline-none focus:border-primary"
+            className="w-full rounded-md border border-border px-4 py-3.5 outline-none focus:border-primary bg-card"
           />
         </div>
 
@@ -322,7 +322,7 @@ export default function EditarLancamentoPage() {
             value={observacoes}
             onChange={(e) => setObservacoes(e.target.value)}
             rows={3}
-            className="w-full rounded-md border border-border px-4 py-3.5 outline-none focus:border-primary"
+            className="w-full rounded-md border border-border px-4 py-3.5 outline-none focus:border-primary bg-card"
           />
         </div>
 
@@ -334,7 +334,13 @@ export default function EditarLancamentoPage() {
         <button
           onClick={excluir}
           disabled={excluindo}
-          className="btn-outline text-error flex items-center justify-center gap-2"
+          // BUGFIX: ".btn-outline" (definida em globals.css DEPOIS de
+          // "@tailwind utilities") tem "display: block", que ganha da
+          // utilitária "flex" no empate de especificidade — o botão perdia o
+          // layout em linha (ícone + texto), e em telas estreitas o conteúdo
+          // quebrava em duas linhas desalinhadas. "!flex" força
+          // "display: flex !important", que sempre vence.
+          className="btn-outline text-error !flex items-center justify-center gap-2"
           style={{ borderColor: "var(--color-border-error)" }}
         >
           <IconTrash size={16} /> {excluindo ? "Excluindo..." : "Excluir lançamento"}
