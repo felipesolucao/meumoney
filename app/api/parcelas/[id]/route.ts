@@ -24,12 +24,13 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (!sessao) return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
 
   const body = await req.json();
-  const { acao, novoVencimento, valor, dataRecebimento, valorRecebido } = body as {
+  const { acao, novoVencimento, valor, dataRecebimento, valorRecebido, contaId } = body as {
     acao: "pagar" | "reabrir" | "renegociar" | "editar";
     novoVencimento?: string;
     valor?: number;
     dataRecebimento?: string;
     valorRecebido?: number;
+    contaId?: string;
   };
 
   // A parcela só pode ser alterada se o contrato dela pertencer ao usuário logado.
@@ -59,16 +60,16 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     await prisma.parcela.update({
       where: { id: params.id },
       data: quitada
-        ? { status: "pago", pagoEm: dataPagamento, valorPago: novoValorPago }
+        ? { status: "pago", pagoEm: dataPagamento, valorPago: novoValorPago, ...(contaId ? { contaId } : {}) }
         // Pagamento parcial: continua a_vencer/atrasado (recalculado abaixo
         // pelo bloco de status do contrato), só acumula o valor recebido.
-        : { valorPago: novoValorPago },
+        : { valorPago: novoValorPago, ...(contaId ? { contaId } : {}) },
     });
 
-    // Se o contrato tem uma conta de desembolso vinculada (ver
-    // Contrato.contaDesembolsoId), o valor "volta" pro saldo dessa conta só
-    // por conta do valorPago da parcela subir — o cálculo em
-    // app/api/financeiro/contas-resumo/route.ts já soma isso de volta. De
+    // A conta escolhida no popup (Parcela.contaId, ver ReceberPagamentoModal)
+    // recebe o valor de volta no saldo — sem escolha explícita, cai na conta
+    // de desembolso do contrato (Contrato.contaDesembolsoId), se houver — o
+    // cálculo em app/api/financeiro/contas-resumo/route.ts já soma isso. De
     // propósito NÃO cria um Lancamento receita: esse retorno não é uma
     // "conta a receber" do financeiro do dia a dia.
     tipoHistorico = quitada ? "PARCELA_PAGA" : "PARCELA_PAGAMENTO_PARCIAL";

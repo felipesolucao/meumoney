@@ -2,16 +2,20 @@
 // COMPONENTE: Popup "Receber pagamento"
 // ----------------------------------------------------------------------------
 // Abre ao tocar em "Pagar" numa parcela (ver ParcelasLista). Deixa escolher
-// a data do recebimento e o valor recebido — se vier menor que o valor da
-// parcela, o backend registra como "pagamento parcial" (ver
-// app/api/parcelas/[id]/route.ts): a parcela continua em aberto, só que com
-// o valor já recebido acumulado, e o restante segue pendente.
+// a data do recebimento (SeletorDataUnica, mesmo design do filtro de período
+// da Início), o valor recebido — se vier menor que o valor da parcela, o
+// backend registra como "pagamento parcial" (ver app/api/parcelas/[id]/
+// route.ts): a parcela continua em aberto, só que com o valor já recebido
+// acumulado, e o restante segue pendente — e a conta que recebe o valor
+// (dropdown "CONTA DE DESTINO"), que soma no saldo dela (ver
+// app/api/financeiro/contas-resumo/route.ts).
 // ============================================================================
 "use client";
 
 import { useState } from "react";
 import { formatarMoeda, formatarData } from "../lib/calculos";
 import CampoMoeda, { valorFormatadoParaNumero, numeroParaValorFormatado } from "./CampoMoeda";
+import SeletorDataUnica from "./SeletorDataUnica";
 import { IconCheck, IconClose } from "./Icons";
 
 type Parcela = {
@@ -22,11 +26,15 @@ type Parcela = {
   vencimento: string;
 };
 
+type Conta = { id: string; nome: string; icone: string };
+
 export default function ReceberPagamentoModal({
   aberto,
   parcela,
   clienteNome,
   codigoContrato,
+  contas,
+  contaIdPadrao,
   onFechar,
   onConfirmar,
 }: {
@@ -34,11 +42,14 @@ export default function ReceberPagamentoModal({
   parcela: Parcela | null;
   clienteNome: string;
   codigoContrato: string;
+  contas: Conta[];
+  contaIdPadrao?: string | null;
   onFechar: () => void;
-  onConfirmar: (dataRecebimento: string, valorRecebido: number) => Promise<void> | void;
+  onConfirmar: (dataRecebimento: string, valorRecebido: number, contaId: string) => Promise<void> | void;
 }) {
   const [valorStr, setValorStr] = useState("");
   const [data, setData] = useState(() => new Date().toISOString().slice(0, 10));
+  const [contaId, setContaId] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [ultimaParcelaId, setUltimaParcelaId] = useState<string | null>(null);
 
@@ -54,6 +65,7 @@ export default function ReceberPagamentoModal({
     setUltimaParcelaId(parcela.id);
     setValorStr(numeroParaValorFormatado(restante));
     setData(new Date().toISOString().slice(0, 10));
+    setContaId(contaIdPadrao || contas[0]?.id || "");
   }
 
   const valorRecebido = valorFormatadoParaNumero(valorStr);
@@ -62,7 +74,7 @@ export default function ReceberPagamentoModal({
   async function confirmar() {
     if (!valorRecebido || valorRecebido <= 0) return;
     setEnviando(true);
-    await onConfirmar(data, valorRecebido);
+    await onConfirmar(data, valorRecebido, contaId);
     setEnviando(false);
   }
 
@@ -100,14 +112,23 @@ export default function ReceberPagamentoModal({
             <CampoMoeda value={valorStr} onChange={setValorStr} autoFocus />
           </div>
 
+          <SeletorDataUnica label="DATA DO RECEBIMENTO" valor={data} onSelecionar={setData} />
+
           <div>
-            <p className="text-xs font-semibold tracking-wide text-muted mb-2">DATA DO RECEBIMENTO</p>
-            <input
-              type="date"
-              value={data}
-              onChange={(e) => setData(e.target.value)}
-              className="form-input form-date-input"
-            />
+            <p className="text-xs font-semibold tracking-wide text-muted mb-2">CONTA DE DESTINO</p>
+            <select
+              value={contaId}
+              onChange={(e) => setContaId(e.target.value)}
+              className="w-full rounded-md border border-border bg-transparent px-3 py-3 outline-none focus:border-primary"
+            >
+              {contas.length === 0 && <option value="">Nenhuma conta cadastrada</option>}
+              {contas.map((conta) => (
+                <option key={conta.id} value={conta.id}>
+                  {conta.icone} {conta.nome}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-muted mt-1.5">O valor recebido soma no saldo desta conta.</p>
           </div>
 
           {parcial && (
@@ -124,7 +145,7 @@ export default function ReceberPagamentoModal({
           <button
             type="button"
             onClick={confirmar}
-            disabled={enviando || !valorRecebido || valorRecebido <= 0}
+            disabled={enviando || !valorRecebido || valorRecebido <= 0 || !contaId}
             className="btn-primary flex items-center justify-center gap-2"
           >
             <IconCheck size={18} /> {enviando ? "Confirmando..." : "Confirmar recebimento"}

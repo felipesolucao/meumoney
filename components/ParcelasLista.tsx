@@ -37,16 +37,22 @@ type Parcela = {
   pagoEm?: string | null;
 };
 
+type Conta = { id: string; nome: string; icone: string };
+
 export default function ParcelasLista({
   parcelas,
   clienteNome,
   clienteTelefone,
   codigoContrato,
+  contas,
+  contaDesembolsoId,
 }: {
   parcelas: Parcela[];
   clienteNome: string;
   clienteTelefone: string | null;
   codigoContrato: string;
+  contas: Conta[];
+  contaDesembolsoId?: string | null;
 }) {
   const router = useRouter();
   const showToast = useToast();
@@ -54,12 +60,12 @@ export default function ParcelasLista({
   const [parcelaEditando, setParcelaEditando] = useState<Parcela | null>(null);
   const [parcelaRecebendo, setParcelaRecebendo] = useState<Parcela | null>(null);
 
-  async function pagar(id: string, dataRecebimento: string, valorRecebido: number) {
+  async function pagar(id: string, dataRecebimento: string, valorRecebido: number, contaId: string) {
     setCarregandoId(id);
     const res = await fetch(`/api/parcelas/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ acao: "pagar", dataRecebimento, valorRecebido }),
+      body: JSON.stringify({ acao: "pagar", dataRecebimento, valorRecebido, contaId }),
     });
     setCarregandoId(null);
     showToast(res.ok ? "Pagamento registrado!" : "Não foi possível registrar o pagamento.", res.ok ? "sucesso" : "erro");
@@ -220,9 +226,11 @@ export default function ParcelasLista({
         parcela={parcelaRecebendo}
         clienteNome={clienteNome}
         codigoContrato={codigoContrato}
+        contas={contas}
+        contaIdPadrao={contaDesembolsoId}
         onFechar={() => setParcelaRecebendo(null)}
-        onConfirmar={async (data, valor) => {
-          if (parcelaRecebendo) await pagar(parcelaRecebendo.id, data, valor);
+        onConfirmar={async (data, valor, contaId) => {
+          if (parcelaRecebendo) await pagar(parcelaRecebendo.id, data, valor, contaId);
         }}
       />
     </div>
