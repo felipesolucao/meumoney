@@ -168,7 +168,10 @@ export default function ContasPage() {
     const res = await fetch(`/api/contas/${id}`, { method: "DELETE" });
     setSalvando(false);
     if (!res.ok) {
-      const data = await res.json();
+      // BUGFIX: res.json() sem tratamento quebrava (silenciosamente, sem
+      // toast nenhum) sempre que o erro vinha como página HTML em vez de
+      // JSON — ver comentário em app/api/contas/[id]/route.ts.
+      const data = await res.json().catch(() => ({}));
       showToast(data.error || "Não foi possível excluir a conta.", "erro");
       return;
     }

@@ -9,9 +9,17 @@
 // de saldoInicial + lançamentos pagos daquela conta. Isso evita que o saldo
 // mostrado no app fique dessincronizado do extrato de lançamentos.
 //
-// Lançamentos que já usam essa conta NÃO são apagados ao excluir: a coluna
-// contaId deles vira NULL (ON DELETE SET NULL, ver schema), igual acontece
-// hoje quando se exclui uma categoria.
+// Lançamentos, contratos (contaDesembolsoId) e parcelas (contaId) que já
+// usam essa conta NÃO são apagados ao excluir: a coluna correspondente vira
+// NULL (ON DELETE SET NULL, ver schema), igual acontece hoje quando se
+// exclui uma categoria.
+//
+// BUGFIX: CartaoCredito.contaId é OBRIGATÓRIO (todo cartão precisa de uma
+// conta que pague a fatura) — excluir uma conta com cartão vinculado dava
+// erro de chave estrangeira no banco (P2003) sem tratamento nenhum, e o
+// fetch do frontend quebrava ao tentar ler a resposta de erro como JSON
+// (voltava uma página de erro HTML), fazendo o botão "Excluir" parecer que
+// não fazia nada. Agora barra antes, com uma mensagem clara.
 // ============================================================================
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "../../../../lib/prisma";
@@ -57,6 +65,28 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
   const existente = await prisma.conta.findFirst({ where: { id: params.id, usuarioId: sessao.id } });
   if (!existente) return NextResponse.json({ error: "Conta não encontrada." }, { status: 404 });
 
-  await prisma.conta.delete({ where: { id: params.id } });
+  const cartoesVinculados = await prisma.cartaoCredito.findMany({
+    where: { contaId: params.id },
+    select: { nome: true },
+  });
+  if (cartoesVinculados.length > 0) {
+    const nomes = cartoesVinculados.map((c) => c.nome).join(", ");
+    return NextResponse.json(
+      { error: `Esta conta paga a fatura de ${cartoesVinculados.length === 1 ? "um cartão" : "cartões"} (${nomes}). Troque a conta desse(s) cartão(ões) em Contas antes de excluir, ou exclua o(s) cartão(ões) primeiro.` },
+      { status: 400 }
+    );
+  }
+
+  try {
+    await prisma.conta.delete({ where: { id: params.id } });
+  } catch {
+    // Rede de segurança pra qualquer outra restrição de chave estrangeira
+    // não prevista acima — evita que o erro do banco vaze como página HTML
+    // pro frontend (que espera sempre JSON).
+    return NextResponse.json(
+      { error: "Não foi possível excluir esta conta — ela ainda tem registros vinculados." },
+      { status: 400 }
+    );
+  }
   return NextResponse.json({ ok: true });
 }
