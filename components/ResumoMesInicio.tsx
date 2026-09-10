@@ -39,6 +39,8 @@ type ResumoMes = {
   despesasDoMes: number;
   totalDespesasDoMes: number;
   totalReceitasDoMes: number;
+  totalContratosDoMes: number;
+  temContratosNoMes: boolean;
   atrasadas: number;
 };
 
@@ -166,6 +168,30 @@ export default function ResumoMesInicio({ carteiraId }: { carteiraId?: string | 
           }
         />
       </div>
+
+      {/* Saldo final: mesma conta do card acima (receitas − despesas do
+          período), mas somando também o total de contratos (parcelas de
+          empréstimos, pagas + pendentes) vencendo dentro do período. Só
+          aparece quando existem contratos no período selecionado — sem
+          contratos, esse card seria idêntico ao de cima e não agregaria
+          nada. Vale tanto pra "Geral" quanto pra uma carteira específica,
+          já que contratos não pertencem a nenhuma carteira (ver comentário
+          na API /api/financeiro/resumo). */}
+      {!carregando && resumo?.temContratosNoMes && (
+        <div className="home-month-final mt-4">
+          <CardSaldo
+            label="SALDO FINAL (COM CONTRATOS)"
+            valor={formatarMoeda(
+              (resumo?.totalContratosDoMes ?? 0) + (resumo?.totalReceitasDoMes ?? 0) - (resumo?.totalDespesasDoMes ?? 0)
+            )}
+            corValor={
+              (resumo?.totalContratosDoMes ?? 0) + (resumo?.totalReceitasDoMes ?? 0) - (resumo?.totalDespesasDoMes ?? 0) >= 0
+                ? "var(--color-success)"
+                : "var(--color-error)"
+            }
+          />
+        </div>
+      )}
     </div>
   );
 }
