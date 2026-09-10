@@ -59,13 +59,17 @@ export async function GET(req: NextRequest) {
     prisma.lancamento.findMany({ where: { usuarioId: sessao.id, ...filtroCarteira, dataVencimento: { gte: inicioMes, lte: fimMes } } }),
     prisma.lancamento.findMany({ where: { usuarioId: sessao.id, ...filtroCarteira, tipo: "despesa", status: "pendente" } }),
     prisma.lancamento.findMany({ where: { usuarioId: sessao.id, ...filtroCarteira, tipo: "receita", status: "pendente" } }),
-    // Parcelas de contratos (empréstimos) com vencimento dentro do período —
-    // entram no "saldo total a receber" junto com as receitas do financeiro
-    // (ver aReceberContratosDoMes/aReceberTotal abaixo). Carteira não se
-    // aplica aqui: contratos não têm conta bancária vinculada por padrão.
-    prisma.parcela.findMany({
-      where: { contrato: { usuarioId: sessao.id }, status: { not: "pago" }, vencimento: { gte: inicioMes, lte: fimMes } },
-    }),
+    // BUGFIX: contratos são um módulo à parte, sem carteira própria — igual
+    // já vale em /api/financeiro/movimentacoes (ver comentário lá). Antes
+    // essa query não filtrava carteira NENHUMA, então trocar pra uma
+    // carteira específica ("sub conta") continuava somando parcelas de
+    // TODOS os contratos do usuário no card "A RECEBER" da Início, vazando
+    // dado de fora da carteira selecionada. Só entram na visão Geral.
+    carteiraId
+      ? Promise.resolve([])
+      : prisma.parcela.findMany({
+          where: { contrato: { usuarioId: sessao.id }, status: { not: "pago" }, vencimento: { gte: inicioMes, lte: fimMes } },
+        }),
   ]);
 
   const receitasDoMes = lancamentosDoMes
