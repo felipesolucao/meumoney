@@ -20,6 +20,7 @@
 // ============================================================================
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatarMoeda, statusEfetivoLancamento } from "../lib/financeiro";
@@ -49,8 +50,10 @@ export type LancamentoItem = {
 export default function LancamentosLista({
   lancamentos,
   aoAlterarStatus,
+  aoAtualizar,
 }: {
   lancamentos: LancamentoItem[];
+  aoAtualizar?: () => void;
   // Opcional: chamado com (id, novoStatus) assim que a API confirma que um
   // lançamento foi pago/reaberto. As telas que mantêm a lista em estado
   // local (Contas a pagar/receber) usam isso pra tirar/atualizar o item na
@@ -85,7 +88,9 @@ export default function LancamentosLista({
     );
     if (res.ok) {
       setRecebendo(null);
-      aoAlterarStatus?.(item.id, "pago");
+      const atualizado: LancamentoItem = await res.json();
+      aoAlterarStatus?.(item.id, atualizado.status);
+      aoAtualizar?.();
     }
     router.refresh();
   }
@@ -102,6 +107,7 @@ export default function LancamentosLista({
     if (res.ok) {
       setEditando(null);
       aoAlterarStatus?.(item.id, "pendente");
+      aoAtualizar?.();
     }
     router.refresh();
   }
@@ -115,7 +121,7 @@ export default function LancamentosLista({
     });
     setCarregandoId(null);
     showToast(res.ok ? "Lançamento atualizado." : "Não foi possível atualizar o lançamento.", res.ok ? "sucesso" : "erro");
-    if (res.ok) setEditando(null);
+    if (res.ok) { setEditando(null); aoAtualizar?.(); }
     router.refresh();
   }
 
@@ -138,6 +144,7 @@ export default function LancamentosLista({
     setCarregandoId(null);
     if (res.ok) {
       showToast("Lançamento excluído.");
+      aoAtualizar?.();
     } else {
       showToast("Não foi possível excluir o lançamento.", "erro");
     }
@@ -164,7 +171,8 @@ export default function LancamentosLista({
 
               return (
                 <div key={item.id} className="card space-y-3">
-                  <div className="flex items-start gap-3">
+                  <div className="relative flex items-start gap-3">
+                    {item.tipo === "receita" && <Link href={`/financeiro/receber/${item.id}`} className="absolute inset-0 rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary" aria-label={`Ver detalhes de ${item.descricao}`} />}
                     <div className="w-12 h-12 rounded-md bg-background flex items-center justify-center text-xl flex-shrink-0">
                       {item.categoria?.icone || (
                         <span className="text-primary">
