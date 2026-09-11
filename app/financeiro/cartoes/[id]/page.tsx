@@ -21,8 +21,9 @@ import { EMOJIS_CATEGORIA } from "../../../../lib/emojisCategorias";
 import BotaoVoltar from "../../../../components/BotaoVoltar";
 import MesSeletor from "../../../../components/MesSeletor";
 import Badge, { tomEStatusFatura } from "../../../../components/Badge";
+import EditarCompraCartaoModal from "../../../../components/EditarCompraCartaoModal";
 import { useToast } from "../../../../components/ToastProvider";
-import { IconEdit, IconTrash, IconCheck, IconUndo, IconPlus } from "../../../../components/Icons";
+import { IconEdit, IconTrash, IconCheck, IconUndo, IconPlus, IconChevronDown } from "../../../../components/Icons";
 
 type CartaoDetalhe = {
   id: string;
@@ -91,6 +92,19 @@ export default function DetalheCartaoPage({ params }: { params: { id: string } }
   const [ano, setAno] = useState(hoje.getFullYear());
   const [mes, setMes] = useState(hoje.getMonth());
   const [processando, setProcessando] = useState(false);
+
+  // --- NOVO: dropdown "trocar de cartão" no topo — carrega a lista de todos
+  // os cartões do usuário uma vez, pra alternar rapidamente entre eles sem
+  // precisar voltar pra /financeiro/contas.
+  const [todosCartoes, setTodosCartoes] = useState<{ id: string; nome: string; icone: string }[]>([]);
+  useEffect(() => {
+    fetch("/api/cartoes")
+      .then((r) => r.json())
+      .then((data: { id: string; nome: string; icone: string }[]) => setTodosCartoes(data));
+  }, []);
+
+  // --- NOVO: popup rápido "Ajustar valor" de uma compra da fatura ----------
+  const [compraAjustando, setCompraAjustando] = useState<Compra | null>(null);
 
   function carregarFatura() {
     setCarregando(true);
@@ -184,6 +198,23 @@ export default function DetalheCartaoPage({ params }: { params: { id: string } }
     }
   }
 
+  async function salvarAjusteCompra(valor: number, novaData: string) {
+    if (!compraAjustando) return;
+    const res = await fetch(`/api/compras-cartao/${compraAjustando.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ valor, dataCompra: novaData }),
+    });
+    if (res.ok) {
+      showToast("Compra atualizada!");
+      setCompraAjustando(null);
+      carregarFatura();
+    } else {
+      const data = await res.json().catch(() => ({}));
+      showToast(data.error || "Não foi possível atualizar a compra.", "erro");
+    }
+  }
+
   async function excluirCompra(compraId: string) {
     if (!window.confirm("Excluir esta compra da fatura?")) return;
     setProcessando(true);
@@ -251,6 +282,29 @@ export default function DetalheCartaoPage({ params }: { params: { id: string } }
       </div>
 
       <div className="px-5 mt-6 space-y-4 pb-4">
+        {/* ==================================================================== */}
+        {/* NOVO: dropdown pra alternar rapidamente entre cartões, sem precisar   */}
+        {/* voltar pra /financeiro/contas — mesma ideia do trocador de conta na   */}
+        {/* tela de extrato da conta bancária.                                    */}
+        {/* ==================================================================== */}
+        {todosCartoes.length > 1 && (
+          <div className="relative">
+            <select
+              value={cartao.id}
+              onChange={(e) => router.push(`/financeiro/cartoes/${e.target.value}`)}
+              className="w-full appearance-none rounded-md border border-border bg-card px-4 py-3 pr-10 font-semibold outline-none focus:border-primary"
+              aria-label="Trocar de cartão"
+            >
+              {todosCartoes.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.icone} {c.nome}
+                </option>
+              ))}
+            </select>
+            <IconChevronDown size={18} className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-muted" />
+          </div>
+        )}
+
         {/* --- Cabeçalho do cartão: emoji, nome, editar/excluir ------------------ */}
         <div className="card space-y-4">
           {confirmarExclusao ? (
@@ -457,12 +511,19 @@ export default function DetalheCartaoPage({ params }: { params: { id: string } }
         ) : (
           <div className="space-y-3">
             {fatura.compras.map((compra) => (
-              <div key={compra.id} className="card !py-3 flex items-center gap-3">
+              // O card inteiro é um link pra tela de detalhes da compra
+              // (/financeiro/cartoes/compra/[id]) — os botões de ajustar/
+              // excluir chamam preventDefault() pra não disparar a navegação.
+              <Link
+                key={compra.id}
+                href={`/financeiro/cartoes/compra/${compra.id}`}
+                className="card !py-3 flex items-center gap-3"
+              >
                 <span className="w-10 h-10 rounded-md bg-background flex items-center justify-center text-lg shrink-0">
                   {compra.categoria?.icone || "🧾"}
                 </span>
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold truncate">{compra.descricao}</p>
+                  <p className="font-semibold leading-snug line-clamp-2">{compra.descricao}</p>
                   <p className="text-xs text-muted">
                     {[compra.categoria?.nome, formatarData(compra.dataCompra)].filter(Boolean).join(" · ")}
                   </p>
@@ -471,21 +532,44 @@ export default function DetalheCartaoPage({ params }: { params: { id: string } }
                   {formatarMoeda(compra.valor)}
                 </p>
                 {fatura.status === "aberta" && (
-                  <button
-                    type="button"
-                    onClick={() => excluirCompra(compra.id)}
-                    disabled={processando}
-                    className="icon-btn !w-8 !h-8 text-error shrink-0"
-                    aria-label={`Excluir ${compra.descricao}`}
-                  >
-                    <IconTrash size={14} />
-                  </button>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setCompraAjustando(compra);
+                      }}
+                      className="icon-btn !w-8 !h-8 text-muted shrink-0"
+                      aria-label={`Ajustar valor de ${compra.descricao}`}
+                    >
+                      <IconEdit size={14} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        excluirCompra(compra.id);
+                      }}
+                      disabled={processando}
+                      className="icon-btn !w-8 !h-8 text-error shrink-0"
+                      aria-label={`Excluir ${compra.descricao}`}
+                    >
+                      <IconTrash size={14} />
+                    </button>
+                  </div>
                 )}
-              </div>
+              </Link>
             ))}
           </div>
         )}
       </div>
+
+      <EditarCompraCartaoModal
+        aberto={compraAjustando !== null}
+        compra={compraAjustando && fatura ? { ...compraAjustando, fatura: { status: fatura.status } } : null}
+        onFechar={() => setCompraAjustando(null)}
+        onSalvar={salvarAjusteCompra}
+      />
     </div>
   );
 }

@@ -37,6 +37,7 @@ import { LABEL_PERIODICIDADE, LABEL_TIPO_FIM } from "../../../lib/financeiro";
 import BotaoVoltar from "../../../components/BotaoVoltar";
 import { useToast } from "../../../components/ToastProvider";
 import SeletorCategoriaModal from "../../../components/SeletorCategoriaModal";
+import { numeroParaValorFormatado } from "../../../components/CampoMoeda";
 import {
   IconWallet,
   IconReceipt,
@@ -116,9 +117,14 @@ function NovoLancamentoConteudo() {
   // /financeiro/cartoes/[id]) — já abre na aba Cartão de crédito, com esse
   // cartão pré-selecionado.
   const cartaoIdInicial = searchParams.get("cartaoId") || "";
+  // NOVO: chegando do botão "Editar detalhes completos" (popup de ajuste de
+  // valor ou tela de detalhes da compra, ver EditarCompraCartaoModal e
+  // app/financeiro/cartoes/compra/[id]) — carrega a compra existente e troca
+  // o formulário pra modo de edição (PATCH em vez de POST ao salvar).
+  const compraCartaoIdInicial = searchParams.get("compraCartaoId") || "";
 
   // --- Campos principais ----------------------------------------------------
-  const [tipo, setTipo] = useState<TipoLancamento>(cartaoIdInicial ? "despesa" : "receita");
+  const [tipo, setTipo] = useState<TipoLancamento>(cartaoIdInicial || compraCartaoIdInicial ? "despesa" : "receita");
   const [origem, setOrigem] = useState<OrigemFinanceira>("pessoal");
   const [valor, setValor] = useState("");
   const [descricao, setDescricao] = useState("");
@@ -137,9 +143,16 @@ function NovoLancamentoConteudo() {
   const [contaId, setContaId] = useState("");
 
   // --- Forma de pagamento da despesa: Conta/Carteira ou Cartão (NOVO) --------
-  const [formaPagamento, setFormaPagamento] = useState<FormaPagamento>(cartaoIdInicial ? "cartao" : "conta");
+  const [formaPagamento, setFormaPagamento] = useState<FormaPagamento>(
+    cartaoIdInicial || compraCartaoIdInicial ? "cartao" : "conta"
+  );
   const [cartoes, setCartoes] = useState<Cartao[]>([]);
   const [cartaoId, setCartaoId] = useState(cartaoIdInicial);
+
+  // --- NOVO: modo de edição de uma compra do cartão já existente -------------
+  const [compraCartaoId] = useState(compraCartaoIdInicial);
+  const [carregandoCompra, setCarregandoCompra] = useState(!!compraCartaoIdInicial);
+  const [faturaStatusCompra, setFaturaStatusCompra] = useState<"aberta" | "fechada" | "paga" | null>(null);
 
   // --- Recorrência ------------------------------------------------------------
   const [recorrente, setRecorrente] = useState(false);
@@ -190,6 +203,40 @@ function NovoLancamentoConteudo() {
     if (tipo !== "despesa") setFormaPagamento("conta");
   }, [tipo]);
 
+  // NOVO: modo de edição — carrega a compra existente e pré-preenche o
+  // formulário inteiro com os dados dela (ver comentário em
+  // compraCartaoIdInicial, acima).
+  useEffect(() => {
+    if (!compraCartaoId) return;
+    fetch(`/api/compras-cartao/${compraCartaoId}`)
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((data: {
+        descricao: string;
+        valor: string;
+        dataCompra: string;
+        observacoes: string | null;
+        categoriaId: string | null;
+        cartaoId: string;
+        fatura: { status: "aberta" | "fechada" | "paga" };
+      }) => {
+        setDescricao(data.descricao);
+        setValor(numeroParaValorFormatado(Number(data.valor)));
+        const dataCompraISO = data.dataCompra.slice(0, 10);
+        setDataVencimento(dataCompraISO);
+        setDataAtalho(dataCompraISO === isoHoje() ? "hoje" : "outros");
+        setObservacoes(data.observacoes || "");
+        setCartaoId(data.cartaoId);
+        if (data.categoriaId) setCategoriaId(data.categoriaId);
+        setFaturaStatusCompra(data.fatura.status);
+        setCarregandoCompra(false);
+      })
+      .catch(() => {
+        setErro("Não foi possível carregar esta compra.");
+        setCarregandoCompra(false);
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [compraCartaoId]);
+
   // Handler do input de Valor (mascarado) — ver comentário completo em
   // digitosParaValorFormatado(), acima.
   function aoDigitarValor(e: React.ChangeEvent<HTMLInputElement>) {
@@ -237,30 +284,44 @@ function NovoLancamentoConteudo() {
     // --- NOVO: compra no cartão de crédito -> POST /api/compras-cartao ------
     // Fluxo inteiramente separado do Lancamento normal: não cria um
     // Lancamento agora, só soma na fatura do ciclo certo (ver lib/cartao.ts).
+    // Em modo de edição (compraCartaoId preenchido), vira um PATCH na compra
+    // já existente em vez de criar uma nova.
     if (tipo === "despesa" && formaPagamento === "cartao") {
       if (!cartaoId) return setErro("Escolha um cartão.");
       setErro("");
       setSalvando(true);
-      const res = await fetch("/api/compras-cartao", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          cartaoId,
-          descricao,
-          valor: valorNum,
-          dataCompra: dataVencimento,
-          categoriaId: categoriaId || undefined,
-          observacoes: observacoes || undefined,
-        }),
-      });
+      const res = compraCartaoId
+        ? await fetch(`/api/compras-cartao/${compraCartaoId}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              descricao,
+              valor: valorNum,
+              dataCompra: dataVencimento,
+              categoriaId: categoriaId || null,
+              observacoes: observacoes || null,
+            }),
+          })
+        : await fetch("/api/compras-cartao", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              cartaoId,
+              descricao,
+              valor: valorNum,
+              dataCompra: dataVencimento,
+              categoriaId: categoriaId || undefined,
+              observacoes: observacoes || undefined,
+            }),
+          });
       setSalvando(false);
       if (res.ok) {
-        showToast("Compra lançada no cartão!");
+        showToast(compraCartaoId ? "Compra atualizada!" : "Compra lançada no cartão!");
         router.push(`/financeiro/cartoes/${cartaoId}`);
       } else {
         const data = await res.json();
-        setErro(data.error || "Não foi possível lançar a compra.");
-        showToast(data.error || "Não foi possível lançar a compra.", "erro");
+        setErro(data.error || "Não foi possível salvar a compra.");
+        showToast(data.error || "Não foi possível salvar a compra.", "erro");
       }
       return;
     }
@@ -306,50 +367,80 @@ function NovoLancamentoConteudo() {
     }
   }
 
+  const editandoCompraCartao = !!compraCartaoId;
+  const compraTravada = editandoCompraCartao && faturaStatusCompra !== null && faturaStatusCompra !== "aberta";
+
+  if (editandoCompraCartao && carregandoCompra) {
+    return (
+      <div>
+        <div className="header-gradient flex items-center gap-3">
+          <BotaoVoltar href={`/financeiro/cartoes/compra/${compraCartaoId}`} />
+          <h1 className="text-2xl font-bold">Editar compra</h1>
+        </div>
+        <p className="text-center text-muted text-sm py-10">Carregando...</p>
+      </div>
+    );
+  }
+
   return (
     <div>
       <div className="header-gradient flex items-center gap-3">
-        <BotaoVoltar href="/financeiro" />
+        <BotaoVoltar href={editandoCompraCartao ? `/financeiro/cartoes/compra/${compraCartaoId}` : "/financeiro"} />
         <div>
-          <h1 className="text-2xl font-bold">Nova transação</h1>
-          <p className="text-sm text-muted mt-0.5">Escolha o tipo e preencha os dados</p>
+          <h1 className="text-2xl font-bold">{editandoCompraCartao ? "Editar compra" : "Nova transação"}</h1>
+          <p className="text-sm text-muted mt-0.5">
+            {editandoCompraCartao ? "Ajuste os dados desta compra no cartão" : "Escolha o tipo e preencha os dados"}
+          </p>
         </div>
       </div>
 
       <div className="px-5 mt-6 space-y-4 pb-4">
+        {compraTravada && (
+          <div className="card !py-3" style={{ background: "var(--color-warning-subtle)" }}>
+            <p className="text-sm font-bold" style={{ color: "var(--color-warning)" }}>
+              {faturaStatusCompra === "paga" ? "Fatura já paga" : "Fatura já fechada"}
+            </p>
+            <p className="text-xs text-muted mt-0.5">
+              Esta compra já entrou no total da fatura e não pode mais ser editada por aqui.
+            </p>
+          </div>
+        )}
         {/* ============================================================ */}
         {/* Linha 1: tipo da transação — Empréstimo / Despesa / Receita   */}
         {/* Botões "chip" (menores e mais refinados que btn-primary/      */}
         {/* btn-outline padrão) — mesmo estilo usado nos filtros de       */}
         {/* Contas a receber/pagar, com efeito de toque/hover mais escuro */}
-        {/* nos dois temas (ver .chip-toggle no globals.css).             */}
+        {/* nos dois temas (ver .chip-toggle no globals.css). Some no modo */}
+        {/* de edição de compra — o tipo já é sempre "despesa no cartão".  */}
         {/* ============================================================ */}
-        <div className="grid grid-cols-3 gap-2">
-          <button
-            type="button"
-            onClick={() => escolherTipoTransacao("emprestimo")}
-            className="chip-toggle flex-col !gap-1 !py-2.5"
-          >
-            <IconDocument size={17} />
-            <span>Contrato</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => escolherTipoTransacao("despesa")}
-            className={`chip-toggle flex-col !gap-1 !py-2.5 ${tipo === "despesa" ? "chip-toggle-ativo-perigo" : ""}`}
-          >
-            <IconReceipt size={17} />
-            <span>Despesa</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => escolherTipoTransacao("receita")}
-            className={`chip-toggle flex-col !gap-1 !py-2.5 ${tipo === "receita" ? "chip-toggle-ativo" : ""}`}
-          >
-            <IconWallet size={17} />
-            <span>Receita</span>
-          </button>
-        </div>
+        {!editandoCompraCartao && (
+          <div className="grid grid-cols-3 gap-2">
+            <button
+              type="button"
+              onClick={() => escolherTipoTransacao("emprestimo")}
+              className="chip-toggle flex-col !gap-1 !py-2.5"
+            >
+              <IconDocument size={17} />
+              <span>Contrato</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => escolherTipoTransacao("despesa")}
+              className={`chip-toggle flex-col !gap-1 !py-2.5 ${tipo === "despesa" ? "chip-toggle-ativo-perigo" : ""}`}
+            >
+              <IconReceipt size={17} />
+              <span>Despesa</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => escolherTipoTransacao("receita")}
+              className={`chip-toggle flex-col !gap-1 !py-2.5 ${tipo === "receita" ? "chip-toggle-ativo" : ""}`}
+            >
+              <IconWallet size={17} />
+              <span>Receita</span>
+            </button>
+          </div>
+        )}
 
         {/* ============================================================ */}
         {/* CARD: Valor + Descrição                                       */}
@@ -480,8 +571,11 @@ function NovoLancamentoConteudo() {
           <div>
             <p className="text-xs font-semibold tracking-wide text-muted mb-2">FORMA DE PAGAMENTO</p>
 
-            {/* A aba só aparece pra despesa — não existe "receber no cartão". */}
-            {tipo === "despesa" && (
+            {/* A aba só aparece pra despesa — não existe "receber no cartão".
+                Some no modo de edição: uma compra já lançada num cartão não
+                pode "trocar" de cartão nem virar despesa de conta/carteira
+                por aqui (ver atualizarCompraCartao em lib/cartao.ts). */}
+            {tipo === "despesa" && !editandoCompraCartao && (
               <div className="grid grid-cols-2 gap-2 mb-2">
                 <BotaoToggle ativo={formaPagamento === "conta"} onClick={() => setFormaPagamento("conta")}>
                   Conta / Carteira
@@ -504,7 +598,8 @@ function NovoLancamentoConteudo() {
                 <select
                   value={cartaoId}
                   onChange={(e) => setCartaoId(e.target.value)}
-                  className="w-full rounded-md border border-border px-4 py-3.5 outline-none focus:border-primary bg-card"
+                  disabled={editandoCompraCartao}
+                  className="w-full rounded-md border border-border px-4 py-3.5 outline-none focus:border-primary bg-card disabled:opacity-60"
                 >
                   {cartoes.map((c) => (
                     <option key={c.id} value={c.id}>
@@ -650,9 +745,11 @@ function NovoLancamentoConteudo() {
 
         {erro && <p className="text-error text-sm font-medium">{erro}</p>}
 
-        <button onClick={salvar} disabled={salvando} className="btn-primary">
+        <button onClick={salvar} disabled={salvando || compraTravada} className="btn-primary">
           {salvando
             ? "Salvando..."
+            : editandoCompraCartao
+            ? "Salvar alterações"
             : formaPagamento === "cartao"
             ? "Salvar compra no cartão"
             : `Salvar ${tipo === "receita" ? "receita" : "despesa"}`}

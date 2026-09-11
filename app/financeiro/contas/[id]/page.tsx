@@ -12,11 +12,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
-import { formatarMoeda } from "../../../../lib/financeiro";
+import { useParams, useRouter } from "next/navigation";
+import { formatarMoeda, formatarData } from "../../../../lib/financeiro";
 import BotaoVoltar from "../../../../components/BotaoVoltar";
 import SeletorData from "../../../../components/SeletorData";
 import CardSaldo from "../../../../components/CardSaldo";
+import { IconChevronDown } from "../../../../components/Icons";
 
 type Movimento = {
   id: string;
@@ -29,7 +30,16 @@ type Movimento = {
 };
 
 type Extrato = {
-  conta: { id: string; nome: string; icone: string; saldoAtual: number };
+  conta: {
+    id: string;
+    nome: string;
+    icone: string;
+    saldoAtual: number;
+    saldoInicial: number;
+    criadoEm: string;
+    carteira: string | null;
+    quantidadeCartoes: number;
+  };
   movimentos: Movimento[];
   totalEntradas: number;
   totalSaidas: number;
@@ -56,11 +66,22 @@ const ENTRADA = new Set(["receita", "emprestimo_entrada"]);
 
 export default function ExtratoContaPage() {
   const params = useParams<{ id: string }>();
+  const router = useRouter();
   const [inicio, setInicio] = useState(inicioDoMesAtual);
   const [fim, setFim] = useState(fimDoMesAtual);
   const [extrato, setExtrato] = useState<Extrato | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
+
+  // --- NOVO: dropdown "trocar de conta" no topo — mesma ideia do trocador de
+  // cartão em /financeiro/cartoes/[id] — evita voltar pra /financeiro/contas
+  // só pra ver o extrato de outra conta.
+  const [todasContas, setTodasContas] = useState<{ id: string; nome: string; icone: string }[]>([]);
+  useEffect(() => {
+    fetch("/api/contas")
+      .then((r) => r.json())
+      .then((data: { id: string; nome: string; icone: string }[]) => setTodasContas(data));
+  }, []);
 
   useEffect(() => {
     setCarregando(true);
@@ -95,11 +116,63 @@ export default function ExtratoContaPage() {
       </div>
 
       <div className="px-5 mt-5 space-y-4 pb-4">
+        {/* ==================================================================== */}
+        {/* NOVO: dropdown pra alternar rapidamente entre contas, sem precisar    */}
+        {/* voltar pra /financeiro/contas — mesma ideia do trocador de cartão na  */}
+        {/* tela de extrato do cartão de crédito.                                 */}
+        {/* ==================================================================== */}
+        {todasContas.length > 1 && extrato && (
+          <div className="relative">
+            <select
+              value={extrato.conta.id}
+              onChange={(e) => router.push(`/financeiro/contas/${e.target.value}`)}
+              className="w-full appearance-none rounded-md border border-border bg-card px-4 py-3 pr-10 font-semibold outline-none focus:border-primary"
+              aria-label="Trocar de conta"
+            >
+              {todasContas.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.icone} {c.nome}
+                </option>
+              ))}
+            </select>
+            <IconChevronDown size={18} className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-muted" />
+          </div>
+        )}
+
         <CardSaldo
           label="SALDO ATUAL"
           valor={!extrato ? "R$ —" : formatarMoeda(extrato.conta.saldoAtual)}
           corValor={(extrato?.conta.saldoAtual ?? 0) >= 0 ? "var(--color-success)" : "var(--color-error)"}
         />
+
+        {/* ==================================================================== */}
+        {/* NOVO: informações da conta — saldo inicial, carteira e quantos        */}
+        {/* cartões de crédito são pagos por ela — mesmo padrão do card "RESUMO   */}
+        {/* DO CARTÃO" em /financeiro/cartoes/[id].                              */}
+        {/* ==================================================================== */}
+        {extrato && (
+          <div className="card space-y-3">
+            <p className="text-xs font-semibold tracking-wide text-muted">INFORMAÇÕES DA CONTA</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <p className="text-xs text-muted">Saldo inicial</p>
+                <p className="text-lg font-bold truncate">{formatarMoeda(extrato.conta.saldoInicial)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted">Carteira</p>
+                <p className="text-lg font-bold truncate">{extrato.conta.carteira || "Geral"}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted">Cartões vinculados</p>
+                <p className="text-lg font-bold">{extrato.conta.quantidadeCartoes}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted">Conta criada em</p>
+                <p className="text-lg font-bold">{formatarData(extrato.conta.criadoEm)}</p>
+              </div>
+            </div>
+          </div>
+        )}
 
         <SeletorData
           inicio={inicio}
@@ -142,7 +215,7 @@ export default function ExtratoContaPage() {
                       {m.icone}
                     </span>
                     <div className="flex-1 min-w-0">
-                      <p className="font-semibold truncate">{m.descricao}</p>
+                      <p className="font-semibold leading-snug line-clamp-2">{m.descricao}</p>
                       <p className="text-xs text-muted truncate">
                         {[m.subtitulo, new Date(m.data).toLocaleDateString("pt-BR")].filter(Boolean).join(" · ")}
                       </p>

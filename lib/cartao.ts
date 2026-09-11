@@ -168,6 +168,87 @@ export async function registrarCompraCartao(params: {
 }
 
 // ----------------------------------------------------------------------------
+// Edita uma compra já lançada num cartão — usada pelo popup rápido de
+// "Ajustar valor" e pela tela completa /financeiro/novo em modo de edição
+// (ver app/api/compras-cartao/[id]/route.ts, PATCH). Só permitida enquanto a
+// fatura ATUAL da compra ainda estiver "aberta" (mesma regra do DELETE).
+// Se a nova data de compra cair numa competência diferente (ex: usuário move
+// a compra pra outro mês), a compra é transferida pra fatura daquele ciclo —
+// e recusada se essa fatura de destino já tiver fechado.
+// ----------------------------------------------------------------------------
+export async function atualizarCompraCartao(params: {
+  usuarioId: string;
+  compraId: string;
+  descricao?: string;
+  valor?: number;
+  dataCompra?: Date;
+  categoriaId?: string | null;
+  observacoes?: string | null;
+}) {
+  const compra = await prisma.compraCartao.findFirst({
+    where: { id: params.compraId, usuarioId: params.usuarioId },
+    include: { fatura: true, cartao: true },
+  });
+  if (!compra) return { ok: false as const, erro: "Compra não encontrada." };
+
+  if (compra.fatura.status !== "aberta") {
+    return {
+      ok: false as const,
+      erro: "A fatura desta compra já fechou e não pode mais ser alterada por aqui.",
+    };
+  }
+
+  const novoValor = params.valor ?? Number(compra.valor);
+  const novaData = params.dataCompra ?? compra.dataCompra;
+
+  return prisma.$transaction(async (tx) => {
+    const { ano, mes } = competenciaDaCompra(novaData, compra.cartao.diaFechamento);
+    const mesmaFatura = ano === compra.fatura.anoReferencia && mes === compra.fatura.mesReferencia;
+
+    let faturaDestinoId = compra.faturaId;
+
+    if (!mesmaFatura) {
+      const faturaDestino = await obterOuCriarFatura(tx, compra.cartao, ano, mes);
+      if (faturaDestino.status !== "aberta") {
+        return {
+          ok: false as const,
+          erro: "A fatura do período de destino já fechou. Escolha uma data dentro do ciclo em aberto.",
+        };
+      }
+      faturaDestinoId = faturaDestino.id;
+
+      await tx.faturaCartao.update({
+        where: { id: compra.faturaId },
+        data: { valorTotal: { decrement: compra.valor } },
+      });
+      await tx.faturaCartao.update({
+        where: { id: faturaDestino.id },
+        data: { valorTotal: { increment: novoValor } },
+      });
+    } else if (novoValor !== Number(compra.valor)) {
+      await tx.faturaCartao.update({
+        where: { id: compra.faturaId },
+        data: { valorTotal: { increment: novoValor - Number(compra.valor) } },
+      });
+    }
+
+    const compraAtualizada = await tx.compraCartao.update({
+      where: { id: compra.id },
+      data: {
+        descricao: params.descricao ?? undefined,
+        valor: novoValor,
+        dataCompra: novaData,
+        faturaId: faturaDestinoId,
+        categoriaId: params.categoriaId !== undefined ? params.categoriaId || null : undefined,
+        observacoes: params.observacoes !== undefined ? params.observacoes || null : undefined,
+      },
+    });
+
+    return { ok: true as const, compra: compraAtualizada };
+  });
+}
+
+// ----------------------------------------------------------------------------
 // Fecha toda fatura "aberta" cuja data de fechamento já passou: gera o
 // Lancamento consolidado (se houve alguma compra) vinculado à Conta que paga
 // o cartão, e marca a fatura como "fechada". Chamada no início das rotas que

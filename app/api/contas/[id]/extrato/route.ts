@@ -31,7 +31,13 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   const sessao = await obterSessao();
   if (!sessao) return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
 
-  const conta = await prisma.conta.findFirst({ where: { id: params.id, usuarioId: sessao.id } });
+  const conta = await prisma.conta.findFirst({
+    where: { id: params.id, usuarioId: sessao.id },
+    include: {
+      carteira: { select: { nome: true } },
+      cartoesCredito: { where: { ativo: true }, select: { id: true } },
+    },
+  });
   if (!conta) return NextResponse.json({ error: "Conta não encontrada." }, { status: 404 });
 
   const deStr = req.nextUrl.searchParams.get("de");
@@ -135,7 +141,16 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     .reduce((s, m) => s + m.valor, 0);
 
   return NextResponse.json({
-    conta: { id: conta.id, nome: conta.nome, icone: conta.icone, saldoAtual },
+    conta: {
+      id: conta.id,
+      nome: conta.nome,
+      icone: conta.icone,
+      saldoAtual,
+      saldoInicial: Number(conta.saldoInicial),
+      criadoEm: conta.criadoEm,
+      carteira: conta.carteira?.nome ?? null,
+      quantidadeCartoes: conta.cartoesCredito.length,
+    },
     movimentos,
     totalEntradas,
     totalSaidas,
