@@ -30,6 +30,7 @@ import { formatarMoeda } from "../../../lib/financeiro";
 import type { OrigemFinanceira } from "../../../lib/financeiro";
 import CardSaldo from "../../../components/CardSaldo";
 import BotaoVoltar from "../../../components/BotaoVoltar";
+import ReajustarSaldo from "../../../components/ReajustarSaldo";
 import ContaFormulario from "../../../components/ContaFormulario";
 import CartaoFormulario from "../../../components/CartaoFormulario";
 import { useToast } from "../../../components/ToastProvider";
@@ -68,6 +69,7 @@ type CartaoCredito = {
 
 export default function ContasPage() {
   const showToast = useToast();
+  const [ajustandoConta, setAjustandoConta] = useState<Conta | null>(null);
 
   // --- Contas/carteiras -----------------------------------------------------
   const [resumo, setResumo] = useState<Resumo | null>(null);
@@ -399,6 +401,7 @@ export default function ContasPage() {
                       >
                         {formatarMoeda(conta.saldoAtual)}
                       </p>
+                      <button type="button" onClick={(event) => { event.preventDefault(); setAjustandoConta(conta); }} className="text-primary text-sm font-semibold min-h-[44px]" aria-label={`Reajustar saldo de ${conta.nome}`}>Reajustar saldo</button>
                     </div>
                     <button
                       type="button"
@@ -594,6 +597,7 @@ export default function ContasPage() {
           )}
         </div>
       </div>
+      {ajustandoConta && <ReajustarSaldo conta={ajustandoConta} onFechar={() => setAjustandoConta(null)} onSalvo={() => { setAjustandoConta(null); carregarResumo(); }} />}
     </div>
   );
 }

@@ -164,38 +164,21 @@ export default function DetalheCartaoPage({ params }: { params: { id: string } }
     router.push("/financeiro/contas");
   }
 
-  async function marcarFaturaComoPaga() {
-    if (!fatura?.lancamentoId) return;
+  async function alterarStatusFatura(acao: "pagar" | "reabrir") {
+    if (!fatura || processando) return;
     setProcessando(true);
-    const res = await fetch(`/api/lancamentos/${fatura.lancamentoId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ acao: "pagar" }),
-    });
-    setProcessando(false);
-    if (res.ok) {
-      showToast("Fatura paga!");
+    try {
+      const res = await fetch(`/api/cartoes/${params.id}/faturas/${fatura.id}`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ acao }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Não foi possível atualizar a fatura.");
+      showToast(acao === "pagar" ? "Fatura paga!" : "Fatura reaberta.");
       carregarFatura();
-    } else {
-      showToast("Não foi possível marcar a fatura como paga.", "erro");
-    }
-  }
-
-  async function reabrirFatura() {
-    if (!fatura?.lancamentoId) return;
-    setProcessando(true);
-    const res = await fetch(`/api/lancamentos/${fatura.lancamentoId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ acao: "reabrir" }),
-    });
-    setProcessando(false);
-    if (res.ok) {
-      showToast("Fatura reaberta.");
-      carregarFatura();
-    } else {
-      showToast("Não foi possível reabrir a fatura.", "erro");
-    }
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Verifique sua conexão e tente novamente.", "erro");
+    } finally { setProcessando(false); }
   }
 
   async function salvarAjusteCompra(valor: number, novaData: string) {
@@ -475,7 +458,7 @@ export default function DetalheCartaoPage({ params }: { params: { id: string } }
           {fatura?.status === "fechada" && (
             <button
               type="button"
-              onClick={marcarFaturaComoPaga}
+              onClick={() => alterarStatusFatura("pagar")}
               disabled={processando}
               className="btn-primary flex items-center justify-center gap-2 !mt-3"
             >
@@ -485,7 +468,7 @@ export default function DetalheCartaoPage({ params }: { params: { id: string } }
           {fatura?.status === "paga" && (
             <button
               type="button"
-              onClick={reabrirFatura}
+              onClick={() => alterarStatusFatura("reabrir")}
               disabled={processando}
               className="btn-outline flex items-center justify-center gap-2 !mt-3"
             >

@@ -16,6 +16,7 @@ import { useParams, useRouter } from "next/navigation";
 import { formatarMoeda, formatarData } from "../../../../lib/financeiro";
 import BotaoVoltar from "../../../../components/BotaoVoltar";
 import SeletorData from "../../../../components/SeletorData";
+import ReajustarSaldo from "../../../../components/ReajustarSaldo";
 import CardSaldo from "../../../../components/CardSaldo";
 import { IconChevronDown } from "../../../../components/Icons";
 
@@ -72,6 +73,8 @@ export default function ExtratoContaPage() {
   const [extrato, setExtrato] = useState<Extrato | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
+  const [ajustando, setAjustando] = useState(false);
+  const [atualizacao, setAtualizacao] = useState(0);
 
   // --- NOVO: dropdown "trocar de conta" no topo — mesma ideia do trocador de
   // cartão em /financeiro/cartoes/[id] — evita voltar pra /financeiro/contas
@@ -101,7 +104,7 @@ export default function ExtratoContaPage() {
         setErro("Não foi possível carregar o extrato desta conta.");
         setCarregando(false);
       });
-  }, [params.id, inicio, fim]);
+  }, [params.id, inicio, fim, atualizacao]);
 
   return (
     <div>
@@ -144,6 +147,8 @@ export default function ExtratoContaPage() {
           valor={!extrato ? "R$ —" : formatarMoeda(extrato.conta.saldoAtual)}
           corValor={(extrato?.conta.saldoAtual ?? 0) >= 0 ? "var(--color-success)" : "var(--color-error)"}
         />
+
+        {extrato && <button type="button" className="btn-primary w-full" onClick={() => setAjustando(true)}>Reajustar saldo</button>}
 
         {/* ==================================================================== */}
         {/* NOVO: informações da conta — saldo inicial, carteira e quantos        */}
@@ -232,6 +237,7 @@ export default function ExtratoContaPage() {
           )}
         </div>
       </div>
+      {ajustando && extrato && <ReajustarSaldo conta={extrato.conta} onFechar={() => setAjustando(false)} onSalvo={() => { setAjustando(false); setAtualizacao((valor) => valor + 1); }} />}
     </div>
   );
 }
