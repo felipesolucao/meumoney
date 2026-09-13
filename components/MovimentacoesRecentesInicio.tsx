@@ -16,7 +16,18 @@ import { formatarMoeda } from "../lib/financeiro";
 import { useCarteiraSelecionada } from "./CarteiraContext";
 import { IconTrendUp, IconTrendDown } from "./Icons";
 
-type Movimentacao = { id: string; data: string; descricao: string; valor: number; entrada: boolean };
+type Movimentacao = {
+  id: string;
+  data: string;
+  horario: string;
+  descricao: string;
+  valor: number;
+  entrada: boolean;
+  formaPagamentoNome: string | null;
+  formaPagamentoIcone: string | null;
+  categoriaNome: string | null;
+  categoriaIcone: string | null;
+};
 
 export default function MovimentacoesRecentesInicio() {
   const { carteiraId } = useCarteiraSelecionada();
@@ -62,7 +73,19 @@ export default function MovimentacoesRecentesInicio() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-bold truncate">{m.descricao}</p>
-                <p className="text-xs text-muted">{new Date(m.data).toLocaleDateString("pt-BR", { timeZone: "UTC" })}</p>
+                <p className="text-xs text-muted">
+                  {new Date(m.data).toLocaleDateString("pt-BR", { timeZone: "UTC" })}
+                  {" às "}
+                  {new Date(m.horario).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                </p>
+                <p className="text-xs text-muted truncate">
+                  {[
+                    m.formaPagamentoNome && `${m.formaPagamentoIcone ?? ""} ${m.formaPagamentoNome}`.trim(),
+                    m.categoriaNome && `${m.categoriaIcone ?? ""} ${m.categoriaNome}`.trim(),
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </p>
               </div>
               <p className="font-bold flex-shrink-0" style={{ color: m.entrada ? "var(--color-success)" : "var(--color-error)" }}>
                 {m.entrada ? "+" : "−"} {formatarMoeda(m.valor)}
