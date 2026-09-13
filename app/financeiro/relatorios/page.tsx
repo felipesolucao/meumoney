@@ -46,6 +46,10 @@ type Resumo = {
 
 type Visualizacao = "pizza" | "barra";
 
+function pad(n: number) {
+  return String(n).padStart(2, "0");
+}
+
 export default function RelatoriosFinanceiro() {
   const hoje = new Date();
   const [tipo, setTipo] = useState<TipoLancamento>("despesa");
@@ -64,6 +68,12 @@ export default function RelatoriosFinanceiro() {
         setCarregando(false);
       });
   }, [tipo, ano, mes]);
+
+  // Vira "de"/"ate" pro link de cada categoria — /financeiro/categorias/[id]
+  // usa esse mesmo formato de período (ver comentário lá), não ano/mes.
+  const inicioMes = new Date(ano, mes, 1);
+  const fimMes = new Date(ano, mes + 1, 0);
+  const periodoQuery = `de=${inicioMes.getFullYear()}-${pad(inicioMes.getMonth() + 1)}-${pad(inicioMes.getDate())}&ate=${fimMes.getFullYear()}-${pad(fimMes.getMonth() + 1)}-${pad(fimMes.getDate())}`;
 
   const corTotal = tipo === "receita" ? "var(--color-primary)" : "var(--color-error)";
   // Extraídos uma vez pra evitar "resumo!.algo" (non-null assertion) repetido
@@ -174,7 +184,7 @@ export default function RelatoriosFinanceiro() {
                   ) : (
                     <Link
                       key={c.id}
-                      href={`/financeiro/categorias/${c.id}?ano=${ano}&mes=${mes}`}
+                      href={`/financeiro/categorias/${c.id}?${periodoQuery}`}
                       className="flex items-center gap-2.5 -mx-1 px-1 py-0.5 rounded-md active:bg-background"
                     >
                       {conteudo}

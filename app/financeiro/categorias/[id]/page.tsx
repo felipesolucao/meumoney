@@ -2,8 +2,8 @@
 // PÁGINA: Detalhe da categoria
 // ----------------------------------------------------------------------------
 // O "gerenciador" de uma categoria específica: trocar o emoji, renomear e ver
-// os lançamentos que caem nela, filtrados por mês (mesmo seletor usado em
-// Contas a pagar/receber). Excluir a categoria manda de volta pro índice.
+// os lançamentos que caem nela, filtrados por período. Excluir a categoria
+// manda de volta pro índice.
 //
 // CORRIGIDO: só buscava Lancamento — uma categoria usada em compras no
 // cartão de crédito (CompraCartao, ver lib/cartao.ts) aparecia com total e
@@ -13,6 +13,18 @@
 // exibidos em seções separadas porque uma compra no cartão não tem as
 // mesmas ações de uma despesa comum (pagar/estornar não fazem sentido pra
 // ela; ver link para o extrato do cartão em cada item).
+//
+// CORRIGIDO: o período inicial vinha errado ao abrir a categoria — o cálculo
+// de "veio um ?ano=&mes= na URL?" usava Number(null), que dá 0 em vez de
+// NaN, então SEMPRE achava que tinha vindo um período (ano 0, mês 0 =
+// janeiro do ano 1900) mesmo sem nenhum parâmetro na URL, inclusive
+// entrando direto do link de "Despesas por categoria" da Início.
+//
+// NOVO: troca o antigo MesSeletor (só navega mês a mês) pelo mesmo SeletorData
+// usado na Início/Contas (barra com a data por extenso + atalhos prontos —
+// Hoje, Ontem, 7/15/30/60/90 dias — e um mini calendário pra período
+// personalizado, ver components/SeletorData.tsx), pedido explícito pra ter
+// aqui os mesmos filtros prontos de lá em vez de só andar mês a mês.
 // ============================================================================
 "use client";
 
@@ -20,18 +32,31 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { TipoLancamento } from "../../../../lib/financeiro";
 import { formatarMoeda } from "../../../../lib/financeiro";
-import { EMOJIS_CATEGORIA } from "../../../../lib/emojisCategorias";
 import BotaoVoltar from "../../../../components/BotaoVoltar";
-import MesSeletor from "../../../../components/MesSeletor";
+import SeletorData from "../../../../components/SeletorData";
 import LancamentosLista, { LancamentoItem } from "../../../../components/LancamentosLista";
 import ComprasCartaoLista, { CompraCartaoItem } from "../../../../components/ComprasCartaoLista";
+import CategoriaCabecalho from "../../../../components/CategoriaCabecalho";
 import { useToast } from "../../../../components/ToastProvider";
-import { IconEdit, IconTrash, IconCheck } from "../../../../components/Icons";
 
 type Categoria = { id: string; nome: string; icone: string; tipo: TipoLancamento };
 
 function pad(n: number) {
   return String(n).padStart(2, "0");
+}
+
+function formatarISO(data: Date) {
+  return `${data.getFullYear()}-${pad(data.getMonth() + 1)}-${pad(data.getDate())}`;
+}
+
+function inicioDoMesAtual() {
+  const hoje = new Date();
+  return new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+}
+
+function fimDoMesAtual() {
+  const hoje = new Date();
+  return new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0);
 }
 
 // useSearchParams() só é seguro em build quando o componente que o chama fica
@@ -41,13 +66,12 @@ function DetalheCategoriaConteudo({ params }: { params: { id: string } }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const showToast = useToast();
-  const hoje = new Date();
   // Chegando do link de uma categoria em Relatórios (que tem seu próprio
-  // seletor de mês), abre já no mesmo mês que estava sendo visto lá — sem
-  // isso, sempre caía no mês atual, obrigando a trocar de novo manualmente.
-  const anoInicial = Number(searchParams.get("ano"));
-  const mesInicial = Number(searchParams.get("mes"));
-  const temPeriodoNaUrl = !Number.isNaN(anoInicial) && !Number.isNaN(mesInicial);
+  // seletor de mês), abre já no mesmo período que estava sendo visto lá —
+  // com "de"/"ate" ausentes (ex: vindo de "Despesas por categoria" da
+  // Início, que não anexa período algum), cai no mês atual.
+  const deParam = searchParams.get("de");
+  const ateParam = searchParams.get("ate");
 
   const [categoria, setCategoria] = useState<Categoria | null>(null);
   const [carregandoCategoria, setCarregandoCategoria] = useState(true);
@@ -59,8 +83,8 @@ function DetalheCategoriaConteudo({ params }: { params: { id: string } }) {
   const [erroCategoria, setErroCategoria] = useState("");
   const [confirmarExclusao, setConfirmarExclusao] = useState(false);
 
-  const [ano, setAno] = useState(temPeriodoNaUrl ? anoInicial : hoje.getFullYear());
-  const [mes, setMes] = useState(temPeriodoNaUrl ? mesInicial : hoje.getMonth());
+  const [inicio, setInicio] = useState(() => (deParam ? new Date(`${deParam}T00:00:00`) : inicioDoMesAtual()));
+  const [fim, setFim] = useState(() => (ateParam ? new Date(`${ateParam}T00:00:00`) : fimDoMesAtual()));
   const [lancamentos, setLancamentos] = useState<LancamentoItem[]>([]);
   const [carregandoLancamentos, setCarregandoLancamentos] = useState(true);
   const [comprasCartao, setComprasCartao] = useState<CompraCartaoItem[]>([]);
@@ -84,10 +108,8 @@ function DetalheCategoriaConteudo({ params }: { params: { id: string } }) {
 
   useEffect(() => {
     setCarregandoLancamentos(true);
-    const inicio = new Date(ano, mes, 1);
-    const fim = new Date(ano, mes + 1, 0);
-    const de = `${inicio.getFullYear()}-${pad(inicio.getMonth() + 1)}-${pad(inicio.getDate())}`;
-    const ate = `${fim.getFullYear()}-${pad(fim.getMonth() + 1)}-${pad(fim.getDate())}`;
+    const de = formatarISO(inicio);
+    const ate = formatarISO(fim);
 
     fetch(`/api/lancamentos?categoriaId=${params.id}&de=${de}&ate=${ate}`)
       .then((r) => r.json())
@@ -109,7 +131,7 @@ function DetalheCategoriaConteudo({ params }: { params: { id: string } }) {
         setComprasCartao(ordenado);
         setCarregandoCompras(false);
       });
-  }, [params.id, ano, mes]);
+  }, [params.id, inicio, fim]);
 
   const carregandoLista = carregandoLancamentos || carregandoCompras;
   const totalMes = useMemo(
@@ -198,92 +220,36 @@ function DetalheCategoriaConteudo({ params }: { params: { id: string } }) {
       </div>
 
       <div className="px-5 mt-6 space-y-4 pb-4">
-        {/* --- Cabeçalho da categoria: emoji, nome, editar/excluir --------------- */}
-        <div className="card space-y-4">
-          {confirmarExclusao ? (
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-sm font-medium text-error">Excluir “{categoria.nome}”? Os lançamentos ficam sem categoria.</span>
-              <div className="flex gap-2 shrink-0">
-                <button type="button" onClick={() => setConfirmarExclusao(false)} className="btn-chip bg-background text-foreground">
-                  Cancelar
-                </button>
-                <button type="button" disabled={salvandoCategoria} onClick={excluirCategoria} className="btn-chip btn-danger !min-h-0">
-                  Excluir
-                </button>
-              </div>
-            </div>
-          ) : editando ? (
-            <div className="space-y-4">
-              <div>
-                <p className="text-xs font-semibold tracking-wide text-muted mb-2">EMOJI</p>
-                <div className="flex items-center gap-3 mb-3">
-                  <span className="w-14 h-14 rounded-md bg-primary-subtle flex items-center justify-center text-2xl shrink-0">
-                    {iconeForm}
-                  </span>
-                  <input
-                    value={iconeForm}
-                    onChange={(e) => setIconeForm(e.target.value.slice(-2) || iconeForm)}
-                    className="w-20 rounded-md border border-border px-3 py-3 text-center text-xl outline-none focus:border-primary"
-                    aria-label="Emoji personalizado"
-                  />
-                </div>
-                <div className="grid grid-cols-8 gap-1.5 bg-background rounded-md p-2 max-h-40 overflow-y-auto">
-                  {EMOJIS_CATEGORIA.map((e) => (
-                    <button
-                      type="button"
-                      key={e}
-                      onClick={() => setIconeForm(e)}
-                      className={`aspect-square rounded-sm flex items-center justify-center text-lg ${
-                        iconeForm === e ? "bg-primary-subtle ring-2 ring-primary" : "hover:bg-card"
-                      }`}
-                    >
-                      {e}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <p className="text-xs font-semibold tracking-wide text-muted mb-2">NOME</p>
-                <input
-                  value={nomeForm}
-                  onChange={(e) => setNomeForm(e.target.value)}
-                  className="w-full rounded-md border border-border px-4 py-3.5 outline-none focus:border-primary"
-                  autoFocus
-                />
-              </div>
-              {erroCategoria && <p className="text-error text-sm font-medium">{erroCategoria}</p>}
-              <div className="grid grid-cols-2 gap-2">
-                <button type="button" onClick={() => setEditando(false)} className="btn-outline">
-                  Cancelar
-                </button>
-                <button type="button" onClick={salvarCategoria} disabled={salvandoCategoria} className="btn-primary flex items-center justify-center gap-2">
-                  <IconCheck size={16} /> {salvandoCategoria ? "Salvando..." : "Salvar"}
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="flex items-center gap-3">
-              <span className="w-14 h-14 rounded-md bg-primary-subtle flex items-center justify-center text-2xl shrink-0">
-                {categoria.icone}
-              </span>
-              <span className="font-bold text-lg flex-1 truncate">{categoria.nome}</span>
-              <button type="button" onClick={iniciarEdicao} className="icon-btn text-muted shrink-0" aria-label="Editar categoria">
-                <IconEdit size={16} />
-              </button>
-              <button type="button" onClick={() => setConfirmarExclusao(true)} className="icon-btn text-error shrink-0" aria-label="Excluir categoria">
-                <IconTrash size={16} />
-              </button>
-            </div>
-          )}
-        </div>
+        <CategoriaCabecalho
+          categoria={categoria}
+          editando={editando}
+          nomeForm={nomeForm}
+          iconeForm={iconeForm}
+          salvando={salvandoCategoria}
+          erro={erroCategoria}
+          confirmarExclusao={confirmarExclusao}
+          onIniciarEdicao={iniciarEdicao}
+          onCancelarEdicao={() => setEditando(false)}
+          onSalvar={salvarCategoria}
+          onIniciarExclusao={() => setConfirmarExclusao(true)}
+          onCancelarExclusao={() => setConfirmarExclusao(false)}
+          onConfirmarExclusao={excluirCategoria}
+          onNomeChange={setNomeForm}
+          onIconeChange={setIconeForm}
+        />
 
-        {/* --- Mês + total ------------------------------------------------------- */}
-        <div className="card">
-          <MesSeletor ano={ano} mes={mes} onMudar={(a, m) => { setAno(a); setMes(m); }} />
-        </div>
+        {/* --- Período + total ---------------------------------------------------- */}
+        <SeletorData
+          inicio={inicio}
+          fim={fim}
+          onSelecionar={(novoInicio, novoFim) => {
+            setInicio(novoInicio);
+            setFim(novoFim);
+          }}
+        />
 
         <div className="card">
-          <p className="text-xs font-semibold tracking-wide text-muted">TOTAL NO MÊS</p>
+          <p className="text-xs font-semibold tracking-wide text-muted">TOTAL NO PERÍODO</p>
           <p className="text-3xl font-extrabold mt-1" style={{ color: corTotal }}>
             {carregandoLista ? "—" : formatarMoeda(totalMes)}
           </p>
