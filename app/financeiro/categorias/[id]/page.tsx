@@ -4,17 +4,27 @@
 // O "gerenciador" de uma categoria específica: trocar o emoji, renomear e ver
 // os lançamentos que caem nela, filtrados por mês (mesmo seletor usado em
 // Contas a pagar/receber). Excluir a categoria manda de volta pro índice.
+//
+// CORRIGIDO: só buscava Lancamento — uma categoria usada em compras no
+// cartão de crédito (CompraCartao, ver lib/cartao.ts) aparecia com total e
+// histórico zerados aqui, mesmo já somando corretamente em Relatórios e
+// "Despesas por categoria" (que já contam essas compras, ver
+// /api/financeiro/categorias-resumo). Agora busca os dois e soma no total —
+// exibidos em seções separadas porque uma compra no cartão não tem as
+// mesmas ações de uma despesa comum (pagar/estornar não fazem sentido pra
+// ela; ver link para o extrato do cartão em cada item).
 // ============================================================================
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import type { TipoLancamento } from "../../../../lib/financeiro";
 import { formatarMoeda } from "../../../../lib/financeiro";
 import { EMOJIS_CATEGORIA } from "../../../../lib/emojisCategorias";
 import BotaoVoltar from "../../../../components/BotaoVoltar";
 import MesSeletor from "../../../../components/MesSeletor";
 import LancamentosLista, { LancamentoItem } from "../../../../components/LancamentosLista";
+import ComprasCartaoLista, { CompraCartaoItem } from "../../../../components/ComprasCartaoLista";
 import { useToast } from "../../../../components/ToastProvider";
 import { IconEdit, IconTrash, IconCheck } from "../../../../components/Icons";
 
@@ -24,10 +34,20 @@ function pad(n: number) {
   return String(n).padStart(2, "0");
 }
 
-export default function DetalheCategoriaPage({ params }: { params: { id: string } }) {
+// useSearchParams() só é seguro em build quando o componente que o chama fica
+// dentro de um <Suspense> (mesmo motivo de app/financeiro/pagar/page.tsx) —
+// por isso a lógica mora aqui, e a exportação padrão só monta o Suspense.
+function DetalheCategoriaConteudo({ params }: { params: { id: string } }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const showToast = useToast();
   const hoje = new Date();
+  // Chegando do link de uma categoria em Relatórios (que tem seu próprio
+  // seletor de mês), abre já no mesmo mês que estava sendo visto lá — sem
+  // isso, sempre caía no mês atual, obrigando a trocar de novo manualmente.
+  const anoInicial = Number(searchParams.get("ano"));
+  const mesInicial = Number(searchParams.get("mes"));
+  const temPeriodoNaUrl = !Number.isNaN(anoInicial) && !Number.isNaN(mesInicial);
 
   const [categoria, setCategoria] = useState<Categoria | null>(null);
   const [carregandoCategoria, setCarregandoCategoria] = useState(true);
@@ -39,10 +59,12 @@ export default function DetalheCategoriaPage({ params }: { params: { id: string 
   const [erroCategoria, setErroCategoria] = useState("");
   const [confirmarExclusao, setConfirmarExclusao] = useState(false);
 
-  const [ano, setAno] = useState(hoje.getFullYear());
-  const [mes, setMes] = useState(hoje.getMonth());
+  const [ano, setAno] = useState(temPeriodoNaUrl ? anoInicial : hoje.getFullYear());
+  const [mes, setMes] = useState(temPeriodoNaUrl ? mesInicial : hoje.getMonth());
   const [lancamentos, setLancamentos] = useState<LancamentoItem[]>([]);
   const [carregandoLancamentos, setCarregandoLancamentos] = useState(true);
+  const [comprasCartao, setComprasCartao] = useState<CompraCartaoItem[]>([]);
+  const [carregandoCompras, setCarregandoCompras] = useState(true);
 
   // A categoria em si não tem um GET individual — busca a lista completa (sem
   // filtro de tipo) e encontra pelo id, o mesmo que a tela de índice já usa.
@@ -76,9 +98,26 @@ export default function DetalheCategoriaPage({ params }: { params: { id: string 
         setLancamentos(ordenado);
         setCarregandoLancamentos(false);
       });
+
+    setCarregandoCompras(true);
+    fetch(`/api/compras-cartao?categoriaId=${params.id}&de=${de}&ate=${ate}`)
+      .then((r) => r.json())
+      .then((data: CompraCartaoItem[]) => {
+        const ordenado = [...data].sort(
+          (a, b) => new Date(b.dataCompra).getTime() - new Date(a.dataCompra).getTime()
+        );
+        setComprasCartao(ordenado);
+        setCarregandoCompras(false);
+      });
   }, [params.id, ano, mes]);
 
-  const totalMes = useMemo(() => lancamentos.reduce((s, l) => s + Number(l.valor), 0), [lancamentos]);
+  const carregandoLista = carregandoLancamentos || carregandoCompras;
+  const totalMes = useMemo(
+    () =>
+      lancamentos.reduce((s, l) => s + Number(l.valor), 0) +
+      comprasCartao.reduce((s, c) => s + Number(c.valor), 0),
+    [lancamentos, comprasCartao]
+  );
 
   function iniciarEdicao() {
     if (!categoria) return;
@@ -246,18 +285,43 @@ export default function DetalheCategoriaPage({ params }: { params: { id: string 
         <div className="card">
           <p className="text-xs font-semibold tracking-wide text-muted">TOTAL NO MÊS</p>
           <p className="text-3xl font-extrabold mt-1" style={{ color: corTotal }}>
-            {carregandoLancamentos ? "—" : formatarMoeda(totalMes)}
+            {carregandoLista ? "—" : formatarMoeda(totalMes)}
           </p>
-          <p className="text-xs text-muted mt-1">{lancamentos.length} lançamento(s)</p>
+          <p className="text-xs text-muted mt-1">
+            {lancamentos.length + comprasCartao.length} lançamento(s)
+          </p>
         </div>
 
         {/* --- Lançamentos do mês nesta categoria --------------------------------- */}
-        {carregandoLancamentos ? (
+        {carregandoLista ? (
           <p className="text-center text-muted text-sm py-6">Carregando...</p>
+        ) : lancamentos.length === 0 && comprasCartao.length === 0 ? (
+          <div className="card text-center text-muted text-sm">Nenhum lançamento encontrado.</div>
         ) : (
-          <LancamentosLista lancamentos={lancamentos} />
+          <>
+            <LancamentosLista lancamentos={lancamentos} />
+            <ComprasCartaoLista compras={comprasCartao} />
+          </>
         )}
       </div>
     </div>
+  );
+}
+
+export default function DetalheCategoriaPage({ params }: { params: { id: string } }) {
+  return (
+    <Suspense
+      fallback={
+        <div>
+          <div className="header-gradient flex items-center gap-3">
+            <BotaoVoltar href="/financeiro/categorias" />
+            <h1 className="text-2xl font-bold">Categoria</h1>
+          </div>
+          <p className="text-center text-muted text-sm py-10">Carregando...</p>
+        </div>
+      }
+    >
+      <DetalheCategoriaConteudo params={params} />
+    </Suspense>
   );
 }

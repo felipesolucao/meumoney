@@ -12,6 +12,7 @@
 // ============================================================================
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { formatarMoeda, formatarData } from "../../../lib/financeiro";
 import type { TipoLancamento } from "../../../lib/financeiro";
@@ -146,21 +147,40 @@ export default function RelatoriosFinanceiro() {
                 <GraficoBarras categorias={categorias} />
               )}
 
-              {/* --- Legenda: bolinha colorida + nome + valor + percentual ------- */}
+              {/* --- Legenda: bolinha colorida + nome + valor + percentual -------
+                  Cada categoria real (não "Sem categoria") leva pro
+                  "gerenciador" dela — mesmo histórico de lançamentos que já
+                  existe em /financeiro/categorias/[id], só que já aberto no
+                  mês que está sendo visto aqui. */}
               <div className="space-y-2.5 mt-5">
-                {categorias.map((c) => (
-                  <div key={c.id} className="flex items-center gap-2.5">
-                    <span
-                      className="w-3 h-3 rounded-full shrink-0"
-                      style={{ background: c.cor }}
-                      aria-hidden="true"
-                    />
-                    <span className="shrink-0">{c.icone}</span>
-                    <span className="flex-1 min-w-0 truncate text-sm font-medium">{c.nome}</span>
-                    <span className="text-sm font-bold shrink-0">{formatarMoeda(c.total)}</span>
-                    <span className="text-xs text-muted w-12 text-right shrink-0">{c.percentual.toFixed(0)}%</span>
-                  </div>
-                ))}
+                {categorias.map((c) => {
+                  const conteudo = (
+                    <>
+                      <span
+                        className="w-3 h-3 rounded-full shrink-0"
+                        style={{ background: c.cor }}
+                        aria-hidden="true"
+                      />
+                      <span className="shrink-0">{c.icone}</span>
+                      <span className="flex-1 min-w-0 truncate text-sm font-medium">{c.nome}</span>
+                      <span className="text-sm font-bold shrink-0">{formatarMoeda(c.total)}</span>
+                      <span className="text-xs text-muted w-12 text-right shrink-0">{c.percentual.toFixed(0)}%</span>
+                    </>
+                  );
+                  return c.id === "sem-categoria" ? (
+                    <div key={c.id} className="flex items-center gap-2.5">
+                      {conteudo}
+                    </div>
+                  ) : (
+                    <Link
+                      key={c.id}
+                      href={`/financeiro/categorias/${c.id}?ano=${ano}&mes=${mes}`}
+                      className="flex items-center gap-2.5 -mx-1 px-1 py-0.5 rounded-md active:bg-background"
+                    >
+                      {conteudo}
+                    </Link>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -253,9 +273,11 @@ function GraficoBarras({ categorias }: { categorias: CategoriaResumo[] }) {
     <div className="space-y-3">
       {categorias.map((c) => (
         <div key={c.id}>
-          <div className="flex justify-between text-xs mb-1">
-            <span className="font-medium">{c.icone} {c.nome}</span>
-            <span className="font-semibold">{formatarMoeda(c.total)}</span>
+          <div className="flex justify-between text-xs mb-1 gap-2">
+            <span className="font-medium truncate">{c.icone} {c.nome}</span>
+            <span className="font-semibold shrink-0">
+              {formatarMoeda(c.total)} <span className="text-muted">· {c.percentual.toFixed(0)}%</span>
+            </span>
           </div>
           <div className="h-2.5 rounded-pill bg-muted-bg overflow-hidden">
             <div
