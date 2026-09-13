@@ -8,7 +8,8 @@
 // Agrupa os lançamentos PAGOS do tipo escolhido por categoria, calculando o
 // total e o percentual de cada uma sobre o total do período — os dados que
 // alimentam o gráfico (pizza/barras) e a lista de percentuais da tela
-// "Relatórios" (app/financeiro/relatorios).
+// "Relatórios" (app/financeiro/relatorios), e também o resumo compacto
+// "Despesas por categoria" da Início (components/DespesasPorCategoriaInicio).
 //
 // Também devolve os 5 lançamentos de maior valor do período ("maiores
 // gastos"/"maiores receitas"), useful pra tela destacar isso separado do
@@ -17,6 +18,17 @@
 // Só considera lançamentos PAGOS: um gasto ainda pendente não é um "gasto"
 // de fato até acontecer, e misturar pendente com pago distorceria o
 // percentual de cada categoria.
+//
+// NOVO: quando tipo=despesa, as compras no cartão de crédito (CompraCartao)
+// também entram na conta — pela data da COMPRA, não da fatura. Antes, uma
+// compra só aparecia aqui quando a fatura inteira fechava E o Lancamento
+// consolidado dela era pago, o que podia demorar semanas e sempre caía como
+// "Sem categoria" (o Lancamento da fatura não tem categoria própria — ver
+// fecharFaturasVencidas em lib/cartao.ts). Pra não contar a mesma despesa
+// duas vezes quando isso acontece, o Lancamento gerado pelo fechamento da
+// fatura (identificado pela relação com FaturaCartao) é excluído da soma:
+// a despesa dele já está representada, individualmente e com a categoria
+// certa, pelas CompraCartao que a compõem.
 // ============================================================================
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "../../../../lib/prisma";
@@ -59,30 +71,82 @@ export async function GET(req: NextRequest) {
       status: "pago",
       dataVencimento: { gte: inicio, lte: fim },
       ...filtroCarteira,
+      // Ver NOVO no topo do arquivo — evita contar a fatura em dobro.
+      ...(tipo === "despesa" ? { faturaCartao: { is: null } } : {}),
     },
     include: { categoria: true },
     orderBy: { dataVencimento: "desc" },
   });
 
-  const total = lancamentos.reduce((s, l) => s + Number(l.valorPago ?? l.valor), 0);
+  // Formato comum entre Lancamento e CompraCartao, pra agrupar e ordenar os
+  // dois juntos sem duplicar a lógica de categoria/total abaixo.
+  type Item = {
+    id: string;
+    descricao: string;
+    valor: number;
+    data: Date;
+    categoriaId: string | null;
+    categoriaNome: string | null;
+    categoriaIcone: string | null;
+    categoriaCor: string | null;
+  };
+
+  const itens: Item[] = lancamentos.map((l) => ({
+    id: l.id,
+    descricao: l.descricao,
+    valor: Number(l.valorPago ?? l.valor),
+    data: l.dataVencimento,
+    categoriaId: l.categoriaId,
+    categoriaNome: l.categoria?.nome ?? null,
+    categoriaIcone: l.categoria?.icone ?? null,
+    categoriaCor: l.categoria?.cor ?? null,
+  }));
+
+  if (tipo === "despesa") {
+    // A carteira de uma compra no cartão vem da conta que PAGA o cartão
+    // (mesma regra usada pro Lancamento da fatura, ver lib/cartao.ts).
+    const filtroCartaoCarteira = carteiraId ? { cartao: { conta: { carteiraId } } } : {};
+    const comprasCartao = await prisma.compraCartao.findMany({
+      where: {
+        usuarioId: sessao.id,
+        dataCompra: { gte: inicio, lte: fim },
+        ...filtroCartaoCarteira,
+      },
+      include: { categoria: true },
+    });
+
+    itens.push(
+      ...comprasCartao.map((c) => ({
+        id: `cartao-${c.id}`,
+        descricao: c.descricao,
+        valor: Number(c.valor),
+        data: c.dataCompra,
+        categoriaId: c.categoriaId,
+        categoriaNome: c.categoria?.nome ?? null,
+        categoriaIcone: c.categoria?.icone ?? null,
+        categoriaCor: c.categoria?.cor ?? null,
+      }))
+    );
+  }
+
+  const total = itens.reduce((s, i) => s + i.valor, 0);
 
   // --- Agrupamento por categoria --------------------------------------------
   type Grupo = { id: string; nome: string; icone: string; cor: string; total: number };
   const grupos = new Map<string, Grupo>();
 
-  for (const l of lancamentos) {
-    const valor = Number(l.valorPago ?? l.valor);
-    const chave = l.categoriaId ?? "sem-categoria";
+  for (const i of itens) {
+    const chave = i.categoriaId ?? "sem-categoria";
     const existente = grupos.get(chave);
     if (existente) {
-      existente.total += valor;
+      existente.total += i.valor;
     } else {
       grupos.set(chave, {
         id: chave,
-        nome: l.categoria?.nome ?? "Sem categoria",
-        icone: l.categoria?.icone ?? "🧾",
-        cor: l.categoria?.cor ?? "#6b7280",
-        total: valor,
+        nome: i.categoriaNome ?? "Sem categoria",
+        icone: i.categoriaIcone ?? "🧾",
+        cor: i.categoriaCor ?? "#6b7280",
+        total: i.valor,
       });
     }
   }
@@ -91,17 +155,17 @@ export async function GET(req: NextRequest) {
     .sort((a, b) => b.total - a.total)
     .map((g) => ({ ...g, percentual: total > 0 ? (g.total / total) * 100 : 0 }));
 
-  // --- Top 5 lançamentos individuais de maior valor -------------------------
-  const maiores = [...lancamentos]
-    .sort((a, b) => Number(b.valorPago ?? b.valor) - Number(a.valorPago ?? a.valor))
+  // --- Top 5 itens individuais de maior valor -------------------------------
+  const maiores = [...itens]
+    .sort((a, b) => b.valor - a.valor)
     .slice(0, 5)
-    .map((l) => ({
-      id: l.id,
-      descricao: l.descricao,
-      valor: Number(l.valorPago ?? l.valor),
-      data: l.dataVencimento,
-      categoriaNome: l.categoria?.nome ?? null,
-      categoriaIcone: l.categoria?.icone ?? null,
+    .map((i) => ({
+      id: i.id,
+      descricao: i.descricao,
+      valor: i.valor,
+      data: i.data,
+      categoriaNome: i.categoriaNome,
+      categoriaIcone: i.categoriaIcone,
     }));
 
   return NextResponse.json({ tipo, total, categorias, maiores });
