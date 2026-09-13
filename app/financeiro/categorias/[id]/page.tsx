@@ -213,8 +213,8 @@ function DetalheCategoriaConteudo({ params }: { params: { id: string } }) {
     <div>
       <div className="header-gradient flex items-center gap-3">
         <BotaoVoltar href="/financeiro/categorias" />
-        <div className="flex-1">
-          <h1 className="text-2xl font-bold">Categoria</h1>
+        <div className="flex-1 min-w-0">
+          <h1 className="text-2xl font-bold truncate">{categoria.nome}</h1>
           <p className="text-sm text-muted mt-0.5">{categoria.tipo === "receita" ? "Receita" : "Despesa"}</p>
         </div>
       </div>
