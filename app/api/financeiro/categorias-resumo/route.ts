@@ -34,6 +34,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "../../../../lib/prisma";
 import { obterSessao } from "../../../../lib/auth";
 import type { TipoLancamento } from "../../../../lib/financeiro";
+import { corCategoria } from "../../../../lib/coresCategoria";
 
 export async function GET(req: NextRequest) {
   const sessao = await obterSessao();
@@ -88,7 +89,6 @@ export async function GET(req: NextRequest) {
     categoriaId: string | null;
     categoriaNome: string | null;
     categoriaIcone: string | null;
-    categoriaCor: string | null;
   };
 
   const itens: Item[] = lancamentos.map((l) => ({
@@ -99,7 +99,6 @@ export async function GET(req: NextRequest) {
     categoriaId: l.categoriaId,
     categoriaNome: l.categoria?.nome ?? null,
     categoriaIcone: l.categoria?.icone ?? null,
-    categoriaCor: l.categoria?.cor ?? null,
   }));
 
   if (tipo === "despesa") {
@@ -124,7 +123,6 @@ export async function GET(req: NextRequest) {
         categoriaId: c.categoriaId,
         categoriaNome: c.categoria?.nome ?? null,
         categoriaIcone: c.categoria?.icone ?? null,
-        categoriaCor: c.categoria?.cor ?? null,
       }))
     );
   }
@@ -145,7 +143,7 @@ export async function GET(req: NextRequest) {
         id: chave,
         nome: i.categoriaNome ?? "Sem categoria",
         icone: i.categoriaIcone ?? "🧾",
-        cor: i.categoriaCor ?? "#6b7280",
+        cor: corCategoria(i.categoriaId),
         total: i.valor,
       });
     }
