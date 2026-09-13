@@ -515,10 +515,10 @@ function NovoLancamentoConteudo() {
             <div>
               <p className="text-xs font-semibold tracking-wide text-muted mb-2">ORIGEM</p>
               <div className="grid grid-cols-2 gap-2">
-                <BotaoToggle ativo={origem === "pessoal"} onClick={() => setOrigem("pessoal")}>
+                <BotaoToggle ativo={origem === "pessoal"} perigo={tipo === "despesa"} onClick={() => setOrigem("pessoal")}>
                   <span className="inline-flex items-center gap-2"><IconUser size={16} /> Pessoal</span>
                 </BotaoToggle>
-                <BotaoToggle ativo={origem === "empresarial"} onClick={() => setOrigem("empresarial")}>
+                <BotaoToggle ativo={origem === "empresarial"} perigo={tipo === "despesa"} onClick={() => setOrigem("empresarial")}>
                   <span className="inline-flex items-center gap-2"><IconBuilding size={16} /> Empresarial</span>
                 </BotaoToggle>
               </div>
@@ -531,13 +531,13 @@ function NovoLancamentoConteudo() {
               {formaPagamento === "cartao" ? "DATA DA COMPRA" : "DATA"}
             </p>
             <div className="grid grid-cols-3 gap-2">
-              <BotaoToggle ativo={dataAtalho === "hoje"} onClick={() => escolherAtalhoData("hoje")}>
+              <BotaoToggle ativo={dataAtalho === "hoje"} perigo={tipo === "despesa"} onClick={() => escolherAtalhoData("hoje")}>
                 Hoje
               </BotaoToggle>
-              <BotaoToggle ativo={dataAtalho === "ontem"} onClick={() => escolherAtalhoData("ontem")}>
+              <BotaoToggle ativo={dataAtalho === "ontem"} perigo={tipo === "despesa"} onClick={() => escolherAtalhoData("ontem")}>
                 Ontem
               </BotaoToggle>
-              <BotaoToggle ativo={dataAtalho === "outros"} onClick={() => escolherAtalhoData("outros")}>
+              <BotaoToggle ativo={dataAtalho === "outros"} perigo={tipo === "despesa"} onClick={() => escolherAtalhoData("outros")}>
                 Outros
               </BotaoToggle>
             </div>
@@ -590,10 +590,10 @@ function NovoLancamentoConteudo() {
                 por aqui (ver atualizarCompraCartao em lib/cartao.ts). */}
             {tipo === "despesa" && !editandoCompraCartao && (
               <div className="grid grid-cols-2 gap-2 mb-2">
-                <BotaoToggle ativo={formaPagamento === "conta"} onClick={() => setFormaPagamento("conta")}>
+                <BotaoToggle ativo={formaPagamento === "conta"} perigo onClick={() => setFormaPagamento("conta")}>
                   Conta / Carteira
                 </BotaoToggle>
-                <BotaoToggle ativo={formaPagamento === "cartao"} onClick={() => setFormaPagamento("cartao")}>
+                <BotaoToggle ativo={formaPagamento === "cartao"} perigo onClick={() => setFormaPagamento("cartao")}>
                   <span className="inline-flex items-center gap-2"><IconCreditCard size={16} /> Cartão de crédito</span>
                 </BotaoToggle>
               </div>
@@ -676,10 +676,10 @@ function NovoLancamentoConteudo() {
             <div>
               <p className="text-xs font-semibold tracking-wide text-muted mb-2">REPETIÇÃO</p>
               <div className="grid grid-cols-2 gap-2">
-                <BotaoToggle ativo={!recorrente} onClick={() => setRecorrente(false)}>
+                <BotaoToggle ativo={!recorrente} perigo={tipo === "despesa"} onClick={() => setRecorrente(false)}>
                   Lançamento único
                 </BotaoToggle>
-                <BotaoToggle ativo={recorrente} onClick={() => setRecorrente(true)}>
+                <BotaoToggle ativo={recorrente} perigo={tipo === "despesa"} onClick={() => setRecorrente(true)}>
                   <span className="inline-flex items-center gap-2"><IconRepeat size={16} /> Recorrente</span>
                 </BotaoToggle>
               </div>
@@ -691,7 +691,7 @@ function NovoLancamentoConteudo() {
                   <p className="text-xs font-semibold tracking-wide text-muted mb-2">FREQUÊNCIA</p>
                   <div className="grid grid-cols-3 gap-2">
                     {(Object.keys(LABEL_PERIODICIDADE) as PeriodicidadeLancamento[]).map((p) => (
-                      <BotaoToggle key={p} ativo={periodicidade === p} onClick={() => setPeriodicidade(p)}>
+                      <BotaoToggle key={p} ativo={periodicidade === p} perigo={tipo === "despesa"} onClick={() => setPeriodicidade(p)}>
                         {LABEL_PERIODICIDADE[p]}
                       </BotaoToggle>
                     ))}
@@ -801,9 +801,26 @@ function NovoLancamentoConteudo() {
   );
 }
 
-function BotaoToggle({ ativo, onClick, children }: { ativo: boolean; onClick: () => void; children: React.ReactNode }) {
+// "perigo" deixa o estado ativo vermelho (em vez do verde padrão) — usado nos
+// grupos de Origem/Data/Forma de pagamento/Repetição quando tipo === "despesa",
+// pra reforçar visualmente que é uma despesa em todo o formulário.
+function BotaoToggle({
+  ativo,
+  onClick,
+  perigo,
+  children,
+}: {
+  ativo: boolean;
+  onClick: () => void;
+  perigo?: boolean;
+  children: React.ReactNode;
+}) {
   return (
-    <button type="button" onClick={onClick} className={`chip-toggle w-full ${ativo ? "chip-toggle-ativo" : ""}`}>
+    <button
+      type="button"
+      onClick={onClick}
+      className={`chip-toggle w-full ${ativo ? (perigo ? "chip-toggle-ativo-perigo" : "chip-toggle-ativo") : ""}`}
+    >
       {children}
     </button>
   );
