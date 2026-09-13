@@ -134,6 +134,10 @@ function NovoLancamentoConteudo() {
   const [dataVencimento, setDataVencimento] = useState(dataInicial);
   const [pago, setPago] = useState(true);
   const [observacoes, setObservacoes] = useState("");
+  // Campo "Observações" começa recolhido — só mostra o textarea depois que o
+  // usuário toca em "Adicionar observação" (ou já existe algo escrito, ex:
+  // ao carregar uma compra do cartão em modo de edição).
+  const [observacaoAberta, setObservacaoAberta] = useState(false);
 
   // --- Categoria e conta ------------------------------------------------------
   const [categorias, setCategorias] = useState<Categoria[]>([]);
@@ -225,6 +229,7 @@ function NovoLancamentoConteudo() {
         setDataVencimento(dataCompraISO);
         setDataAtalho(dataCompraISO === isoHoje() ? "hoje" : "outros");
         setObservacoes(data.observacoes || "");
+        setObservacaoAberta(!!data.observacoes);
         setCartaoId(data.cartaoId);
         if (data.categoriaId) setCategoriaId(data.categoriaId);
         setFaturaStatusCompra(data.fatura.status);
@@ -359,7 +364,15 @@ function NovoLancamentoConteudo() {
 
     if (res.ok) {
       showToast(tipo === "receita" ? "Receita adicionada com sucesso!" : "Despesa adicionada com sucesso!");
-      router.push(tipo === "receita" ? "/financeiro/receber" : "/financeiro/pagar");
+      // Continua na mesma tela em vez de navegar para Contas a pagar/receber —
+      // facilita lançar vários itens em sequência (ex: várias despesas do mês).
+      // Mantém tipo, categoria, conta e data (o mais comum é repetir esses
+      // campos entre lançamentos seguidos); só limpa valor/descrição/obs.
+      setValor("");
+      setDescricao("");
+      setObservacoes("");
+      setObservacaoAberta(false);
+      setErro("");
     } else {
       const data = await res.json();
       setErro(data.error || "Não foi possível salvar o lançamento.");
@@ -732,20 +745,39 @@ function NovoLancamentoConteudo() {
         )}
 
         {/* --- Observações ------------------------------------------------------------ */}
+        {/* Recolhido por padrão: só um botão discreto até o usuário tocar nele —
+            evita que um campo raramente usado ocupe espaço/atenção na tela. */}
         <div className="card">
-          <p className="text-xs font-semibold tracking-wide text-muted mb-2">OBSERVAÇÕES (OPCIONAL)</p>
-          <textarea
-            value={observacoes}
-            onChange={(e) => setObservacoes(e.target.value)}
-            rows={3}
-            // BUG CORRIGIDO: mesma causa do campo Descrição — faltava bg-card.
-            className="w-full rounded-md border border-border px-4 py-3.5 outline-none focus:border-primary bg-card"
-          />
+          {observacaoAberta ? (
+            <>
+              <p className="text-xs font-semibold tracking-wide text-muted mb-2">OBSERVAÇÕES (OPCIONAL)</p>
+              <textarea
+                value={observacoes}
+                onChange={(e) => setObservacoes(e.target.value)}
+                rows={3}
+                autoFocus
+                // BUG CORRIGIDO: mesma causa do campo Descrição — faltava bg-card.
+                className="w-full rounded-md border border-border px-4 py-3.5 outline-none focus:border-primary bg-card"
+              />
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setObservacaoAberta(true)}
+              className="w-full flex items-center gap-2 text-sm font-semibold text-muted"
+            >
+              <IconPlus size={14} /> Adicionar observação
+            </button>
+          )}
         </div>
 
         {erro && <p className="text-error text-sm font-medium">{erro}</p>}
 
-        <button onClick={salvar} disabled={salvando || compraTravada} className="btn-primary">
+        <button
+          onClick={salvar}
+          disabled={salvando || compraTravada}
+          className={tipo === "despesa" ? "btn-danger" : "btn-primary"}
+        >
           {salvando
             ? "Salvando..."
             : editandoCompraCartao
