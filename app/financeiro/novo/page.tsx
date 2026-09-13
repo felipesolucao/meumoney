@@ -134,6 +134,10 @@ function NovoLancamentoConteudo() {
   const [dataVencimento, setDataVencimento] = useState(dataInicial);
   const [pago, setPago] = useState(true);
   const [observacoes, setObservacoes] = useState("");
+  // Campo "Observações" começa recolhido — só mostra o textarea depois que o
+  // usuário toca em "Adicionar observação" (ou já existe algo escrito, ex:
+  // ao carregar uma compra do cartão em modo de edição).
+  const [observacaoAberta, setObservacaoAberta] = useState(false);
 
   // --- Categoria e conta ------------------------------------------------------
   const [categorias, setCategorias] = useState<Categoria[]>([]);
@@ -225,6 +229,7 @@ function NovoLancamentoConteudo() {
         setDataVencimento(dataCompraISO);
         setDataAtalho(dataCompraISO === isoHoje() ? "hoje" : "outros");
         setObservacoes(data.observacoes || "");
+        setObservacaoAberta(!!data.observacoes);
         setCartaoId(data.cartaoId);
         if (data.categoriaId) setCategoriaId(data.categoriaId);
         setFaturaStatusCompra(data.fatura.status);
@@ -359,7 +364,15 @@ function NovoLancamentoConteudo() {
 
     if (res.ok) {
       showToast(tipo === "receita" ? "Receita adicionada com sucesso!" : "Despesa adicionada com sucesso!");
-      router.push(tipo === "receita" ? "/financeiro/receber" : "/financeiro/pagar");
+      // Continua na mesma tela em vez de navegar para Contas a pagar/receber —
+      // facilita lançar vários itens em sequência (ex: várias despesas do mês).
+      // Mantém tipo, categoria, conta e data (o mais comum é repetir esses
+      // campos entre lançamentos seguidos); só limpa valor/descrição/obs.
+      setValor("");
+      setDescricao("");
+      setObservacoes("");
+      setObservacaoAberta(false);
+      setErro("");
     } else {
       const data = await res.json();
       setErro(data.error || "Não foi possível salvar o lançamento.");
@@ -502,10 +515,10 @@ function NovoLancamentoConteudo() {
             <div>
               <p className="text-xs font-semibold tracking-wide text-muted mb-2">ORIGEM</p>
               <div className="grid grid-cols-2 gap-2">
-                <BotaoToggle ativo={origem === "pessoal"} onClick={() => setOrigem("pessoal")}>
+                <BotaoToggle ativo={origem === "pessoal"} perigo={tipo === "despesa"} onClick={() => setOrigem("pessoal")}>
                   <span className="inline-flex items-center gap-2"><IconUser size={16} /> Pessoal</span>
                 </BotaoToggle>
-                <BotaoToggle ativo={origem === "empresarial"} onClick={() => setOrigem("empresarial")}>
+                <BotaoToggle ativo={origem === "empresarial"} perigo={tipo === "despesa"} onClick={() => setOrigem("empresarial")}>
                   <span className="inline-flex items-center gap-2"><IconBuilding size={16} /> Empresarial</span>
                 </BotaoToggle>
               </div>
@@ -518,13 +531,13 @@ function NovoLancamentoConteudo() {
               {formaPagamento === "cartao" ? "DATA DA COMPRA" : "DATA"}
             </p>
             <div className="grid grid-cols-3 gap-2">
-              <BotaoToggle ativo={dataAtalho === "hoje"} onClick={() => escolherAtalhoData("hoje")}>
+              <BotaoToggle ativo={dataAtalho === "hoje"} perigo={tipo === "despesa"} onClick={() => escolherAtalhoData("hoje")}>
                 Hoje
               </BotaoToggle>
-              <BotaoToggle ativo={dataAtalho === "ontem"} onClick={() => escolherAtalhoData("ontem")}>
+              <BotaoToggle ativo={dataAtalho === "ontem"} perigo={tipo === "despesa"} onClick={() => escolherAtalhoData("ontem")}>
                 Ontem
               </BotaoToggle>
-              <BotaoToggle ativo={dataAtalho === "outros"} onClick={() => escolherAtalhoData("outros")}>
+              <BotaoToggle ativo={dataAtalho === "outros"} perigo={tipo === "despesa"} onClick={() => escolherAtalhoData("outros")}>
                 Outros
               </BotaoToggle>
             </div>
@@ -577,10 +590,10 @@ function NovoLancamentoConteudo() {
                 por aqui (ver atualizarCompraCartao em lib/cartao.ts). */}
             {tipo === "despesa" && !editandoCompraCartao && (
               <div className="grid grid-cols-2 gap-2 mb-2">
-                <BotaoToggle ativo={formaPagamento === "conta"} onClick={() => setFormaPagamento("conta")}>
+                <BotaoToggle ativo={formaPagamento === "conta"} perigo onClick={() => setFormaPagamento("conta")}>
                   Conta / Carteira
                 </BotaoToggle>
-                <BotaoToggle ativo={formaPagamento === "cartao"} onClick={() => setFormaPagamento("cartao")}>
+                <BotaoToggle ativo={formaPagamento === "cartao"} perigo onClick={() => setFormaPagamento("cartao")}>
                   <span className="inline-flex items-center gap-2"><IconCreditCard size={16} /> Cartão de crédito</span>
                 </BotaoToggle>
               </div>
@@ -663,10 +676,10 @@ function NovoLancamentoConteudo() {
             <div>
               <p className="text-xs font-semibold tracking-wide text-muted mb-2">REPETIÇÃO</p>
               <div className="grid grid-cols-2 gap-2">
-                <BotaoToggle ativo={!recorrente} onClick={() => setRecorrente(false)}>
+                <BotaoToggle ativo={!recorrente} perigo={tipo === "despesa"} onClick={() => setRecorrente(false)}>
                   Lançamento único
                 </BotaoToggle>
-                <BotaoToggle ativo={recorrente} onClick={() => setRecorrente(true)}>
+                <BotaoToggle ativo={recorrente} perigo={tipo === "despesa"} onClick={() => setRecorrente(true)}>
                   <span className="inline-flex items-center gap-2"><IconRepeat size={16} /> Recorrente</span>
                 </BotaoToggle>
               </div>
@@ -678,7 +691,7 @@ function NovoLancamentoConteudo() {
                   <p className="text-xs font-semibold tracking-wide text-muted mb-2">FREQUÊNCIA</p>
                   <div className="grid grid-cols-3 gap-2">
                     {(Object.keys(LABEL_PERIODICIDADE) as PeriodicidadeLancamento[]).map((p) => (
-                      <BotaoToggle key={p} ativo={periodicidade === p} onClick={() => setPeriodicidade(p)}>
+                      <BotaoToggle key={p} ativo={periodicidade === p} perigo={tipo === "despesa"} onClick={() => setPeriodicidade(p)}>
                         {LABEL_PERIODICIDADE[p]}
                       </BotaoToggle>
                     ))}
@@ -732,20 +745,39 @@ function NovoLancamentoConteudo() {
         )}
 
         {/* --- Observações ------------------------------------------------------------ */}
+        {/* Recolhido por padrão: só um botão discreto até o usuário tocar nele —
+            evita que um campo raramente usado ocupe espaço/atenção na tela. */}
         <div className="card">
-          <p className="text-xs font-semibold tracking-wide text-muted mb-2">OBSERVAÇÕES (OPCIONAL)</p>
-          <textarea
-            value={observacoes}
-            onChange={(e) => setObservacoes(e.target.value)}
-            rows={3}
-            // BUG CORRIGIDO: mesma causa do campo Descrição — faltava bg-card.
-            className="w-full rounded-md border border-border px-4 py-3.5 outline-none focus:border-primary bg-card"
-          />
+          {observacaoAberta ? (
+            <>
+              <p className="text-xs font-semibold tracking-wide text-muted mb-2">OBSERVAÇÕES (OPCIONAL)</p>
+              <textarea
+                value={observacoes}
+                onChange={(e) => setObservacoes(e.target.value)}
+                rows={3}
+                autoFocus
+                // BUG CORRIGIDO: mesma causa do campo Descrição — faltava bg-card.
+                className="w-full rounded-md border border-border px-4 py-3.5 outline-none focus:border-primary bg-card"
+              />
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setObservacaoAberta(true)}
+              className="w-full flex items-center gap-2 text-sm font-semibold text-muted"
+            >
+              <IconPlus size={14} /> Adicionar observação
+            </button>
+          )}
         </div>
 
         {erro && <p className="text-error text-sm font-medium">{erro}</p>}
 
-        <button onClick={salvar} disabled={salvando || compraTravada} className="btn-primary">
+        <button
+          onClick={salvar}
+          disabled={salvando || compraTravada}
+          className={tipo === "despesa" ? "btn-danger" : "btn-primary"}
+        >
           {salvando
             ? "Salvando..."
             : editandoCompraCartao
@@ -769,9 +801,26 @@ function NovoLancamentoConteudo() {
   );
 }
 
-function BotaoToggle({ ativo, onClick, children }: { ativo: boolean; onClick: () => void; children: React.ReactNode }) {
+// "perigo" deixa o estado ativo vermelho (em vez do verde padrão) — usado nos
+// grupos de Origem/Data/Forma de pagamento/Repetição quando tipo === "despesa",
+// pra reforçar visualmente que é uma despesa em todo o formulário.
+function BotaoToggle({
+  ativo,
+  onClick,
+  perigo,
+  children,
+}: {
+  ativo: boolean;
+  onClick: () => void;
+  perigo?: boolean;
+  children: React.ReactNode;
+}) {
   return (
-    <button type="button" onClick={onClick} className={`chip-toggle w-full ${ativo ? "chip-toggle-ativo" : ""}`}>
+    <button
+      type="button"
+      onClick={onClick}
+      className={`chip-toggle w-full ${ativo ? (perigo ? "chip-toggle-ativo-perigo" : "chip-toggle-ativo") : ""}`}
+    >
       {children}
     </button>
   );
