@@ -176,9 +176,33 @@ export default function Financeiro() {
       </div>
 
       <div className="px-5 mt-5 space-y-5">
-        {/* Botão de novo lançamento em destaque (largura total, ação principal) */}
-        <Link href={`/financeiro/novo?data=${dataSugerida}`} className="btn-primary flex items-center justify-center gap-2">
-          <IconPlus size={18} /> Novo lançamento
+        {/* Acesso rápido — fica ACIMA do botão de novo lançamento (pedido
+            explícito). "Ver todas transações" é o primeiro atalho, levando
+            pro histórico completo e filtrável em /financeiro/transacoes;
+            "Contas" saiu daqui (ainda dá pra chegar nela pela seção
+            RELATÓRIOS, mais abaixo). */}
+        <div>
+          <p className="text-xs font-semibold tracking-wide text-muted mb-3">ACESSO RÁPIDO</p>
+          <div className="grid grid-cols-3 gap-3 text-center">
+            <AtalhoRapido href="/financeiro/transacoes" icon={<IconHistory size={22} />} label="Ver todas transações" />
+            <AtalhoRapido href="/financeiro/pagar" icon={<IconReceipt size={22} />} label="A pagar" />
+            <AtalhoRapido href="/financeiro/receber" icon={<IconWallet size={22} />} label="A receber" />
+            <AtalhoRapido href={`/financeiro/novo?data=${dataSugerida}`} icon={<IconPlus size={22} />} label="Novo" />
+            <AtalhoRapido href="/financeiro/relatorios" icon={<IconChart size={22} />} label="Relatórios" />
+            <AtalhoRapido href="/financeiro/categorias" icon={<IconTag size={22} />} label="Categorias" />
+          </div>
+        </div>
+
+        {/* Botão de novo lançamento em destaque (largura total, ação
+            principal). BUG CORRIGIDO: sem "whitespace-nowrap" e o ícone sem
+            "shrink-0", o texto "Novo lançamento" podia quebrar em duas
+            linhas (ícone e uma palavra numa linha, o resto na outra) em
+            telas estreitas ou com fonte do sistema aumentada. */}
+        <Link
+          href={`/financeiro/novo?data=${dataSugerida}`}
+          className="btn-primary flex items-center justify-center gap-2 whitespace-nowrap"
+        >
+          <IconPlus size={18} className="shrink-0" /> Novo lançamento
         </Link>
 
         <Link
@@ -233,19 +257,6 @@ export default function Financeiro() {
               <p className="text-[11px] font-semibold tracking-wide text-muted">CATEGORIAS</p>
               <p className="font-extrabold mt-1">Gasto por categoria</p>
             </Link>
-          </div>
-        </div>
-
-        {/* Acesso rápido */}
-        <div>
-          <p className="text-xs font-semibold tracking-wide text-muted mb-3">ACESSO RÁPIDO</p>
-          <div className="grid grid-cols-3 gap-3 text-center">
-            <AtalhoRapido href="/financeiro/pagar" icon={<IconReceipt size={22} />} label="A pagar" />
-            <AtalhoRapido href="/financeiro/receber" icon={<IconWallet size={22} />} label="A receber" />
-            <AtalhoRapido href={`/financeiro/novo?data=${dataSugerida}`} icon={<IconPlus size={22} />} label="Novo" />
-            <AtalhoRapido href="/financeiro/contas" icon={<IconBuilding size={22} />} label="Contas" />
-            <AtalhoRapido href="/financeiro/relatorios" icon={<IconChart size={22} />} label="Relatórios" />
-            <AtalhoRapido href="/financeiro/categorias" icon={<IconTag size={22} />} label="Categorias" />
           </div>
         </div>
       </div>

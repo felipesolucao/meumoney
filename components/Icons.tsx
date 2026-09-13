@@ -357,3 +357,12 @@ export function IconCreditCard({ size = 20, className, strokeWidth = 1.8 }: Icon
     </svg>
   );
 }
+
+export function IconSearch({ size = 20, className, strokeWidth = 1.8 }: IconProps) {
+  return (
+    <svg {...base(size)} className={className}>
+      <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth={strokeWidth} />
+      <path d="M20 20l-4.3-4.3" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" />
+    </svg>
+  );
+}

@@ -61,9 +61,33 @@ function fimDoMesAtual() {
   return new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0);
 }
 
-export default function ResumoMesInicio({ carteiraId }: { carteiraId?: string | null }) {
-  const [inicio, setInicio] = useState(inicioDoMesAtual);
-  const [fim, setFim] = useState(fimDoMesAtual);
+export default function ResumoMesInicio({
+  carteiraId,
+  periodo,
+  onPeriodoChange,
+}: {
+  carteiraId?: string | null;
+  // NOVO: permite a quem usa este componente (ver app/financeiro/transacoes,
+  // que precisa do mesmo período pra filtrar a lista de transações abaixo)
+  // controlar o período de fora, em vez de deixá-lo só em estado interno.
+  // Sem esses dois props (uso na Início), o componente continua guardando o
+  // período sozinho, como sempre — comportamento 100% preservado.
+  periodo?: { inicio: Date; fim: Date };
+  onPeriodoChange?: (inicio: Date, fim: Date) => void;
+}) {
+  const [inicioInterno, setInicioInterno] = useState(inicioDoMesAtual);
+  const [fimInterno, setFimInterno] = useState(fimDoMesAtual);
+  const inicio = periodo?.inicio ?? inicioInterno;
+  const fim = periodo?.fim ?? fimInterno;
+
+  function mudarPeriodo(novoInicio: Date, novoFim: Date) {
+    if (onPeriodoChange) {
+      onPeriodoChange(novoInicio, novoFim);
+    } else {
+      setInicioInterno(novoInicio);
+      setFimInterno(novoFim);
+    }
+  }
 
   const [resumo, setResumo] = useState<ResumoMes | null>(null);
   const [saldoContas, setSaldoContas] = useState<number | null>(null);
@@ -100,14 +124,7 @@ export default function ResumoMesInicio({ carteiraId }: { carteiraId?: string | 
   return (
     <div className="home-month-summary">
       <div className="home-month-selector">
-        <SeletorData
-          inicio={inicio}
-          fim={fim}
-          onSelecionar={(novoInicio, novoFim) => {
-            setInicio(novoInicio);
-            setFim(novoFim);
-          }}
-        />
+        <SeletorData inicio={inicio} fim={fim} onSelecionar={mudarPeriodo} />
       </div>
 
       <div className="home-month-balance mt-4">
