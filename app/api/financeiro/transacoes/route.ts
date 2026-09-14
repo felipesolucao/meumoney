@@ -36,6 +36,15 @@ type TransacaoItem = {
   contaIcone: string | null;
   categoriaNome: string | null;
   categoriaIcone: string | null;
+  // NOVO: de onde essa transação veio e o id real dela nessa origem (sem o
+  // prefixo usado em "id" acima, que só serve pra manter cada item único
+  // dentro da lista misturada) — usados pra abrir o detalhe/origem de cada
+  // transação (ver components/TransacaoCard.tsx). "contratoId" só vem
+  // preenchido pra origem "parcela", que não tem uma tela própria: o
+  // detalhe dela é o contrato inteiro, em /contratos/[id].
+  origemTipo: "lancamento" | "compra_cartao" | "parcela";
+  origemId: string;
+  contratoId: string | null;
 };
 
 export async function GET(req: NextRequest) {
@@ -79,6 +88,9 @@ export async function GET(req: NextRequest) {
         contaIcone: l.conta?.icone ?? null,
         categoriaNome: l.categoria?.nome ?? null,
         categoriaIcone: l.categoria?.icone ?? null,
+        origemTipo: "lancamento" as const,
+        origemId: l.id,
+        contratoId: null,
       }))
     );
 
@@ -103,6 +115,9 @@ export async function GET(req: NextRequest) {
           contaIcone: c.cartao.icone,
           categoriaNome: c.categoria?.nome ?? null,
           categoriaIcone: c.categoria?.icone ?? null,
+          origemTipo: "compra_cartao" as const,
+          origemId: c.id,
+          contratoId: null,
         }))
       );
     }
@@ -125,6 +140,9 @@ export async function GET(req: NextRequest) {
         contaIcone: null,
         categoriaNome: "Empréstimo",
         categoriaIcone: "🤝",
+        origemTipo: "parcela" as const,
+        origemId: p.id,
+        contratoId: p.contratoId,
       }))
     );
   }

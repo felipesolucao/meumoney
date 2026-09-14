@@ -5,9 +5,19 @@
 // conta e categoria embaixo do nome, e à direita o valor + um check indicando
 // se já foi paga/recebida (uma compra no cartão ainda não fechada nunca
 // aparece com o check marcado — ver comentário em /api/financeiro/transacoes).
+//
+// NOVO: o card inteiro é um link pra origem/detalhe da transação — cada
+// "origemTipo" tem sua própria tela já existente no app, então não duplica
+// nada aqui, só decide pra onde apontar:
+//   lancamento    -> /financeiro/[id]/editar   (edição completa do lançamento)
+//   compra_cartao -> /financeiro/cartoes/compra/[id] (extrato da compra)
+//   parcela       -> /contratos/[contratoId]   (parcela não tem tela própria
+//                     — o "detalhe" dela é o contrato inteiro, com todas as
+//                     parcelas e o cliente)
 // ============================================================================
+import Link from "next/link";
 import { formatarMoeda } from "../lib/financeiro";
-import { IconTrendUp, IconTrendDown, IconCheck } from "./Icons";
+import { IconTrendUp, IconTrendDown, IconCheck, IconChevronRight } from "./Icons";
 
 export type TransacaoItem = {
   id: string;
@@ -20,7 +30,16 @@ export type TransacaoItem = {
   contaIcone: string | null;
   categoriaNome: string | null;
   categoriaIcone: string | null;
+  origemTipo: "lancamento" | "compra_cartao" | "parcela";
+  origemId: string;
+  contratoId: string | null;
 };
+
+function hrefOrigem(t: TransacaoItem): string {
+  if (t.origemTipo === "compra_cartao") return `/financeiro/cartoes/compra/${t.origemId}`;
+  if (t.origemTipo === "parcela") return `/contratos/${t.contratoId}`;
+  return `/financeiro/${t.origemId}/editar`;
+}
 
 export default function TransacaoCard({ transacao }: { transacao: TransacaoItem }) {
   const t = transacao;
@@ -32,7 +51,7 @@ export default function TransacaoCard({ transacao }: { transacao: TransacaoItem 
     .join(" · ");
 
   return (
-    <div className="card flex items-center gap-3">
+    <Link href={hrefOrigem(t)} className="card flex items-center gap-3">
       <div
         className="w-11 h-11 rounded-md flex items-center justify-center flex-shrink-0"
         style={{
@@ -64,6 +83,8 @@ export default function TransacaoCard({ transacao }: { transacao: TransacaoItem 
           <IconCheck size={12} strokeWidth={3} />
         </span>
       </div>
-    </div>
+
+      <IconChevronRight size={16} className="text-muted shrink-0" />
+    </Link>
   );
 }
