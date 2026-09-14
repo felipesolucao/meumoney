@@ -19,6 +19,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatarMoeda, Frequencia, TipoEmprestimo } from "../../../../lib/calculos";
+import { isoHoje } from "../../../../lib/periodo";
 import BotaoVoltar from "../../../../components/BotaoVoltar";
 import CampoMoeda, { valorFormatadoParaNumero, numeroParaValorFormatado } from "../../../../components/CampoMoeda";
 
@@ -64,7 +65,7 @@ export default function EditarContratoPage({ params }: { params: { id: string } 
         setJurosAoMes(String(data.jurosAoMes));
         setTemEntrada(Number(data.valorEntrada) > 0);
         setValorEntrada(numeroParaValorFormatado(Number(data.valorEntrada)));
-        setDataEntrada(data.dataEntrada ? data.dataEntrada.slice(0, 10) : new Date().toISOString().slice(0, 10));
+        setDataEntrada(data.dataEntrada ? data.dataEntrada.slice(0, 10) : isoHoje());
         setNumeroParcelas(String(data.numeroParcelas));
         setFrequencia(data.frequencia);
         setDataPrimeiraParcela(data.dataPrimeiraParcela.slice(0, 10));

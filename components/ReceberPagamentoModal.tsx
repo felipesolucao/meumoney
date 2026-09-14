@@ -14,6 +14,7 @@
 
 import { useState } from "react";
 import { formatarMoeda, formatarData } from "../lib/calculos";
+import { isoHoje } from "../lib/periodo";
 import CampoMoeda, { valorFormatadoParaNumero, numeroParaValorFormatado } from "./CampoMoeda";
 import SeletorDataUnica from "./SeletorDataUnica";
 import { IconCheck, IconClose } from "./Icons";
@@ -48,7 +49,7 @@ export default function ReceberPagamentoModal({
   onConfirmar: (dataRecebimento: string, valorRecebido: number, contaId: string) => Promise<void> | void;
 }) {
   const [valorStr, setValorStr] = useState("");
-  const [data, setData] = useState(() => new Date().toISOString().slice(0, 10));
+  const [data, setData] = useState(() => isoHoje());
   const [contaId, setContaId] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [ultimaParcelaId, setUltimaParcelaId] = useState<string | null>(null);
@@ -64,7 +65,7 @@ export default function ReceberPagamentoModal({
   if (ultimaParcelaId !== parcela.id) {
     setUltimaParcelaId(parcela.id);
     setValorStr(numeroParaValorFormatado(restante));
-    setData(new Date().toISOString().slice(0, 10));
+    setData(isoHoje());
     setContaId(contaIdPadrao || contas[0]?.id || "");
   }
 

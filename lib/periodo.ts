@@ -25,8 +25,23 @@ export function calcularIntervaloPeriodo({
   return { inicio: new Date(ano, mes, 1), fim: new Date(ano, mes + 1, 0, 23, 59, 59) };
 }
 
+// ----------------------------------------------------------------------------
+// BUG CORRIGIDO: usava d.toISOString().slice(0, 10), que converte pra UTC
+// antes de cortar a data — errado pra "hoje", que precisa da data no fuso
+// LOCAL do usuário. No Brasil (UTC-3), isso fazia "hoje" virar "amanhã" pra
+// qualquer clique entre ~21h e meia-noite (a essa hora já é o dia seguinte
+// em UTC): um lançamento marcado como "Hoje" às 22h nascia com a data de
+// amanhã, então nunca aparecia nas listas/filtros de "hoje" depois — a causa
+// de vários relatos de "isso não está aparecendo hoje". Usa getFullYear/
+// getMonth/getDate (hora local) em vez de toISOString, como o resto do app
+// já faz corretamente em outros lugares (ex: formatarISO em ResumoMesInicio).
+// ----------------------------------------------------------------------------
+function pad(n: number) {
+  return String(n).padStart(2, "0");
+}
+
 export function isoHoje(offsetDias = 0): string {
   const d = new Date();
   d.setDate(d.getDate() + offsetDias);
-  return d.toISOString().slice(0, 10);
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
