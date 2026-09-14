@@ -34,6 +34,7 @@ import type {
   TipoFimRecorrencia,
 } from "../../../lib/financeiro";
 import { LABEL_PERIODICIDADE, LABEL_TIPO_FIM } from "../../../lib/financeiro";
+import { isoHoje } from "../../../lib/periodo";
 import BotaoVoltar from "../../../components/BotaoVoltar";
 import { useToast } from "../../../components/ToastProvider";
 import SeletorCategoriaModal from "../../../components/SeletorCategoriaModal";
@@ -63,12 +64,6 @@ type FormaPagamento = "conta" | "cartao";
 type Categoria = { id: string; nome: string; icone: string; tipo: TipoLancamento };
 type Conta = { id: string; nome: string; icone: string };
 type Cartao = { id: string; nome: string; icone: string };
-
-function isoHoje(offsetDias = 0) {
-  const d = new Date();
-  d.setDate(d.getDate() + offsetDias);
-  return d.toISOString().slice(0, 10);
-}
 
 // ============================================================================
 // MÁSCARA DE MOEDA (input "Valor")

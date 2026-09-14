@@ -11,6 +11,7 @@
 import { useState } from "react";
 import { formatarMoeda } from "../lib/financeiro";
 import { formatarData } from "../lib/calculos";
+import { isoHoje } from "../lib/periodo";
 import CampoMoeda, { valorFormatadoParaNumero, numeroParaValorFormatado } from "./CampoMoeda";
 import { IconCheck, IconClose } from "./Icons";
 
@@ -35,7 +36,7 @@ export default function ReceberLancamentoModal({
   onConfirmar: (dataRecebimento: string, valorRecebido: number) => Promise<void> | void;
 }) {
   const [valorStr, setValorStr] = useState("");
-  const [data, setData] = useState(() => new Date().toISOString().slice(0, 10));
+  const [data, setData] = useState(() => isoHoje());
   const [enviando, setEnviando] = useState(false);
   const [ultimoId, setUltimoId] = useState<string | null>(null);
 
@@ -48,7 +49,7 @@ export default function ReceberLancamentoModal({
   if (ultimoId !== lancamento.id) {
     setUltimoId(lancamento.id);
     setValorStr(numeroParaValorFormatado(restante));
-    setData(new Date().toISOString().slice(0, 10));
+    setData(isoHoje());
   }
 
   const valorRecebido = valorFormatadoParaNumero(valorStr);

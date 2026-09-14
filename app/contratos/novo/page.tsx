@@ -7,6 +7,7 @@ import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { calcularParcelasDoContrato, formatarMoeda, Frequencia, TipoEmprestimo } from "../../../lib/calculos";
+import { isoHoje } from "../../../lib/periodo";
 import BotaoVoltar from "../../../components/BotaoVoltar";
 import SeletorClienteBusca from "../../../components/SeletorClienteBusca";
 import CampoMoeda, { valorFormatadoParaNumero } from "../../../components/CampoMoeda";
@@ -38,7 +39,7 @@ function NovoContrato() {
   const [valorEmprestado, setValorEmprestado] = useState("");
   const [valorEntrada, setValorEntrada] = useState("");
   const [temEntrada, setTemEntrada] = useState(false);
-  const [dataEntrada, setDataEntrada] = useState(() => new Date().toISOString().slice(0, 10));
+  const [dataEntrada, setDataEntrada] = useState(() => isoHoje());
   const [tipoEmprestimo, setTipoEmprestimo] = useState<TipoEmprestimo>("juros");
   const [jurosAoMes, setJurosAoMes] = useState("0");
   const [numeroParcelas, setNumeroParcelas] = useState("1");
@@ -50,7 +51,7 @@ function NovoContrato() {
   const [tipoMultaAtraso, setTipoMultaAtraso] = useState<"fixa" | "percentual">("fixa");
   const [valorMultaAtraso, setValorMultaAtraso] = useState("");
   const [frequencia, setFrequencia] = useState<Frequencia>("mensal");
-  const [dataPrimeiraParcela, setDataPrimeiraParcela] = useState(() => new Date().toISOString().slice(0, 10));
+  const [dataPrimeiraParcela, setDataPrimeiraParcela] = useState(() => isoHoje());
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState("");
 

@@ -17,6 +17,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { formatarMoeda } from "../../lib/financeiro";
+import { isoHoje } from "../../lib/periodo";
 import CardSaldo from "../../components/CardSaldo";
 import MesSeletor from "../../components/MesSeletor";
 import { tonCss } from "../../lib/estiloCard";
@@ -42,12 +43,6 @@ type Resumo = {
   contasAReceber: number;
   atrasadas: number;
 };
-
-function isoHoje(offsetDias = 0) {
-  const d = new Date();
-  d.setDate(d.getDate() + offsetDias);
-  return d.toISOString().slice(0, 10);
-}
 
 export default function Financeiro() {
   const hoje = new Date();
@@ -82,9 +77,7 @@ export default function Financeiro() {
   // visualização, exceto quando o mês em questão é o atual — nesse caso usa
   // hoje mesmo, que é o padrão mais útil.
   const ehMesAtual = ano === hoje.getFullYear() && mes === hoje.getMonth();
-  const dataSugerida = ehMesAtual
-    ? hoje.toISOString().slice(0, 10)
-    : `${ano}-${String(mes + 1).padStart(2, "0")}-01`;
+  const dataSugerida = ehMesAtual ? isoHoje() : `${ano}-${String(mes + 1).padStart(2, "0")}-01`;
 
   return (
     <div>
