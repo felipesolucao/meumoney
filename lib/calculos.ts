@@ -221,7 +221,14 @@ export function rotuloDia(data: Date | string): string {
 // ordem em que os itens chegaram — a lista já deve vir ordenada (desc/asc)
 // antes de passar por aqui.
 // ----------------------------------------------------------------------------
-export function agruparPorDia<T>(itens: T[], obterData: (item: T) => Date | string): { rotulo: string; itens: T[] }[] {
+export function agruparPorDia<T>(
+  itens: T[],
+  obterData: (item: T) => Date | string
+// "chave" (yyyy-mm-dd) exposta pro chamador que precisa casar cada grupo com
+// dado externo por data (ex: app/financeiro/transacoes casando cada dia com
+// o saldo da conta NAQUELE dia, ver /api/financeiro/saldo-por-dia) — quem só
+// usa rotulo/itens (a maioria dos chamadores) continua funcionando igual.
+): { chave: string; rotulo: string; itens: T[] }[] {
   const grupos: { chave: string; rotulo: string; itens: T[] }[] = [];
 
   for (const item of itens) {
@@ -236,5 +243,5 @@ export function agruparPorDia<T>(itens: T[], obterData: (item: T) => Date | stri
     }
   }
 
-  return grupos.map(({ rotulo, itens }) => ({ rotulo, itens }));
+  return grupos;
 }

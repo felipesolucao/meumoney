@@ -57,6 +57,10 @@ export default function VerTodasTransacoes() {
   const [busca, setBusca] = useState("");
   const [itens, setItens] = useState<TransacaoItem[]>([]);
   const [carregando, setCarregando] = useState(true);
+  // Saldo em contas ao FINAL de cada dia do período — ver
+  // /api/financeiro/saldo-por-dia. Não depende de "tipo"/busca (é sempre o
+  // saldo real das contas, igual ao mostrado na Início), só do período.
+  const [saldoPorDia, setSaldoPorDia] = useState<Record<string, number>>({});
 
   // Debounce simples — evita disparar uma busca a cada tecla digitada.
   useEffect(() => {
@@ -81,13 +85,23 @@ export default function VerTodasTransacoes() {
       });
   }, [tipo, inicio, fim, busca]);
 
+  useEffect(() => {
+    const params = new URLSearchParams({ de: formatarISO(inicio), ate: formatarISO(fim) });
+    fetch(`/api/financeiro/saldo-por-dia?${params.toString()}`)
+      .then((r) => r.json())
+      .then((data: { data: string; saldo: number }[]) => {
+        setSaldoPorDia(Object.fromEntries(data.map((d) => [d.data, d.saldo])));
+      });
+  }, [inicio, fim]);
+
   const grupos = useMemo(() => {
     const agrupado = agruparPorDia(itens, (i) => i.data);
     return agrupado.map((g) => ({
       ...g,
       total: g.itens.reduce((s, i) => s + (i.entrada ? i.valor : -i.valor), 0),
+      saldo: saldoPorDia[g.chave],
     }));
-  }, [itens]);
+  }, [itens, saldoPorDia]);
 
   return (
     <div>
@@ -134,7 +148,9 @@ export default function VerTodasTransacoes() {
           />
         </div>
 
-        {/* --- Transações, agrupadas por dia com o total de cada dia -------------- */}
+        {/* --- Transações, agrupadas por dia — total do dia e saldo em contas
+            NAQUELE dia (como um extrato bancário, ver /api/financeiro/
+            saldo-por-dia) ----------------------------------------------------- */}
         {carregando ? (
           <p className="text-center text-muted text-sm py-6">Carregando...</p>
         ) : grupos.length === 0 ? (
@@ -142,15 +158,20 @@ export default function VerTodasTransacoes() {
         ) : (
           <div className="space-y-5">
             {grupos.map((grupo) => (
-              <div key={grupo.rotulo}>
-                <div className="flex items-center justify-between mb-2">
+              <div key={grupo.chave}>
+                <div className="flex items-center justify-between gap-2 mb-2">
                   <p className="text-xs font-semibold tracking-wide text-muted">{grupo.rotulo}</p>
-                  <p
-                    className="text-xs font-bold"
-                    style={{ color: grupo.total >= 0 ? "var(--color-success)" : "var(--color-error)" }}
-                  >
-                    {grupo.total >= 0 ? "+" : "−"} {formatarMoeda(Math.abs(grupo.total))}
-                  </p>
+                  <div className="text-right shrink-0">
+                    <p
+                      className="text-xs font-bold"
+                      style={{ color: grupo.total >= 0 ? "var(--color-success)" : "var(--color-error)" }}
+                    >
+                      {grupo.total >= 0 ? "+" : "−"} {formatarMoeda(Math.abs(grupo.total))}
+                    </p>
+                    {grupo.saldo !== undefined && (
+                      <p className="text-[11px] text-muted">Saldo: {formatarMoeda(grupo.saldo)}</p>
+                    )}
+                  </div>
                 </div>
                 <div className="space-y-3">
                   {grupo.itens.map((item) => (
