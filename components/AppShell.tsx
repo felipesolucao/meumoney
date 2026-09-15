@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { IconHome, IconDocument, IconUsers, IconChart, IconChevronDown } from "./Icons";
+import IconKanban from "./crm/IconKanban";
 import logo from "../public/logo.png";
 
 const itens = [
@@ -11,14 +12,16 @@ const itens = [
   { href: "/contratos", label: "Contratos", icon: IconDocument },
   { href: "/clientes", label: "Clientes", icon: IconUsers },
   { href: "/relatorios", label: "Relatórios", icon: IconChart },
+  { href: "/crm", label: "CRM", icon: IconKanban },
 ];
 
 export default function AppShell({ children, nome }: { children: React.ReactNode; nome?: string }) {
   const pathname = usePathname();
-  const semMenu = pathname === "/login" || pathname === "/cadastro" || pathname.startsWith("/admin");
+  const semMenu = pathname === "/login" || pathname === "/cadastro" || pathname.startsWith("/admin") || pathname.startsWith("/crm");
   const contratos = pathname === "/contratos" || pathname.startsWith("/contratos/");
   const clientes = pathname === "/clientes";
   const parcelas = pathname === "/parcelas";
+  const crm = pathname.startsWith("/crm");
 
   return (
     <div className={semMenu ? "" : "desktop-layout"}>
@@ -44,7 +47,17 @@ export default function AppShell({ children, nome }: { children: React.ReactNode
           </nav>
         </aside>
       )}
-      <div key={pathname} className={`app-shell page-transition${contratos ? " contracts-shell" : ""}${clientes ? " clients-shell" : ""}${parcelas ? " parcelas-shell" : ""}${pathname === "/" ? " home-shell" : ""}`}>{children}</div>
+      {/* CRM não leva ".page-transition": a animação de entrada usa transform e,
+          com "animation-fill-mode: both", esse transform continua computado
+          no elemento pra sempre — o que criaria um "containing block" para
+          os cards com position:fixed do quadro (o card arrastado passaria a
+          seguir o cursor relativo a esta div, não à tela). */}
+      <div
+        key={pathname}
+        className={`app-shell${crm ? "" : " page-transition"}${contratos ? " contracts-shell" : ""}${clientes ? " clients-shell" : ""}${parcelas ? " parcelas-shell" : ""}${pathname === "/" ? " home-shell" : ""}${crm ? " crm-shell" : ""}`}
+      >
+        {children}
+      </div>
     </div>
   );
 }

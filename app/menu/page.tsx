@@ -21,11 +21,13 @@ import {
   IconBuilding,
   IconChat,
 } from "../../components/Icons";
+import IconKanban from "../../components/crm/IconKanban";
 
 // "Empréstimos" e "Clientes" saíram do rodapé (BottomNav) para abrir espaço
 // para o botão central de nova transação — por isso entram aqui, no topo da
 // lista, para continuarem a um toque de distância.
 const ITENS = [
+  { href: "/crm", icon: IconKanban, label: "CRM", desc: "Quadro kanban de leads e oportunidades" },
   { href: "/contratos", icon: IconWallet, label: "Contratos", desc: "Valor total, recebido e pendente dos contratos" },
   { href: "/clientes", icon: IconClientes, label: "Clientes", desc: "Lista de clientes e contratos" },
   { href: "/financeiro/novo", icon: IconPlus, label: "Novo lançamento", desc: "Cadastrar uma receita ou despesa" },

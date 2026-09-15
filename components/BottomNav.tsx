@@ -96,7 +96,7 @@ export default function BottomNav({ ehAdmin }: { ehAdmin?: boolean }) {
   // Telas de autenticação e o painel de admin não usam o menu flutuante —
   // login/cadastro porque ainda não há sessão, e admin porque é uma área
   // separada do financeiro pessoal do usuário.
-  if (pathname === "/login" || pathname === "/cadastro" || pathname.startsWith("/admin")) {
+  if (pathname === "/login" || pathname === "/cadastro" || pathname.startsWith("/admin") || pathname.startsWith("/crm")) {
     return null;
   }
 

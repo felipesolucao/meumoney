@@ -271,6 +271,15 @@ h6 {
   padding-bottom: var(--shell-bottom-space);
 }
 
+/* CRM (ver app/crm) é outro produto dentro do app: quadro kanban largo, tema
+   sempre escuro (não segue --color-background do tema claro/escuro geral) —
+   por isso ocupa a tela inteira em vez da largura estreita de app mobile. */
+.app-shell.crm-shell {
+  max-width: none;
+  padding-bottom: 0;
+  background: #0b1120;
+}
+
 /* Transição leve ao trocar de página (mesma sensação de "show up" de app
    nativo): a tela nova entra com um fade + leve subida, sem depender de
    nenhuma lib — só troca de key no AppShell (ver components/AppShell.tsx)

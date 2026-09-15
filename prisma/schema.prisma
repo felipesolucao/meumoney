@@ -64,6 +64,8 @@ model Usuario {
   comprasCartao          CompraCartao[]
   modelosCobranca        CobrancaModelo[]
   modelosContrato        ContratoModelo[]
+  // --- CRM (produto separado dentro do app — ver app/crm) -------------------
+  leadsCrm               LeadCrm[]
 
   @@map("usuarios")
 }
@@ -646,4 +648,69 @@ model HistoricoAcao {
 
   @@index([usuarioId, entidade, criadoEm])
   @@map("historico_acoes")
+}
+
+// ============================================================================
+// MÓDULO: CRM (produto separado, acessado em /crm)
+// ----------------------------------------------------------------------------
+// Kanban de leads/oportunidades — não tem relação com Cliente/Contrato
+// (que são o empréstimo já fechado). Cada usuário tem seu próprio funil.
+// ============================================================================
+
+// ----------------------------------------------------------------------------
+// ENUM: Estágio do lead no funil (= coluna do quadro Kanban)
+// ----------------------------------------------------------------------------
+enum EstagioLeadCrm {
+  primeira_tentativa
+  segunda_tentativa
+  email_cobranca
+  em_negociacao
+  sem_resposta
+  sem_contato
+  a_cancelar
+  cancelado
+  negociacao_ok
+  negociado
+  aguardando_pagamento
+}
+
+// ----------------------------------------------------------------------------
+// MODEL: LeadCrm
+// ----------------------------------------------------------------------------
+model LeadCrm {
+  id        String         @id @default(cuid())
+  nome      String
+  estagio   EstagioLeadCrm @default(primeira_tentativa)
+  // Posição manual dentro da coluna (drag and drop) — menor valor fica no topo.
+  ordem     Int            @default(0)
+
+  // --- Campos vindos da planilha de importação ------------------------------
+  valorEmAberto           Decimal? @db.Decimal(12, 2)
+  quantidadeParcelas      Int?
+  quantidadeColaboradores Int?
+  cnpj                    String?
+  telefone                String?
+  telefone2               String?
+  email                   String?
+  sindicatoPatronal       String?
+  origem                  String? // canal de origem: WhatsApp, Instagram, Google Ads, indicação...
+  observacoes             String?  @db.Text
+
+  // Colunas extras que a planilha do usuário venha a trazer no futuro, sem
+  // precisar de uma migração de banco a cada nova coluna adicionada por ele.
+  camposExtras Json?
+
+  // Reiniciado sempre que o lead muda de estágio — é o que alimenta o
+  // indicador de "sem movimento" (dias parado numa mesma etapa) no topo do
+  // quadro.
+  movimentadoEm DateTime @default(now())
+
+  criadoEm    DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  usuarioId String
+  usuario   Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioId, estagio, ordem])
+  @@map("crm_leads")
 }

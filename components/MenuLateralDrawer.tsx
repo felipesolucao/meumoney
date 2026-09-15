@@ -29,8 +29,10 @@ import {
   IconDocument,
   IconChat,
 } from "./Icons";
+import IconKanban from "./crm/IconKanban";
 
 const FERRAMENTAS = [
+  { href: "/crm", icon: IconKanban, label: "CRM" },
   { href: "/contratos", icon: IconWallet, label: "Contratos" },
   { href: "/clientes", icon: IconUsers, label: "Clientes" },
   { href: "/parcelas", icon: IconCalendar, label: "Calendário" },
