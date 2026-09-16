@@ -12,6 +12,7 @@ import AppShell from "../components/AppShell";
 import { obterSessao } from "../lib/auth";
 import ToastProvider from "../components/ToastProvider";
 import ThemeProvider, { SCRIPT_TEMA_INICIAL } from "../components/ThemeProvider";
+import PwaAtualizador from "../components/PwaAtualizador";
 
 // Fonte única do projeto inteiro (ver --font-sans em app/globals.css, que
 // referencia esta variável) — next/font baixa e self-hospeda o Inter no
@@ -97,6 +98,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <script dangerouslySetInnerHTML={{ __html: SCRIPT_TEMA_INICIAL }} />
       </head>
       <body className={`${inter.variable} font-sans`}>
+        <PwaAtualizador />
         <ThemeProvider>
           <ToastProvider>
             <AppShell nome={sessao?.nome}>{children}</AppShell>

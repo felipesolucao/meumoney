@@ -35,9 +35,16 @@ const withPWA = require("@ducanh2912/next-pwa").default({
 
   // Quando existe uma versão nova do service worker esperando (usuário
   // deixou uma aba aberta enquanto um novo deploy saía), assume o controle
-  // imediatamente (skipWaiting) e recarrega a aba sozinha quando a conexão
-  // volta (reloadOnOnline) — assim o usuário nunca fica preso rodando uma
-  // versão antiga do app.
+  // imediatamente (skipWaiting/clientsClaim — explícitos aqui, embora já
+  // sejam o padrão do plugin, pra deixar a intenção clara) e recarrega a
+  // aba sozinha quando a conexão volta (reloadOnOnline). Só isso ainda
+  // deixa uma janela: a própria requisição de um F5 pode ser servida pelo
+  // worker antigo antes da troca terminar — por isso components/
+  // PwaAtualizador.tsx também escuta "controllerchange" e recarrega a
+  // página assim que o worker novo assume, garantindo a atualização sem
+  // precisar de dois refreshes.
+  skipWaiting: true,
+  clientsClaim: true,
   reloadOnOnline: true,
 
   // fallbacks: {} (vazio de propósito, e é opção de nível raiz — não vai
