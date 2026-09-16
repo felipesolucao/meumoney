@@ -115,12 +115,13 @@
 
   /* --------------------------------------------------------------------------
      TIPOGRAFIA
-     Inter (via next/font, ver app/layout.tsx) é a fonte de todo o projeto —
-     "--font-inter" vem do next/font; o resto da lista é só o fallback caso a
-     fonte ainda não tenha carregado. Título e corpo usam a mesma família;
-     para dar uma fonte própria só aos títulos, troque --font-heading.
+     Public Sans (via next/font, ver app/layout.tsx) é a fonte de todo o
+     projeto — "--font-app" vem do next/font; o resto da lista é só o
+     fallback caso a fonte ainda não tenha carregado. Título e corpo usam a
+     mesma família; para dar uma fonte própria só aos títulos, troque
+     --font-heading.
      ------------------------------------------------------------------------ */
-  --font-sans: var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI",
+  --font-sans: var(--font-app), -apple-system, BlinkMacSystemFont, "Segoe UI",
     Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-heading: var(--font-sans);
 
@@ -267,8 +268,8 @@ h6 {
 
 /* Sem isso, inputs/botões/selects/textareas usam a fonte padrão do
    navegador/SO (não herdam --font-sans do body por padrão, é assim que o
-   HTML funciona) — por isso a troca pra Inter "não pegava" em formulários
-   inteiros mesmo com o body já em Inter. */
+   HTML funciona) — por isso a troca de fonte "não pegava" em formulários
+   inteiros mesmo com o body já na fonte certa. */
 button,
 input,
 optgroup,
