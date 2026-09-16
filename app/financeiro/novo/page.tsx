@@ -244,6 +244,22 @@ function NovoLancamentoConteudo() {
     setValor(somenteDigitos ? digitosParaValorFormatado(somenteDigitos) : "");
   }
 
+  // BUG CORRIGIDO: como é um campo de "calculadora" (cada dígito sempre se
+  // soma ao final da sequência de centavos), clicar no meio do valor já
+  // formatado e digitar inseria o dígito ali, multiplicando o valor total por
+  // 10x/100x. Forçamos o cursor pro final quando ele fica parado no meio do
+  // texto — mas preservamos uma seleção de texto de verdade (Ctrl/Cmd+A,
+  // arrastar o mouse), senão a tecla seguinte (que deveria substituir o
+  // valor selecionado) só apendaria no final.
+  function moverCursorParaFim(e: React.SyntheticEvent<HTMLInputElement>) {
+    const el = e.currentTarget;
+    requestAnimationFrame(() => {
+      if (el.selectionStart !== el.selectionEnd) return;
+      const fim = el.value.length;
+      el.setSelectionRange(fim, fim);
+    });
+  }
+
   function escolherAtalhoData(atalho: "hoje" | "ontem" | "outros") {
     setDataAtalho(atalho);
     if (atalho === "hoje") setDataVencimento(isoHoje());
@@ -470,6 +486,9 @@ function NovoLancamentoConteudo() {
               <input
                 value={valor}
                 onChange={aoDigitarValor}
+                onFocus={moverCursorParaFim}
+                onClick={moverCursorParaFim}
+                onKeyUp={moverCursorParaFim}
                 placeholder="0,00"
                 inputMode="numeric"
                 className={`w-full rounded-md border-2 border-transparent pl-14 pr-4 py-4 outline-none text-3xl font-extrabold bg-background ${
