@@ -984,7 +984,14 @@
   font-weight: 600;
   pointer-events: none;
 }
-.crm-input-com-prefixo {
+/* Seletor composto (".crm-input.crm-input-com-prefixo"), não só
+   ".crm-input-com-prefixo" — com um só ".crm-input-com-prefixo" a
+   especificidade empata com a regra ".crm-input" (ambas uma classe só) lá
+   embaixo neste arquivo, e como ".crm-input" vem depois no CSS, o "padding:
+   10px 12px" dela (que também define padding-left) vencia e sobrescrevia
+   este padding-left de volta pra 12px — sem espaço reservado pro "R$", que
+   ficava em cima do primeiro dígito. */
+.crm-input.crm-input-com-prefixo {
   padding-left: 34px;
 }
 .crm-painel-footer {
