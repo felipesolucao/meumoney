@@ -291,6 +291,22 @@
   padding: 13px 13px 11px;
   border-bottom: 1px solid var(--crm-border);
   flex-shrink: 0;
+  cursor: grab;
+  border-radius: var(--crm-radius) var(--crm-radius) 0 0;
+  transition: background 0.12s, box-shadow 0.12s, opacity 0.12s;
+}
+.crm-column-head:active {
+  cursor: grabbing;
+}
+/* Arrastar o cabeçalho reordena a coluna inteira — ver onColunaDrag* em
+   CrmBoard.tsx (Drag and Drop nativo, mecânica separada do arraste dos
+   cards, que usa Pointer Events). */
+.crm-column-head.is-dragging {
+  opacity: 0.4;
+}
+.crm-column-head.is-drop-target {
+  background: var(--crm-surface-2);
+  box-shadow: inset 0 0 0 1.5px var(--crm-accent);
 }
 .crm-column-head-top {
   display: flex;
@@ -304,8 +320,9 @@
   flex-shrink: 0;
 }
 .crm-column-title {
-  font-weight: 700;
-  font-size: 13px;
+  font-weight: 800;
+  font-size: 15px;
+  letter-spacing: -0.01em;
   flex: 1;
   min-width: 0;
   overflow: hidden;
@@ -792,6 +809,54 @@
   flex: 1;
   accent-color: var(--crm-accent);
 }
+
+/* Atalhos pra definir o Score do cliente sem arrastar a barra — ver
+   LeadPainelFormulario.tsx. */
+.crm-score-botoes {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.crm-score-botao {
+  flex: 1;
+  padding: 7px 0;
+  border-radius: 8px;
+  border: 1px solid var(--crm-border-strong);
+  background: var(--crm-surface-2);
+  color: var(--crm-text-muted);
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+.crm-score-botao:hover {
+  background: var(--crm-surface-3);
+  color: var(--crm-text);
+}
+.crm-score-botao.is-ativo {
+  background: var(--crm-accent);
+  border-color: var(--crm-accent);
+  color: #06210f;
+}
+
+/* Campo de valor monetário (R$) com prefixo fixo — ver
+   CampoValorMonetario.tsx. */
+.crm-input-prefixo-wrap {
+  position: relative;
+}
+.crm-input-prefixo {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--crm-text-faint);
+  font-size: 13px;
+  font-weight: 600;
+  pointer-events: none;
+}
+.crm-input-com-prefixo {
+  padding-left: 34px;
+}
 .crm-painel-footer {
   display: flex;
   justify-content: space-between;
@@ -927,12 +992,42 @@
   text-align: center;
   padding: 18px 8px;
 }
+.crm-historico-anexo {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--crm-accent);
+  text-decoration: none;
+}
+.crm-historico-anexo:hover {
+  text-decoration: underline;
+}
 .crm-historico-form {
   display: flex;
   flex-direction: column;
   gap: 8px;
   padding-top: 12px;
   border-top: 1px solid var(--crm-border);
+}
+.crm-historico-anexo-linha {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.crm-historico-anexo-selecionado {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--crm-text-muted);
+  background: var(--crm-surface-2);
+  border: 1px solid var(--crm-border);
+  border-radius: 999px;
+  padding: 4px 6px 4px 10px;
 }
 .crm-historico-form-linha {
   display: flex;
@@ -1042,6 +1137,102 @@
   position: sticky;
   top: 0;
   background: var(--crm-surface-2);
+}
+
+/* --------------------------------------------------------------------------
+   Painel "Gerenciar grupos" — ver GerenciarGruposPainel.tsx
+   -------------------------------------------------------------------------- */
+.crm-grupos-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.crm-grupos-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--crm-border);
+  background: var(--crm-surface-2);
+}
+.crm-grupos-item-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.crm-grupos-item-nome {
+  font-size: 13.5px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.crm-grupos-item-padrao {
+  font-size: 10.5px;
+  color: var(--crm-text-faint);
+}
+.crm-grupos-item-input {
+  flex: 1;
+  min-width: 0;
+}
+.crm-grupos-item-acoes {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+/* Toggle estilo "ionic" (interruptor arredondado) — ver o
+   "visivel" de cada grupo em GerenciarGruposPainel.tsx. */
+.crm-toggle {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  width: 40px;
+  height: 23px;
+  flex-shrink: 0;
+  margin-left: 4px;
+}
+.crm-toggle input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  margin: 0;
+  cursor: pointer;
+  z-index: 1;
+}
+.crm-toggle-track {
+  position: absolute;
+  inset: 0;
+  background: var(--crm-surface-3);
+  border-radius: 999px;
+  transition: background 0.15s;
+}
+.crm-toggle input:checked ~ .crm-toggle-track {
+  background: var(--crm-accent);
+}
+.crm-toggle-thumb {
+  position: absolute;
+  top: 2.5px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+  transition: transform 0.15s;
+}
+.crm-toggle input:checked ~ .crm-toggle-thumb {
+  transform: translateX(17px);
+}
+.crm-toggle input:disabled ~ .crm-toggle-track {
+  opacity: 0.5;
 }
 
 /* --------------------------------------------------------------------------

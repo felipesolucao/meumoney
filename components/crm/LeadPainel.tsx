@@ -10,7 +10,7 @@
 "use client";
 
 import { useState } from "react";
-import type { LeadCrmResumo } from "../../lib/crm";
+import type { LeadCrmResumo, EstagioConfigCrm } from "../../lib/crm";
 import { infoEstagio, faixaProgresso } from "../../lib/crm";
 import { useToast } from "../ToastProvider";
 import AtendimentosHistorico from "./AtendimentosHistorico";
@@ -100,12 +100,14 @@ function montarPayload(form: LeadPainelFormState) {
 export default function LeadPainel({
   leadInicial,
   estagioInicial,
+  estagios,
   onFechar,
   onSalvar,
   onExcluir,
 }: {
   leadInicial?: LeadCrmResumo | null;
   estagioInicial?: string;
+  estagios: EstagioConfigCrm[];
   onFechar: () => void;
   onSalvar: () => void;
   onExcluir?: (id: string) => void;
@@ -197,7 +199,7 @@ export default function LeadPainel({
         </div>
 
         <div className="crm-painel-body">
-          <LeadPainelFormulario form={form} campo={campo} erro={erro} />
+          <LeadPainelFormulario form={form} campo={campo} erro={erro} estagios={estagios} />
 
           {leadInicial ? (
             <AtendimentosHistorico leadId={leadInicial.id} />

@@ -7,17 +7,22 @@
 // ============================================================================
 "use client";
 
-import { ESTAGIOS, faixaProgresso, FAIXAS_PROGRESSO } from "../../lib/crm";
+import { faixaProgresso, type EstagioConfigCrm } from "../../lib/crm";
 import type { LeadPainelFormState } from "./LeadPainel";
+import CampoValorMonetario from "./CampoValorMonetario";
+
+const OPCOES_SCORE = [25, 50, 75, 100];
 
 export default function LeadPainelFormulario({
   form,
   campo,
   erro,
+  estagios,
 }: {
   form: LeadPainelFormState;
   campo: <K extends keyof LeadPainelFormState>(chave: K, valor: LeadPainelFormState[K]) => void;
   erro: string | null;
+  estagios: EstagioConfigCrm[];
 }) {
   const faixaAtual = faixaProgresso(form.progresso);
 
@@ -32,7 +37,7 @@ export default function LeadPainelFormulario({
         <div className="crm-field">
           <label className="crm-label">Etapa</label>
           <select className="crm-select" value={form.estagio} onChange={(e) => campo("estagio", e.target.value)}>
-            {ESTAGIOS.map((e) => (
+            {estagios.map((e) => (
               <option key={e.id} value={e.id}>
                 {e.label}
               </option>
@@ -46,26 +51,31 @@ export default function LeadPainelFormulario({
       </div>
       <div className="crm-field">
         <label className="crm-label">
-          Progresso — {faixaAtual.label} ({form.progresso}%)
+          Score do cliente — {faixaAtual.label} ({form.progresso}%)
         </label>
+        <div className="crm-score-botoes">
+          {OPCOES_SCORE.map((valor) => (
+            <button
+              key={valor}
+              type="button"
+              className={`crm-score-botao${form.progresso === valor ? " is-ativo" : ""}`}
+              onClick={() => campo("progresso", valor)}
+            >
+              {valor}%
+            </button>
+          ))}
+        </div>
         <div className="crm-painel-progresso-linha">
           <input type="range" min={0} max={100} value={form.progresso} onChange={(e) => campo("progresso", Number(e.target.value))} />
         </div>
-        <p className="crm-hint">{FAIXAS_PROGRESSO.map((f) => `${f.label} ${f.min}-${f.max}%`).join(" · ")}</p>
       </div>
 
       <div className="crm-painel-secao-titulo" style={{ marginTop: 6 }}>
         Financeiro
       </div>
       <div className="crm-field-row">
-        <div className="crm-field">
-          <label className="crm-label">Valor em aberto (R$)</label>
-          <input className="crm-input" type="number" step="0.01" value={form.valorEmAberto} onChange={(e) => campo("valorEmAberto", e.target.value)} />
-        </div>
-        <div className="crm-field">
-          <label className="crm-label">Valor pago (R$)</label>
-          <input className="crm-input" type="number" step="0.01" value={form.valorPago} onChange={(e) => campo("valorPago", e.target.value)} />
-        </div>
+        <CampoValorMonetario label="Valor em aberto" valor={form.valorEmAberto} onMudar={(v) => campo("valorEmAberto", v)} />
+        <CampoValorMonetario label="Valor pago" valor={form.valorPago} onMudar={(v) => campo("valorPago", v)} />
       </div>
       <div className="crm-field-row">
         <div className="crm-field">

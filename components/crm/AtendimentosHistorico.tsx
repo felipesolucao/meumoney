@@ -8,16 +8,22 @@
 // ============================================================================
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { AtendimentoCrmResumo } from "../../lib/crm";
 import { formatarDataCrm } from "../../lib/crm";
-import { IconEdit, IconTrash, IconCheck, IconClose } from "../Icons";
+import { IconEdit, IconTrash, IconCheck, IconClose, IconDocument } from "../Icons";
 import { useToast } from "../ToastProvider";
 
 function paraInputDatetime(iso: string): string {
   const d = new Date(iso);
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function formatarTamanhoArquivo(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 export default function AtendimentosHistorico({ leadId }: { leadId: string }) {
@@ -30,7 +36,9 @@ export default function AtendimentosHistorico({ leadId }: { leadId: string }) {
   const [novaObservacao, setNovaObservacao] = useState("");
   const [novaTentativa, setNovaTentativa] = useState("");
   const [novaData, setNovaData] = useState(() => paraInputDatetime(new Date().toISOString()));
+  const [novoArquivo, setNovoArquivo] = useState<File | null>(null);
   const [enviando, setEnviando] = useState(false);
+  const inputArquivoRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     let cancelado = false;
@@ -57,21 +65,21 @@ export default function AtendimentosHistorico({ leadId }: { leadId: string }) {
     }
     setEnviando(true);
     try {
-      const resposta = await fetch(`/api/crm/leads/${leadId}/atendimentos`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          observacao: novaObservacao,
-          tentativaNumero: novaTentativa || null,
-          dataTratativa: new Date(novaData).toISOString(),
-        }),
-      });
+      const formData = new FormData();
+      formData.set("observacao", novaObservacao);
+      if (novaTentativa) formData.set("tentativaNumero", novaTentativa);
+      formData.set("dataTratativa", new Date(novaData).toISOString());
+      if (novoArquivo) formData.set("arquivo", novoArquivo);
+
+      const resposta = await fetch(`/api/crm/leads/${leadId}/atendimentos`, { method: "POST", body: formData });
       const dados = await resposta.json();
       if (!resposta.ok) throw new Error(dados.error || "Não foi possível salvar.");
       setItens((prev) => [dados, ...(prev ?? [])]);
       setNovaObservacao("");
       setNovaTentativa("");
       setNovaData(paraInputDatetime(new Date().toISOString()));
+      setNovoArquivo(null);
+      if (inputArquivoRef.current) inputArquivoRef.current.value = "";
       showToast("Atendimento registrado.");
     } catch (e) {
       showToast(e instanceof Error ? e.message : "Erro ao salvar atendimento.", "erro");
@@ -156,6 +164,18 @@ export default function AtendimentosHistorico({ leadId }: { leadId: string }) {
               ) : (
                 <div className="crm-historico-texto">{atendimento.observacao}</div>
               )}
+              {atendimento.arquivoNome && (
+                <a
+                  className="crm-historico-anexo"
+                  href={`/api/crm/leads/${leadId}/atendimentos/${atendimento.id}/arquivo`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <IconDocument size={13} />
+                  {atendimento.arquivoNome}
+                  {atendimento.arquivoTamanho != null && <span> · {formatarTamanhoArquivo(atendimento.arquivoTamanho)}</span>}
+                </a>
+              )}
             </div>
           ))}
       </div>
@@ -168,6 +188,33 @@ export default function AtendimentosHistorico({ leadId }: { leadId: string }) {
           onChange={(e) => setNovaObservacao(e.target.value)}
           style={{ minHeight: 60 }}
         />
+        <div className="crm-historico-anexo-linha">
+          <button type="button" className="crm-btn crm-btn-ghost crm-btn-sm" onClick={() => inputArquivoRef.current?.click()}>
+            <IconDocument size={13} /> {novoArquivo ? "Trocar arquivo" : "Anexar arquivo"}
+          </button>
+          {novoArquivo && (
+            <span className="crm-historico-anexo-selecionado">
+              {novoArquivo.name}
+              <button
+                type="button"
+                className="crm-icon-btn"
+                onClick={() => {
+                  setNovoArquivo(null);
+                  if (inputArquivoRef.current) inputArquivoRef.current.value = "";
+                }}
+                title="Remover anexo"
+              >
+                <IconClose size={12} />
+              </button>
+            </span>
+          )}
+          <input
+            ref={inputArquivoRef}
+            type="file"
+            hidden
+            onChange={(e) => setNovoArquivo(e.target.files?.[0] ?? null)}
+          />
+        </div>
         <div className="crm-historico-form-linha">
           <input
             className="crm-input"

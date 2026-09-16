@@ -9,20 +9,24 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { RegraAutomacaoCrm } from "../../lib/crm";
-import { ESTAGIOS, infoEstagio } from "../../lib/crm";
+import type { RegraAutomacaoCrm, EstagioConfigCrm } from "../../lib/crm";
+import { ESTAGIOS } from "../../lib/crm";
 import { useToast } from "../ToastProvider";
 import { IconTrash } from "../Icons";
 
 type NovaRegra = { nome: string; statusPlanilha: string; progressoMin: string; progressoMax: string; estagioDestino: string };
 
-const REGRA_VAZIA: NovaRegra = { nome: "", statusPlanilha: "", progressoMin: "", progressoMax: "", estagioDestino: ESTAGIOS[0].id };
+const REGRA_VAZIA_BASE = { nome: "", statusPlanilha: "", progressoMin: "", progressoMax: "" };
 
-export default function AutomacoesPainel({ onFechar }: { onFechar: () => void }) {
+export default function AutomacoesPainel({ estagios, onFechar }: { estagios: EstagioConfigCrm[]; onFechar: () => void }) {
   const showToast = useToast();
   const [regras, setRegras] = useState<RegraAutomacaoCrm[] | null>(null);
-  const [nova, setNova] = useState<NovaRegra>(REGRA_VAZIA);
+  const [nova, setNova] = useState<NovaRegra>({ ...REGRA_VAZIA_BASE, estagioDestino: estagios[0]?.id ?? ESTAGIOS[0].id });
   const [salvando, setSalvando] = useState(false);
+
+  function infoEstagioLocal(id: string): EstagioConfigCrm {
+    return estagios.find((e) => e.id === id) ?? estagios[0];
+  }
 
   useEffect(() => {
     fetch("/api/crm/automacoes")
@@ -70,7 +74,7 @@ export default function AutomacoesPainel({ onFechar }: { onFechar: () => void })
       const dados = await resposta.json();
       if (!resposta.ok) throw new Error(dados.error || "Não foi possível criar a regra.");
       setRegras((prev) => [...(prev ?? []), dados]);
-      setNova(REGRA_VAZIA);
+      setNova({ ...REGRA_VAZIA_BASE, estagioDestino: estagios[0]?.id ?? ESTAGIOS[0].id });
       showToast("Automação criada.");
     } catch (e) {
       showToast(e instanceof Error ? e.message : "Erro ao criar automação.", "erro");
@@ -113,7 +117,7 @@ export default function AutomacoesPainel({ onFechar }: { onFechar: () => void })
                 {regra.statusPlanilha ? `Status = "${regra.statusPlanilha}"` : "Qualquer status"}
                 {" · "}
                 Progresso {regra.progressoMin ?? 0}-{regra.progressoMax ?? 100}%{" → "}
-                <strong style={{ color: infoEstagio(regra.estagioDestino).cor }}>{infoEstagio(regra.estagioDestino).label}</strong>
+                <strong style={{ color: infoEstagioLocal(regra.estagioDestino).cor }}>{infoEstagioLocal(regra.estagioDestino).label}</strong>
               </p>
             </div>
           ))}
@@ -133,7 +137,7 @@ export default function AutomacoesPainel({ onFechar }: { onFechar: () => void })
                 value={nova.estagioDestino}
                 onChange={(e) => setNova((n) => ({ ...n, estagioDestino: e.target.value }))}
               >
-                {ESTAGIOS.map((e) => (
+                {estagios.map((e) => (
                   <option key={e.id} value={e.id}>
                     Mover para: {e.label}
                   </option>

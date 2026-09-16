@@ -5,12 +5,18 @@
 // a barra de navegação inferior fixa.
 // ============================================================================
 import type { Metadata, Viewport } from "next";
+import { Inter } from "next/font/google";
 import "./globals.css";
 import BottomNav from "../components/BottomNav";
 import AppShell from "../components/AppShell";
 import { obterSessao } from "../lib/auth";
 import ToastProvider from "../components/ToastProvider";
 import ThemeProvider, { SCRIPT_TEMA_INICIAL } from "../components/ThemeProvider";
+
+// Fonte única do projeto inteiro (ver --font-sans em app/globals.css, que
+// referencia esta variável) — next/font baixa e self-hospeda o Inter no
+// build, sem depender do Google Fonts em runtime nem de "flash" de fonte.
+const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
 
 export const metadata: Metadata = {
   title: "MeuMoney — Sua vida financeira sob controle",
@@ -87,7 +93,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             página, para nunca "piscar" claro e só depois escurecer. */}
         <script dangerouslySetInnerHTML={{ __html: SCRIPT_TEMA_INICIAL }} />
       </head>
-      <body className="font-sans">
+      <body className={`${inter.variable} font-sans`}>
         <ThemeProvider>
           <ToastProvider>
             <AppShell nome={sessao?.nome}>{children}</AppShell>
