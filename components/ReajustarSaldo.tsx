@@ -9,11 +9,17 @@ import styles from "./ReajustarSaldo.module.css";
 // BUG CORRIGIDO: campo "calculadora" (cada dígito sempre se soma ao final da
 // sequência de centavos) — clicar no meio do valor já formatado e digitar
 // inseria o dígito ali, multiplicando o valor total por 10x/100x. Forçamos o
-// cursor pro final a cada clique/foco.
+// cursor pro final quando ele fica parado no meio do texto — mas preservamos
+// uma seleção de texto de verdade (Ctrl/Cmd+A, arrastar o mouse), senão a
+// tecla seguinte (que deveria substituir o valor selecionado) só apendaria
+// no final.
 function moverCursorParaFim(e: React.SyntheticEvent<HTMLInputElement>) {
   const el = e.currentTarget;
-  const fim = el.value.length;
-  requestAnimationFrame(() => el.setSelectionRange(fim, fim));
+  requestAnimationFrame(() => {
+    if (el.selectionStart !== el.selectionEnd) return;
+    const fim = el.value.length;
+    el.setSelectionRange(fim, fim);
+  });
 }
 
 export default function ReajustarSaldo({ conta, onFechar, onSalvo }: {

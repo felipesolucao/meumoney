@@ -12,9 +12,14 @@
 // sequência de centavos, multiplicando o valor final por 10x, 100x etc. (o
 // "número total" ficava com um bug visível). Como esse é um campo de
 // "calculadora" (sempre edita a partir do último centavo, não por posição de
-// texto), a correção é forçar o cursor pro final a cada clique/foco — assim
-// qualquer tecla sempre se soma ao final da sequência de dígitos, nunca no
-// meio.
+// texto), a correção é forçar o cursor pro final quando ele fica parado no
+// meio do texto — assim qualquer tecla sempre se soma ao final da sequência
+// de dígitos, nunca no meio.
+//
+// Uma seleção de texto de verdade (Ctrl/Cmd+A, arrastar o mouse) é
+// preservada: forçar o cursor pro final também nesse caso destruía a
+// seleção antes da tecla seguinte substituí-la, fazendo o dígito digitado
+// ser inserido no final em vez de substituir o valor selecionado.
 // ============================================================================
 "use client";
 
@@ -24,10 +29,14 @@ function centavosParaExibicao(centavos: number): string {
 
 function moverCursorParaFim(e: React.SyntheticEvent<HTMLInputElement>) {
   const el = e.currentTarget;
-  const fim = el.value.length;
   // Precisa ser no próximo frame — no momento do evento o navegador ainda
-  // não aplicou a seleção padrão (clique/foco), que sobrescreveria isto.
-  requestAnimationFrame(() => el.setSelectionRange(fim, fim));
+  // não aplicou a seleção padrão (clique/foco/seleção via teclado), que
+  // sobrescreveria isto.
+  requestAnimationFrame(() => {
+    if (el.selectionStart !== el.selectionEnd) return;
+    const fim = el.value.length;
+    el.setSelectionRange(fim, fim);
+  });
 }
 
 export default function CampoValorMonetario({
