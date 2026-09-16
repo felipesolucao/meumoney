@@ -5,19 +5,20 @@
 //         CrmBoard.tsx). Mesmo padrão de app/api/crm/leads/reordenar.
 // ============================================================================
 import { NextRequest, NextResponse } from "next/server";
-import { EstagioLeadCrm } from "@prisma/client";
 import { prisma } from "../../../../../lib/prisma";
 import { obterSessao } from "../../../../../lib/auth";
-import { ESTAGIOS_IDS, mesclarEstagiosConfig } from "../../../../../lib/crm";
+import { mesclarEstagiosConfig } from "../../../../../lib/crm";
+import { estagiosValidosDoUsuario } from "../../../../../lib/crmAutomacao";
 
 export async function POST(req: NextRequest) {
   const sessao = await obterSessao();
   if (!sessao) return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
 
   const body = await req.json();
-  const { idsNaOrdem } = body as { idsNaOrdem: EstagioLeadCrm[] };
+  const { idsNaOrdem } = body as { idsNaOrdem: string[] };
 
-  if (!Array.isArray(idsNaOrdem) || idsNaOrdem.some((id) => !ESTAGIOS_IDS.includes(id))) {
+  const validos = await estagiosValidosDoUsuario(sessao.id);
+  if (!Array.isArray(idsNaOrdem) || idsNaOrdem.some((id) => !validos.has(id))) {
     return NextResponse.json({ error: "Dados inválidos." }, { status: 400 });
   }
 

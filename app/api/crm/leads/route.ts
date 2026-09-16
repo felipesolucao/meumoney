@@ -9,8 +9,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "../../../../lib/prisma";
 import { obterSessao } from "../../../../lib/auth";
-import { ESTAGIOS_IDS } from "../../../../lib/crm";
-import { aplicarAutomacoes } from "../../../../lib/crmAutomacao";
+import { aplicarAutomacoes, estagiosValidosDoUsuario } from "../../../../lib/crmAutomacao";
 
 export async function GET() {
   const sessao = await obterSessao();
@@ -50,7 +49,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Nome é obrigatório." }, { status: 400 });
   }
 
-  const estagioFinal = ESTAGIOS_IDS.includes(estagio) ? estagio : "primeira_tentativa";
+  const validos = await estagiosValidosDoUsuario(sessao.id);
+  const estagioFinal = validos.has(estagio) ? estagio : "primeira_tentativa";
 
   // Novo card entra no topo da coluna — todos os outros descem uma posição.
   await prisma.leadCrm.updateMany({

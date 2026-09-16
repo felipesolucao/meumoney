@@ -661,29 +661,18 @@ model HistoricoAcao {
 // ============================================================================
 
 // ----------------------------------------------------------------------------
-// ENUM: Estágio do lead no funil (= coluna do quadro Kanban)
-// ----------------------------------------------------------------------------
-enum EstagioLeadCrm {
-  primeira_tentativa
-  segunda_tentativa
-  email_cobranca
-  em_negociacao
-  sem_resposta
-  sem_contato
-  a_cancelar
-  cancelado
-  negociacao_ok
-  negociado
-  aguardando_pagamento
-}
-
-// ----------------------------------------------------------------------------
 // MODEL: LeadCrm
 // ----------------------------------------------------------------------------
+// "estagio" era um enum fixo (EstagioLeadCrm) com as 11 colunas padrão — virou
+// String pra permitir grupos criados pelo próprio usuário (ver "Gerenciar
+// grupos"), identificados por um id gerado ("custom_..."). A lista de
+// colunas padrão (id, label, cor) continua fixa em ESTAGIOS (lib/crm.ts);
+// grupos customizados só existem via EstagioCrmConfig, que passa a ser o
+// cadastro completo de QUALQUER grupo que não seja um dos 11 padrão.
 model LeadCrm {
-  id        String         @id @default(cuid())
+  id        String @id @default(cuid())
   nome      String
-  estagio   EstagioLeadCrm @default(primeira_tentativa)
+  estagio   String @default("primeira_tentativa")
   // Posição manual dentro da coluna (drag and drop) — menor valor fica no topo.
   ordem     Int            @default(0)
 
@@ -769,17 +758,21 @@ model AtendimentoCrm {
 // ----------------------------------------------------------------------------
 // MODEL: EstagioCrmConfig — personalização por usuário das colunas do quadro
 // ----------------------------------------------------------------------------
-// As colunas em si (id, cor) continuam fixas no enum EstagioLeadCrm e em
-// ESTAGIOS (ver lib/crm.ts) — o que cada usuário pode mudar é a ordem, se a
-// coluna aparece no quadro (visivel) e o nome exibido (nomePersonalizado).
-// Só existe uma linha aqui quando o usuário mexeu naquele estágio; estágios
-// "intocados" usam os padrões (ver mesclarEstagiosConfig em lib/crm.ts).
+// Pra um estágio PADRÃO (dos 11 fixos em ESTAGIOS, lib/crm.ts), só existe uma
+// linha aqui quando o usuário mexeu nele (ordem/visivel/nome) — os
+// "intocados" usam os padrões direto (ver mesclarEstagiosConfig). Pra um
+// grupo CUSTOMIZADO (criado pelo usuário, "estagio" fora da lista padrão),
+// esta linha é o cadastro inteiro do grupo: sem ela, o grupo não existe —
+// "nomePersonalizado" e "cor" deixam de ser opcionais na prática.
 model EstagioCrmConfig {
-  id                String         @id @default(cuid())
-  estagio           EstagioLeadCrm
-  ordem             Int            @default(0)
-  visivel           Boolean        @default(true)
+  id                String  @id @default(cuid())
+  estagio           String
+  ordem             Int     @default(0)
+  visivel           Boolean @default(true)
   nomePersonalizado String?
+  // Só usado por grupo customizado — um padrão sempre usa a cor fixa de
+  // ESTAGIOS, a menos que o usuário sobrescreva aqui também no futuro.
+  cor               String?
 
   criadoEm    DateTime @default(now())
   atualizadoEm DateTime @updatedAt
@@ -806,7 +799,7 @@ model AutomacaoCrm {
   statusPlanilha String? // compara sem acento/maiúscula com o statusPlanilha do lead
   progressoMin   Int?
   progressoMax   Int?
-  estagioDestino EstagioLeadCrm
+  estagioDestino String
 
   criadoEm    DateTime @default(now())
   atualizadoEm DateTime @updatedAt

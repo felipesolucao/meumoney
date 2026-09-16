@@ -11,7 +11,7 @@
 
 import { useState } from "react";
 import type { LeadCrmResumo, EstagioConfigCrm } from "../../lib/crm";
-import { infoEstagio, faixaProgresso } from "../../lib/crm";
+import { ESTAGIOS, faixaProgresso } from "../../lib/crm";
 import { useToast } from "../ToastProvider";
 import AtendimentosHistorico from "./AtendimentosHistorico";
 import LeadPainelFormulario from "./LeadPainelFormulario";
@@ -119,7 +119,7 @@ export default function LeadPainel({
   const [salvando, setSalvando] = useState(false);
   const [excluindo, setExcluindo] = useState(false);
   const editando = !!leadInicial;
-  const infoAtual = infoEstagio(form.estagio);
+  const infoAtual = estagios.find((e) => e.id === form.estagio) ?? ESTAGIOS[0];
   const faixaAtual = faixaProgresso(form.progresso);
 
   function campo<K extends keyof LeadPainelFormState>(chave: K, valor: LeadPainelFormState[K]) {

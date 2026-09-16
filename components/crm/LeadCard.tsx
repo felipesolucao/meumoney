@@ -8,8 +8,8 @@
 "use client";
 
 import type { CSSProperties } from "react";
-import type { LeadCrmResumo } from "../../lib/crm";
-import { infoEstagio, diasParado, formatarMoedaCrm, DIAS_SEM_MOVIMENTO, faixaProgresso } from "../../lib/crm";
+import type { LeadCrmResumo, EstagioConfigCrm } from "../../lib/crm";
+import { ESTAGIOS, diasParado, formatarMoedaCrm, DIAS_SEM_MOVIMENTO, faixaProgresso } from "../../lib/crm";
 import BotaoCopiar from "./BotaoCopiar";
 
 function somenteDigitos(texto: string): string {
@@ -24,6 +24,7 @@ function iniciais(nome: string): string {
 
 export default function LeadCard({
   lead,
+  estagios,
   onAbrir,
   onPointerDownArrastar,
   fantasma,
@@ -31,13 +32,17 @@ export default function LeadCard({
   estiloFlutuante,
 }: {
   lead: LeadCrmResumo;
+  estagios: EstagioConfigCrm[];
   onAbrir: () => void;
   onPointerDownArrastar: (e: React.PointerEvent<HTMLDivElement>) => void;
   fantasma?: boolean;
   flutuante?: boolean;
   estiloFlutuante?: CSSProperties;
 }) {
-  const info = infoEstagio(lead.estagio);
+  // Precisa vir de "estagios" (a lista mesclada, com grupos customizados) —
+  // o helper estático ESTAGIOS/infoEstagio só conhece os 11 padrão, e um
+  // lead pode estar num grupo criado pelo usuário.
+  const info = estagios.find((e) => e.id === lead.estagio) ?? ESTAGIOS[0];
   const dias = diasParado(lead.movimentadoEm);
   const parado = dias >= DIAS_SEM_MOVIMENTO;
   const faixa = faixaProgresso(lead.progresso);

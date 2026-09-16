@@ -9,8 +9,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "../../../../../lib/prisma";
 import { obterSessao } from "../../../../../lib/auth";
-import { ESTAGIOS_IDS } from "../../../../../lib/crm";
-import { aplicarAutomacoes } from "../../../../../lib/crmAutomacao";
+import { aplicarAutomacoes, estagiosValidosDoUsuario } from "../../../../../lib/crmAutomacao";
 
 const CAMPOS_TEXTO = [
   "nome", "codigo", "cnpj", "telefone", "telefone2", "email", "sindicatoPatronal", "origem", "observacoes", "statusPlanilha",
@@ -58,7 +57,8 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   // Mudança de coluna (drag and drop) ou de posição dentro da mesma coluna.
   const estagioMudou = body.estagio !== undefined && body.estagio !== existente.estagio;
   if (body.estagio !== undefined) {
-    if (!ESTAGIOS_IDS.includes(body.estagio)) {
+    const validos = await estagiosValidosDoUsuario(sessao.id);
+    if (!validos.has(body.estagio)) {
       return NextResponse.json({ error: "Estágio inválido." }, { status: 400 });
     }
     dados.estagio = body.estagio;

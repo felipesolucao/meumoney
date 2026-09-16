@@ -6,7 +6,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "../../../../../lib/prisma";
 import { obterSessao } from "../../../../../lib/auth";
-import { ESTAGIOS_IDS } from "../../../../../lib/crm";
+import { estagiosValidosDoUsuario } from "../../../../../lib/crmAutomacao";
 
 function numeroOuNull(valor: unknown): number | null {
   if (valor === undefined || valor === null || valor === "") return null;
@@ -29,7 +29,8 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     dados.nome = String(body.nome).trim();
   }
   if (body.estagioDestino !== undefined) {
-    if (!ESTAGIOS_IDS.includes(body.estagioDestino)) return NextResponse.json({ error: "Etapa de destino inválida." }, { status: 400 });
+    const validos = await estagiosValidosDoUsuario(sessao.id);
+    if (!validos.has(body.estagioDestino)) return NextResponse.json({ error: "Etapa de destino inválida." }, { status: 400 });
     dados.estagioDestino = body.estagioDestino;
   }
   if (body.statusPlanilha !== undefined) dados.statusPlanilha = body.statusPlanilha?.trim() || null;
