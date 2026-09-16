@@ -1,7 +1,10 @@
 // ============================================================================
 // API: /api/crm/leads
-// GET  -> lista todos os leads DO USUÁRIO LOGADO (para montar o quadro)
-// POST -> cria um novo lead, sempre no topo da coluna escolhida
+// GET    -> lista todos os leads DO USUÁRIO LOGADO (para montar o quadro)
+// POST   -> cria um novo lead, sempre no topo da coluna escolhida
+// DELETE -> exclusão em massa: { ids: [...] } exclui só os informados,
+//           { todos: true } exclui todos os leads do usuário (painel de
+//           gerenciar leads, ver components/crm/GerenciarLeadsPainel.tsx)
 // ============================================================================
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "../../../../lib/prisma";
@@ -84,4 +87,26 @@ export async function POST(req: NextRequest) {
   lead = await aplicarAutomacoes(sessao.id, lead);
 
   return NextResponse.json(lead, { status: 201 });
+}
+
+export async function DELETE(req: NextRequest) {
+  const sessao = await obterSessao();
+  if (!sessao) return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
+
+  const body = await req.json().catch(() => ({}));
+  const { ids, todos } = body as { ids?: unknown; todos?: unknown };
+
+  if (todos === true) {
+    const resultado = await prisma.leadCrm.deleteMany({ where: { usuarioId: sessao.id } });
+    return NextResponse.json({ excluidos: resultado.count });
+  }
+
+  if (Array.isArray(ids) && ids.length > 0) {
+    const resultado = await prisma.leadCrm.deleteMany({
+      where: { usuarioId: sessao.id, id: { in: ids.filter((id): id is string => typeof id === "string") } },
+    });
+    return NextResponse.json({ excluidos: resultado.count });
+  }
+
+  return NextResponse.json({ error: "Informe 'ids' ou 'todos'." }, { status: 400 });
 }

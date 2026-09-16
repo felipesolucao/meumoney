@@ -795,6 +795,19 @@ a {
   }
 }
 
+/* Toast (notificação de sucesso/erro) — desliza do topo da tela e some com
+   fade ao expirar (ver components/ToastProvider.tsx). */
+@keyframes slideDownFromTop {
+  from {
+    transform: translateY(-16px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
 /* Interruptor (toggle switch) — substitui o checkbox simples em opções do
    tipo "já pago/recebido", mais fácil de ler/tocar num formulário mobile. */
 .switch {

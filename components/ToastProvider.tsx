@@ -27,7 +27,7 @@ export function useToast() {
   return ctx.showToast;
 }
 
-const DURACAO_MS = 3000;
+const DURACAO_MS = 4000;
 
 export default function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toast, setToast] = useState<ToastState>(null);
@@ -53,13 +53,14 @@ export default function ToastProvider({ children }: { children: React.ReactNode 
       {children}
 
       {toast && (
-        <div className="fixed bottom-0 left-0 right-0 flex justify-center pointer-events-none z-50">
+        <div className="fixed top-0 left-0 right-0 flex justify-center pointer-events-none z-[80]">
           <div className="app-shell !min-h-0 !p-0 relative w-full">
             <div
-              className="pointer-events-auto mx-4 mb-28 rounded-md px-4 py-3.5 shadow-overlay flex items-center gap-3"
+              className="pointer-events-auto mx-4 mt-4 rounded-md px-4 py-3.5 shadow-overlay flex items-center gap-3"
               style={{
                 background: toast.tipo === "sucesso" ? "var(--color-success-strong)" : "var(--color-error-strong)",
                 color: "white",
+                animation: "slideDownFromTop 0.25s ease-out",
               }}
               role="status"
             >
