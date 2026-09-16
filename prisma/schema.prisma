@@ -68,6 +68,7 @@ model Usuario {
   leadsCrm               LeadCrm[]
   atendimentosCrm        AtendimentoCrm[]
   automacoesCrm          AutomacaoCrm[]
+  estagiosCrmConfig      EstagioCrmConfig[]
 
   @@map("usuarios")
 }
@@ -742,6 +743,16 @@ model AtendimentoCrm {
   tentativaNumero Int?
   dataTratativa  DateTime @default(now())
 
+  // Anexo opcional (comprovante, print, etc.) — guardado direto no banco
+  // (sem serviço de storage externo configurado no projeto ainda). Limitado
+  // a poucos MB na rota de upload; por isso "arquivoDados" nunca é incluído
+  // na listagem do histórico, só é lido quando o usuário baixa o anexo (ver
+  // GET .../atendimentos/[atendimentoId]/arquivo).
+  arquivoNome    String?
+  arquivoTipo    String?
+  arquivoTamanho Int?
+  arquivoDados   Bytes?
+
   criadoEm    DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 
@@ -753,6 +764,31 @@ model AtendimentoCrm {
 
   @@index([leadId, dataTratativa])
   @@map("crm_atendimentos")
+}
+
+// ----------------------------------------------------------------------------
+// MODEL: EstagioCrmConfig — personalização por usuário das colunas do quadro
+// ----------------------------------------------------------------------------
+// As colunas em si (id, cor) continuam fixas no enum EstagioLeadCrm e em
+// ESTAGIOS (ver lib/crm.ts) — o que cada usuário pode mudar é a ordem, se a
+// coluna aparece no quadro (visivel) e o nome exibido (nomePersonalizado).
+// Só existe uma linha aqui quando o usuário mexeu naquele estágio; estágios
+// "intocados" usam os padrões (ver mesclarEstagiosConfig em lib/crm.ts).
+model EstagioCrmConfig {
+  id                String         @id @default(cuid())
+  estagio           EstagioLeadCrm
+  ordem             Int            @default(0)
+  visivel           Boolean        @default(true)
+  nomePersonalizado String?
+
+  criadoEm    DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  usuarioId String
+  usuario   Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@unique([usuarioId, estagio])
+  @@map("crm_estagios_config")
 }
 
 // ----------------------------------------------------------------------------

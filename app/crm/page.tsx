@@ -10,14 +10,19 @@ import { exigirSessao } from "../../lib/auth";
 import { prisma } from "../../lib/prisma";
 import CrmBoard from "../../components/crm/CrmBoard";
 import type { LeadCrmResumo } from "../../lib/crm";
+import { mesclarEstagiosConfig } from "../../lib/crm";
 
 export default async function CrmPage() {
   const sessao = await exigirSessao();
 
-  const leads = await prisma.leadCrm.findMany({
-    where: { usuarioId: sessao.id },
-    orderBy: [{ estagio: "asc" }, { ordem: "asc" }],
-  });
+  const [leads, estagiosConfig] = await Promise.all([
+    prisma.leadCrm.findMany({
+      where: { usuarioId: sessao.id },
+      orderBy: [{ estagio: "asc" }, { ordem: "asc" }],
+    }),
+    prisma.estagioCrmConfig.findMany({ where: { usuarioId: sessao.id } }),
+  ]);
+  const estagiosIniciais = mesclarEstagiosConfig(estagiosConfig);
 
   // Decimal e Date do Prisma não são serializáveis diretamente ao passar de
   // server component pra client component — viram string aqui.
@@ -49,5 +54,5 @@ export default async function CrmPage() {
     atualizadoEm: l.atualizadoEm.toISOString(),
   }));
 
-  return <CrmBoard leadsIniciais={leadsIniciais} nomeUsuario={sessao.nome} />;
+  return <CrmBoard leadsIniciais={leadsIniciais} estagiosIniciais={estagiosIniciais} nomeUsuario={sessao.nome} />;
 }

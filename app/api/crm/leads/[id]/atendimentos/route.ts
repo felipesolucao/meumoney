@@ -1,12 +1,30 @@
 // ============================================================================
 // API: /api/crm/leads/[id]/atendimentos
-// GET  -> histórico de atendimentos do lead (mais recente primeiro)
-// POST -> registra um novo atendimento/observação, e atualiza
-//         "dataUltimoContato" do lead quando esta é a tratativa mais recente
+// GET  -> histórico de atendimentos do lead (mais recente primeiro) — nunca
+//         inclui o conteúdo do anexo, só nome/tipo/tamanho (ver "arquivo" em
+//         .../atendimentos/[atendimentoId]/arquivo pro download)
+// POST -> registra um novo atendimento/observação, com anexo opcional
+//         (multipart/form-data), e atualiza "dataUltimoContato" do lead
+//         quando esta é a tratativa mais recente
 // ============================================================================
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "../../../../../../lib/prisma";
 import { obterSessao } from "../../../../../../lib/auth";
+
+const TAMANHO_MAXIMO_ANEXO = 5 * 1024 * 1024; // 5MB — sem serviço de storage externo, o anexo vai pro banco.
+
+const SELECAO_SEM_ARQUIVO = {
+  id: true,
+  leadId: true,
+  observacao: true,
+  tentativaNumero: true,
+  dataTratativa: true,
+  arquivoNome: true,
+  arquivoTipo: true,
+  arquivoTamanho: true,
+  criadoEm: true,
+  atualizadoEm: true,
+} as const;
 
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
   const sessao = await obterSessao();
@@ -18,6 +36,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   const atendimentos = await prisma.atendimentoCrm.findMany({
     where: { leadId: params.id },
     orderBy: { dataTratativa: "desc" },
+    select: SELECAO_SEM_ARQUIVO,
   });
   return NextResponse.json(atendimentos);
 }
@@ -29,26 +48,44 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const lead = await prisma.leadCrm.findFirst({ where: { id: params.id, usuarioId: sessao.id } });
   if (!lead) return NextResponse.json({ error: "Lead não encontrado." }, { status: 404 });
 
-  const body = await req.json();
-  const { observacao, tentativaNumero, dataTratativa } = body;
+  const formData = await req.formData();
+  const observacao = formData.get("observacao");
+  const tentativaNumero = formData.get("tentativaNumero");
+  const dataTratativa = formData.get("dataTratativa");
+  const arquivo = formData.get("arquivo");
 
   if (!observacao || !String(observacao).trim()) {
     return NextResponse.json({ error: "Descreva o atendimento." }, { status: 400 });
   }
 
-  const dataFinal = dataTratativa ? new Date(dataTratativa) : new Date();
+  const dataFinal = dataTratativa ? new Date(String(dataTratativa)) : new Date();
   if (Number.isNaN(dataFinal.getTime())) {
     return NextResponse.json({ error: "Data inválida." }, { status: 400 });
+  }
+
+  let dadosAnexo: { arquivoNome: string; arquivoTipo: string; arquivoTamanho: number; arquivoDados: Buffer } | null = null;
+  if (arquivo instanceof File && arquivo.size > 0) {
+    if (arquivo.size > TAMANHO_MAXIMO_ANEXO) {
+      return NextResponse.json({ error: "Anexo maior que 5MB." }, { status: 400 });
+    }
+    dadosAnexo = {
+      arquivoNome: arquivo.name,
+      arquivoTipo: arquivo.type || "application/octet-stream",
+      arquivoTamanho: arquivo.size,
+      arquivoDados: Buffer.from(await arquivo.arrayBuffer()),
+    };
   }
 
   const atendimento = await prisma.atendimentoCrm.create({
     data: {
       observacao: String(observacao).trim(),
-      tentativaNumero: tentativaNumero !== undefined && tentativaNumero !== null && tentativaNumero !== "" ? Number(tentativaNumero) : null,
+      tentativaNumero: tentativaNumero !== null && tentativaNumero !== "" ? Number(tentativaNumero) : null,
       dataTratativa: dataFinal,
       leadId: params.id,
       usuarioId: sessao.id,
+      ...dadosAnexo,
     },
+    select: SELECAO_SEM_ARQUIVO,
   });
 
   // Mantém "dataUltimoContato" do lead sempre igual à tratativa mais recente

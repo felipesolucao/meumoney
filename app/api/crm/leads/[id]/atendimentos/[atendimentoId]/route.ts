@@ -7,6 +7,22 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "../../../../../../../lib/prisma";
 import { obterSessao } from "../../../../../../../lib/auth";
 
+// Nunca inclui "arquivoDados" (Bytes) — vira um objeto {type:"Buffer",...}
+// gigante no JSON de resposta e vaza o conteúdo do anexo numa edição de
+// texto. Baixar o anexo tem rota própria (ver .../arquivo/route.ts).
+const SELECAO_SEM_ARQUIVO = {
+  id: true,
+  leadId: true,
+  observacao: true,
+  tentativaNumero: true,
+  dataTratativa: true,
+  arquivoNome: true,
+  arquivoTipo: true,
+  arquivoTamanho: true,
+  criadoEm: true,
+  atualizadoEm: true,
+} as const;
+
 async function buscarAtendimento(leadId: string, atendimentoId: string, usuarioId: string) {
   return prisma.atendimentoCrm.findFirst({
     where: { id: atendimentoId, leadId, usuarioId, lead: { usuarioId } },
@@ -36,7 +52,11 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     dados.dataTratativa = d;
   }
 
-  const atendimento = await prisma.atendimentoCrm.update({ where: { id: params.atendimentoId }, data: dados });
+  const atendimento = await prisma.atendimentoCrm.update({
+    where: { id: params.atendimentoId },
+    data: dados,
+    select: SELECAO_SEM_ARQUIVO,
+  });
   return NextResponse.json(atendimento);
 }
 

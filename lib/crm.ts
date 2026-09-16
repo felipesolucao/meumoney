@@ -39,6 +39,43 @@ export function infoEstagio(id: string): EstagioInfo {
   return ESTAGIOS_MAP[id] ?? ESTAGIOS[0];
 }
 
+// --------------------------------------------------------------------------
+// Personalização por usuário das colunas do quadro (ordem, visibilidade e
+// nome) — ver model EstagioCrmConfig. Id e cor continuam fixos (ESTAGIOS
+// acima); só existe uma linha no banco pro estágio que o usuário mexeu, por
+// isso o merge abaixo sempre parte dos padrões.
+// --------------------------------------------------------------------------
+export type EstagioConfigCrm = EstagioInfo & {
+  labelPadrao: string;
+  ordem: number;
+  visivel: boolean;
+  nomePersonalizado: string | null;
+};
+
+export type EstagioConfigCrmBruto = {
+  estagio: string;
+  ordem: number;
+  visivel: boolean;
+  nomePersonalizado: string | null;
+};
+
+export function mesclarEstagiosConfig(configs: EstagioConfigCrmBruto[]): EstagioConfigCrm[] {
+  const porEstagio = new Map(configs.map((c) => [c.estagio, c]));
+  const mesclado = ESTAGIOS.map((info, indice) => {
+    const cfg = porEstagio.get(info.id);
+    const nomePersonalizado = cfg?.nomePersonalizado?.trim() || null;
+    return {
+      ...info,
+      label: nomePersonalizado || info.label,
+      labelPadrao: info.label,
+      ordem: cfg?.ordem ?? indice,
+      visivel: cfg?.visivel ?? true,
+      nomePersonalizado,
+    };
+  });
+  return mesclado.sort((a, b) => a.ordem - b.ordem);
+}
+
 // Estágios que encerram o funil — não contam mais como "backlog ativo".
 // (tipado como string[] para comparar direto com o "estagio" já serializado
 // que chega no client component, sem precisar de cast em cada uso)
@@ -140,6 +177,11 @@ export type AtendimentoCrmResumo = {
   observacao: string;
   tentativaNumero: number | null;
   dataTratativa: string;
+  // Só metadados do anexo — o conteúdo (arquivoDados) nunca trafega na
+  // listagem, só na rota de download (ver .../atendimentos/[id]/arquivo).
+  arquivoNome: string | null;
+  arquivoTipo: string | null;
+  arquivoTamanho: number | null;
   criadoEm: string;
   atualizadoEm: string;
 };

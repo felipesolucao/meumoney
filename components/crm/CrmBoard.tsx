@@ -16,13 +16,14 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import type { LeadCrmResumo, FaixaProgressoId } from "../../lib/crm";
+import type { LeadCrmResumo, FaixaProgressoId, EstagioConfigCrm } from "../../lib/crm";
 import { ESTAGIOS, FAIXAS_PROGRESSO, faixaProgresso, formatarMoedaCompacta } from "../../lib/crm";
 import LeadCard from "./LeadCard";
 import LeadPainel from "./LeadPainel";
 import ImportarModal from "./ImportarModal";
 import AutomacoesPainel from "./AutomacoesPainel";
 import GerenciarLeadsPainel from "./GerenciarLeadsPainel";
+import GerenciarGruposPainel from "./GerenciarGruposPainel";
 import ColunaFiltros, { FILTRO_COLUNA_VAZIO, aplicarFiltroColuna, type ColunaFiltroState } from "./ColunaFiltros";
 import KpiHeader from "./KpiHeader";
 import { useKanbanDrag } from "./useKanbanDrag";
@@ -62,17 +63,28 @@ function filtrarColunas(
   return filtrado;
 }
 
-export default function CrmBoard({ leadsIniciais }: { leadsIniciais: LeadCrmResumo[]; nomeUsuario?: string }) {
+export default function CrmBoard({
+  leadsIniciais,
+  estagiosIniciais,
+}: {
+  leadsIniciais: LeadCrmResumo[];
+  estagiosIniciais: EstagioConfigCrm[];
+  nomeUsuario?: string;
+}) {
   const showToast = useToast();
   const [leads, setLeads] = useState<LeadCrmResumo[]>(leadsIniciais);
+  const [estagios, setEstagios] = useState<EstagioConfigCrm[]>(estagiosIniciais);
   const [busca, setBusca] = useState("");
   const [modalNovoEstagio, setModalNovoEstagio] = useState<string | null>(null);
   const [leadEditando, setLeadEditando] = useState<LeadCrmResumo | null>(null);
   const [modalImportar, setModalImportar] = useState(false);
   const [modalAutomacoes, setModalAutomacoes] = useState(false);
   const [modalGerenciar, setModalGerenciar] = useState(false);
+  const [modalGerenciarGrupos, setModalGerenciarGrupos] = useState(false);
   const [filtroProgresso, setFiltroProgresso] = useState<FiltroProgresso>("todos");
   const [filtrosColuna, setFiltrosColuna] = useState<Record<string, ColunaFiltroState>>({});
+  const [arrastandoColuna, setArrastandoColuna] = useState<string | null>(null);
+  const [colunaSobre, setColunaSobre] = useState<string | null>(null);
 
   function filtroDaColuna(estagioId: string): ColunaFiltroState {
     return filtrosColuna[estagioId] ?? FILTRO_COLUNA_VAZIO;
@@ -80,6 +92,53 @@ export default function CrmBoard({ leadsIniciais }: { leadsIniciais: LeadCrmResu
 
   function atualizarFiltroColuna(estagioId: string, novo: ColunaFiltroState) {
     setFiltrosColuna((prev) => ({ ...prev, [estagioId]: novo }));
+  }
+
+  // Arrastar o cabeçalho de uma coluna pra outra posição — mecânica separada
+  // (HTML5 Drag and Drop nativo) do arrastar-e-soltar dos cards de lead, que
+  // usa Pointer Events (ver useKanbanDrag). Persistida de uma vez ao soltar.
+  function onColunaDragStart(e: React.DragEvent, id: string) {
+    setArrastandoColuna(id);
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", id);
+  }
+
+  function onColunaDragOver(e: React.DragEvent, id: string) {
+    e.preventDefault();
+    if (id !== arrastandoColuna) setColunaSobre(id);
+  }
+
+  function onColunaDragEnd() {
+    setArrastandoColuna(null);
+    setColunaSobre(null);
+  }
+
+  async function onColunaDrop(e: React.DragEvent, destinoId: string) {
+    e.preventDefault();
+    const origemId = arrastandoColuna;
+    setArrastandoColuna(null);
+    setColunaSobre(null);
+    if (!origemId || origemId === destinoId) return;
+
+    const ordenados = [...estagios].sort((a, b) => a.ordem - b.ordem);
+    const indiceOrigem = ordenados.findIndex((e) => e.id === origemId);
+    const indiceDestino = ordenados.findIndex((e) => e.id === destinoId);
+    if (indiceOrigem === -1 || indiceDestino === -1) return;
+    const [movido] = ordenados.splice(indiceOrigem, 1);
+    ordenados.splice(indiceDestino, 0, movido);
+    const reordenados = ordenados.map((e, i) => ({ ...e, ordem: i }));
+    setEstagios(reordenados);
+
+    try {
+      const resposta = await fetch("/api/crm/estagios/reordenar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idsNaOrdem: reordenados.map((e) => e.id) }),
+      });
+      if (resposta.ok) setEstagios(await resposta.json());
+    } catch {
+      showToast("Não foi possível salvar a nova ordem dos grupos.", "erro");
+    }
   }
 
   const { drag, overInfo, colBodyRefs, iniciarArraste } = useKanbanDrag(leads, setLeads, (msg) => showToast(msg, "erro"));
@@ -143,13 +202,20 @@ export default function CrmBoard({ leadsIniciais }: { leadsIniciais: LeadCrmResu
             <button type="button" className="crm-btn crm-btn-ghost" onClick={() => setModalAutomacoes(true)}>
               <IconBolt /> Automações
             </button>
+            <button type="button" className="crm-btn crm-btn-ghost" onClick={() => setModalGerenciarGrupos(true)}>
+              <IconColunas /> Gerenciar grupos
+            </button>
             <button type="button" className="crm-btn crm-btn-ghost" onClick={() => setModalImportar(true)}>
               <IconDocument size={16} /> Importar planilha
             </button>
             <button type="button" className="crm-btn crm-btn-ghost" onClick={() => setModalGerenciar(true)}>
               <IconUsers size={16} /> Gerenciar leads
             </button>
-            <button type="button" className="crm-btn crm-btn-primary" onClick={() => setModalNovoEstagio(ESTAGIOS[0].id)}>
+            <button
+              type="button"
+              className="crm-btn crm-btn-primary"
+              onClick={() => setModalNovoEstagio(estagios.find((e) => e.visivel)?.id ?? ESTAGIOS[0].id)}
+            >
               <IconPlus size={16} /> Novo lead
             </button>
           </div>
@@ -159,7 +225,9 @@ export default function CrmBoard({ leadsIniciais }: { leadsIniciais: LeadCrmResu
       </div>
 
       <div className="crm-board-scroll">
-        {ESTAGIOS.map((estagio) => {
+        {estagios
+          .filter((e) => e.visivel)
+          .map((estagio) => {
           const filtroColuna = filtroDaColuna(estagio.id);
           const lista = aplicarFiltroColuna(colunas.get(estagio.id) ?? [], filtroColuna);
           const valorColuna = lista.reduce((s, l) => s + (l.valorEmAberto ? Number(l.valorEmAberto) : 0), 0);
@@ -167,7 +235,15 @@ export default function CrmBoard({ leadsIniciais }: { leadsIniciais: LeadCrmResu
 
           return (
             <div className="crm-column" key={estagio.id}>
-              <div className="crm-column-head">
+              <div
+                className={`crm-column-head${colunaSobre === estagio.id ? " is-drop-target" : ""}${arrastandoColuna === estagio.id ? " is-dragging" : ""}`}
+                draggable
+                onDragStart={(e) => onColunaDragStart(e, estagio.id)}
+                onDragOver={(e) => onColunaDragOver(e, estagio.id)}
+                onDrop={(e) => onColunaDrop(e, estagio.id)}
+                onDragEnd={onColunaDragEnd}
+                title="Arraste para mudar a posição do grupo"
+              >
                 <div className="crm-column-head-top">
                   <span className="crm-column-dot" style={{ background: estagio.cor }} />
                   <span className="crm-column-title">{estagio.label}</span>
@@ -223,11 +299,14 @@ export default function CrmBoard({ leadsIniciais }: { leadsIniciais: LeadCrmResu
         />
       )}
 
-      {modalNovoEstagio && <LeadPainel estagioInicial={modalNovoEstagio} onFechar={() => setModalNovoEstagio(null)} onSalvar={recarregar} />}
+      {modalNovoEstagio && (
+        <LeadPainel estagioInicial={modalNovoEstagio} estagios={estagios} onFechar={() => setModalNovoEstagio(null)} onSalvar={recarregar} />
+      )}
 
       {leadEditando && (
         <LeadPainel
           leadInicial={leadEditando}
+          estagios={estagios}
           onFechar={() => setLeadEditando(null)}
           onSalvar={recarregar}
           onExcluir={(id) => setLeads((prev) => prev.filter((l) => l.id !== id))}
@@ -235,7 +314,7 @@ export default function CrmBoard({ leadsIniciais }: { leadsIniciais: LeadCrmResu
       )}
 
       {modalImportar && <ImportarModal onFechar={() => setModalImportar(false)} onImportado={recarregar} />}
-      {modalAutomacoes && <AutomacoesPainel onFechar={() => setModalAutomacoes(false)} />}
+      {modalAutomacoes && <AutomacoesPainel estagios={estagios} onFechar={() => setModalAutomacoes(false)} />}
 
       {modalGerenciar && (
         <GerenciarLeadsPainel
@@ -246,6 +325,10 @@ export default function CrmBoard({ leadsIniciais }: { leadsIniciais: LeadCrmResu
           }
         />
       )}
+
+      {modalGerenciarGrupos && (
+        <GerenciarGruposPainel estagios={estagios} onFechar={() => setModalGerenciarGrupos(false)} onAtualizar={setEstagios} />
+      )}
     </div>
   );
 }
@@ -254,6 +337,15 @@ function IconBolt() {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
       <path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function IconColunas() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+      <rect x="3.5" y="4" width="6" height="16" rx="1.5" stroke="currentColor" strokeWidth="1.8" />
+      <rect x="14.5" y="4" width="6" height="10" rx="1.5" stroke="currentColor" strokeWidth="1.8" />
     </svg>
   );
 }
