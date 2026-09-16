@@ -719,6 +719,75 @@
 }
 
 /* --------------------------------------------------------------------------
+   Painel de gerenciar leads — mesma mecânica do .crm-painel (desliza da
+   direita), mas mais estreito, sem o layout de duas colunas de um perfil.
+   -------------------------------------------------------------------------- */
+.crm-painel-estreito {
+  width: min(440px, 100vw);
+}
+.crm-gerenciar-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 14px 22px;
+  border-bottom: 1px solid var(--crm-border);
+  flex-shrink: 0;
+}
+.crm-gerenciar-checkbox-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--crm-text-muted);
+  cursor: pointer;
+}
+.crm-gerenciar-body {
+  display: block;
+  padding: 12px 14px;
+}
+.crm-gerenciar-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.crm-gerenciar-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--crm-border);
+  background: var(--crm-surface-2);
+}
+.crm-gerenciar-item-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.crm-gerenciar-item-nome {
+  font-size: 13.5px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.crm-gerenciar-item-meta {
+  font-size: 11.5px;
+  color: var(--crm-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* --------------------------------------------------------------------------
    Histórico de atendimentos (dentro do painel do lead, no lugar do "chat")
    -------------------------------------------------------------------------- */
 .crm-historico-lista {

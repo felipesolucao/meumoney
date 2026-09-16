@@ -22,10 +22,11 @@ import LeadCard from "./LeadCard";
 import LeadPainel from "./LeadPainel";
 import ImportarModal from "./ImportarModal";
 import AutomacoesPainel from "./AutomacoesPainel";
+import GerenciarLeadsPainel from "./GerenciarLeadsPainel";
 import KpiHeader from "./KpiHeader";
 import { useKanbanDrag } from "./useKanbanDrag";
 import { useToast } from "../ToastProvider";
-import { IconArrowLeft, IconPlus, IconSearch, IconDocument } from "../Icons";
+import { IconArrowLeft, IconPlus, IconSearch, IconDocument, IconUsers } from "../Icons";
 
 type FiltroProgresso = FaixaProgressoId | "todos";
 
@@ -68,6 +69,7 @@ export default function CrmBoard({ leadsIniciais }: { leadsIniciais: LeadCrmResu
   const [leadEditando, setLeadEditando] = useState<LeadCrmResumo | null>(null);
   const [modalImportar, setModalImportar] = useState(false);
   const [modalAutomacoes, setModalAutomacoes] = useState(false);
+  const [modalGerenciar, setModalGerenciar] = useState(false);
   const [filtroProgresso, setFiltroProgresso] = useState<FiltroProgresso>("todos");
 
   const { drag, overInfo, colBodyRefs, iniciarArraste } = useKanbanDrag(leads, setLeads, (msg) => showToast(msg, "erro"));
@@ -133,6 +135,9 @@ export default function CrmBoard({ leadsIniciais }: { leadsIniciais: LeadCrmResu
             </button>
             <button type="button" className="crm-btn crm-btn-ghost" onClick={() => setModalImportar(true)}>
               <IconDocument size={16} /> Importar planilha
+            </button>
+            <button type="button" className="crm-btn crm-btn-ghost" onClick={() => setModalGerenciar(true)}>
+              <IconUsers size={16} /> Gerenciar leads
             </button>
             <button type="button" className="crm-btn crm-btn-primary" onClick={() => setModalNovoEstagio(ESTAGIOS[0].id)}>
               <IconPlus size={16} /> Novo lead
@@ -218,6 +223,16 @@ export default function CrmBoard({ leadsIniciais }: { leadsIniciais: LeadCrmResu
 
       {modalImportar && <ImportarModal onFechar={() => setModalImportar(false)} onImportado={recarregar} />}
       {modalAutomacoes && <AutomacoesPainel onFechar={() => setModalAutomacoes(false)} />}
+
+      {modalGerenciar && (
+        <GerenciarLeadsPainel
+          leads={leads}
+          onFechar={() => setModalGerenciar(false)}
+          onExcluidos={(idsExcluidos) =>
+            setLeads((prev) => (idsExcluidos === "todos" ? [] : prev.filter((l) => !idsExcluidos.includes(l.id))))
+          }
+        />
+      )}
     </div>
   );
 }
