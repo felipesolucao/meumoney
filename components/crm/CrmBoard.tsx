@@ -16,15 +16,18 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import type { LeadCrmResumo } from "../../lib/crm";
-import { ESTAGIOS, formatarMoedaCompacta } from "../../lib/crm";
+import type { LeadCrmResumo, FaixaProgressoId } from "../../lib/crm";
+import { ESTAGIOS, FAIXAS_PROGRESSO, faixaProgresso, formatarMoedaCompacta } from "../../lib/crm";
 import LeadCard from "./LeadCard";
-import LeadModal from "./LeadModal";
+import LeadPainel from "./LeadPainel";
 import ImportarModal from "./ImportarModal";
+import AutomacoesPainel from "./AutomacoesPainel";
 import KpiHeader from "./KpiHeader";
 import { useKanbanDrag } from "./useKanbanDrag";
 import { useToast } from "../ToastProvider";
 import { IconArrowLeft, IconPlus, IconSearch, IconDocument } from "../Icons";
+
+type FiltroProgresso = FaixaProgressoId | "todos";
 
 function agruparPorColuna(leads: LeadCrmResumo[]): Map<string, LeadCrmResumo[]> {
   const mapa = new Map<string, LeadCrmResumo[]>();
@@ -37,13 +40,21 @@ function agruparPorColuna(leads: LeadCrmResumo[]): Map<string, LeadCrmResumo[]> 
   return mapa;
 }
 
-function filtrarColunas(mapa: Map<string, LeadCrmResumo[]>, buscaNormalizada: string): Map<string, LeadCrmResumo[]> {
-  if (!buscaNormalizada) return mapa;
+function filtrarColunas(
+  mapa: Map<string, LeadCrmResumo[]>,
+  buscaNormalizada: string,
+  filtroProgresso: FiltroProgresso,
+): Map<string, LeadCrmResumo[]> {
+  if (!buscaNormalizada && filtroProgresso === "todos") return mapa;
   const filtrado = new Map<string, LeadCrmResumo[]>();
   for (const [estagio, lista] of mapa) {
     filtrado.set(
       estagio,
-      lista.filter((l) => [l.nome, l.cnpj, l.telefone, l.email, l.sindicatoPatronal].some((v) => v?.toLowerCase().includes(buscaNormalizada))),
+      lista.filter((l) => {
+        const bateBusca = !buscaNormalizada || [l.nome, l.cnpj, l.telefone, l.email, l.sindicatoPatronal].some((v) => v?.toLowerCase().includes(buscaNormalizada));
+        const bateProgresso = filtroProgresso === "todos" || faixaProgresso(l.progresso).id === filtroProgresso;
+        return bateBusca && bateProgresso;
+      }),
     );
   }
   return filtrado;
@@ -56,6 +67,8 @@ export default function CrmBoard({ leadsIniciais }: { leadsIniciais: LeadCrmResu
   const [modalNovoEstagio, setModalNovoEstagio] = useState<string | null>(null);
   const [leadEditando, setLeadEditando] = useState<LeadCrmResumo | null>(null);
   const [modalImportar, setModalImportar] = useState(false);
+  const [modalAutomacoes, setModalAutomacoes] = useState(false);
+  const [filtroProgresso, setFiltroProgresso] = useState<FiltroProgresso>("todos");
 
   const { drag, overInfo, colBodyRefs, iniciarArraste } = useKanbanDrag(leads, setLeads, (msg) => showToast(msg, "erro"));
 
@@ -70,7 +83,10 @@ export default function CrmBoard({ leadsIniciais }: { leadsIniciais: LeadCrmResu
   }
 
   const buscaNormalizada = busca.trim().toLowerCase();
-  const colunas = useMemo(() => filtrarColunas(agruparPorColuna(leads), buscaNormalizada), [leads, buscaNormalizada]);
+  const colunas = useMemo(
+    () => filtrarColunas(agruparPorColuna(leads), buscaNormalizada, filtroProgresso),
+    [leads, buscaNormalizada, filtroProgresso],
+  );
   const leadArrastado = drag ? leads.find((l) => l.id === drag.id) : null;
 
   return (
@@ -98,6 +114,23 @@ export default function CrmBoard({ leadsIniciais }: { leadsIniciais: LeadCrmResu
                 onChange={(e) => setBusca(e.target.value)}
               />
             </div>
+            <select
+              className="crm-select"
+              style={{ width: "auto" }}
+              value={filtroProgresso}
+              onChange={(e) => setFiltroProgresso(e.target.value as FiltroProgresso)}
+              title="Filtrar por progresso"
+            >
+              <option value="todos">Progresso: todos</option>
+              {FAIXAS_PROGRESSO.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.label} ({f.min}-{f.max}%)
+                </option>
+              ))}
+            </select>
+            <button type="button" className="crm-btn crm-btn-ghost" onClick={() => setModalAutomacoes(true)}>
+              <IconBolt /> Automações
+            </button>
             <button type="button" className="crm-btn crm-btn-ghost" onClick={() => setModalImportar(true)}>
               <IconDocument size={16} /> Importar planilha
             </button>
@@ -172,10 +205,10 @@ export default function CrmBoard({ leadsIniciais }: { leadsIniciais: LeadCrmResu
         />
       )}
 
-      {modalNovoEstagio && <LeadModal estagioInicial={modalNovoEstagio} onFechar={() => setModalNovoEstagio(null)} onSalvar={recarregar} />}
+      {modalNovoEstagio && <LeadPainel estagioInicial={modalNovoEstagio} onFechar={() => setModalNovoEstagio(null)} onSalvar={recarregar} />}
 
       {leadEditando && (
-        <LeadModal
+        <LeadPainel
           leadInicial={leadEditando}
           onFechar={() => setLeadEditando(null)}
           onSalvar={recarregar}
@@ -184,6 +217,15 @@ export default function CrmBoard({ leadsIniciais }: { leadsIniciais: LeadCrmResu
       )}
 
       {modalImportar && <ImportarModal onFechar={() => setModalImportar(false)} onImportado={recarregar} />}
+      {modalAutomacoes && <AutomacoesPainel onFechar={() => setModalAutomacoes(false)} />}
     </div>
+  );
+}
+
+function IconBolt() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+      <path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round" />
+    </svg>
   );
 }

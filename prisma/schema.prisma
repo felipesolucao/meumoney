@@ -66,6 +66,8 @@ model Usuario {
   modelosContrato        ContratoModelo[]
   // --- CRM (produto separado dentro do app — ver app/crm) -------------------
   leadsCrm               LeadCrm[]
+  atendimentosCrm        AtendimentoCrm[]
+  automacoesCrm          AutomacaoCrm[]
 
   @@map("usuarios")
 }
@@ -685,7 +687,9 @@ model LeadCrm {
   ordem     Int            @default(0)
 
   // --- Campos vindos da planilha de importação ------------------------------
+  codigo                  String? // "Código" da planilha (identificador do associado no sistema de origem)
   valorEmAberto           Decimal? @db.Decimal(12, 2)
+  valorPago               Decimal? @db.Decimal(12, 2) // coluna "PAGO"
   quantidadeParcelas      Int?
   quantidadeColaboradores Int?
   cnpj                    String?
@@ -695,6 +699,15 @@ model LeadCrm {
   sindicatoPatronal       String?
   origem                  String? // canal de origem: WhatsApp, Instagram, Google Ads, indicação...
   observacoes             String?  @db.Text
+  parcelaMaisAntiga       DateTime?
+  parcelaMaisRecente      DateTime?
+  dataUltimoContato       DateTime?
+  // Texto bruto da coluna "STATUS" da planilha do usuário — independente do
+  // "estagio" (coluna do kanban). Alimenta as automações (ver AutomacaoCrm).
+  statusPlanilha          String?
+  // "Temperatura"/progresso do lead, de 0 a 100 — definido manualmente ou por
+  // automação, usado para destacar e filtrar cards no quadro.
+  progresso               Int      @default(0)
 
   // Colunas extras que a planilha do usuário venha a trazer no futuro, sem
   // precisar de uma migração de banco a cada nova coluna adicionada por ele.
@@ -711,6 +724,60 @@ model LeadCrm {
   usuarioId String
   usuario   Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 
+  atendimentos AtendimentoCrm[]
+
   @@index([usuarioId, estagio, ordem])
   @@map("crm_leads")
+}
+
+// ----------------------------------------------------------------------------
+// MODEL: AtendimentoCrm — histórico de atendimentos/tentativas de um lead
+// ----------------------------------------------------------------------------
+// Cada linha é um contato registrado manualmente (ligação, WhatsApp, e-mail,
+// uma observação qualquer) — mostrado como linha do tempo no painel do lead,
+// com edição/exclusão.
+model AtendimentoCrm {
+  id             String   @id @default(cuid())
+  observacao     String   @db.Text
+  tentativaNumero Int?
+  dataTratativa  DateTime @default(now())
+
+  criadoEm    DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  leadId String
+  lead   LeadCrm @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  usuarioId String
+  usuario   Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([leadId, dataTratativa])
+  @@map("crm_atendimentos")
+}
+
+// ----------------------------------------------------------------------------
+// MODEL: AutomacaoCrm — regras de mudança automática de estágio
+// ----------------------------------------------------------------------------
+// Avaliadas em ordem (campo "ordem") toda vez que um lead é criado, editado
+// ou importado: a primeira regra ativa cujas condições batem move o lead
+// para "estagioDestino". Condições vazias (null) não restringem — uma regra
+// sem statusPlanilha e sem faixa de progresso bate com qualquer lead.
+model AutomacaoCrm {
+  id             String         @id @default(cuid())
+  nome           String
+  ativo          Boolean        @default(true)
+  ordem          Int            @default(0)
+  statusPlanilha String? // compara sem acento/maiúscula com o statusPlanilha do lead
+  progressoMin   Int?
+  progressoMax   Int?
+  estagioDestino EstagioLeadCrm
+
+  criadoEm    DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  usuarioId String
+  usuario   Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioId, ordem])
+  @@map("crm_automacoes")
 }

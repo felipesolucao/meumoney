@@ -109,12 +109,14 @@ export default function ImportarModal({ onFechar, onImportado }: { onFechar: () 
               style={{ minHeight: 110, fontFamily: "monospace", fontSize: 12.5 }}
               value={csv}
               onChange={(e) => setCsv(e.target.value)}
-              placeholder="Nome,Valor em aberto,Quantidade de parcelas,CNPJ,Telefone,Email,Sindicato patronal,Etapa"
+              placeholder="Código,Associado,CNPJ,Valor em aberto,Qtd parcelas,Nº func. ativos,Status,Sindicato patronal"
             />
             <p className="crm-hint">
-              Primeira linha = cabeçalho. Colunas reconhecidas: Nome (obrigatório), Valor em aberto, Quantidade de parcelas, Quantidade de
-              colaboradores, CNPJ, Telefone, Telefone 2, Email, Sindicato patronal, Origem, Observações e Etapa. Colunas extras que você
-              adicionar são guardadas junto do lead mesmo sem estar nessa lista.
+              Primeira linha = cabeçalho. Colunas reconhecidas: Código, Associado/Nome (obrigatório), CNPJ, Valor em aberto, Qtd parcelas,
+              Nº func. ativos, Observação, Parcela mais antiga, Parcela mais recente, Status, Data do último contato, Pago, E-mail,
+              Sindicato patronal, Telefone, Telefone 2, Origem e Etapa. A coluna &quot;Status&quot; é livre (não precisa bater com o nome
+              da etapa) — use as automações para mover o lead automaticamente com base nela. Colunas extras que você adicionar são
+              guardadas junto do lead mesmo sem estar nessa lista.
             </p>
           </div>
 

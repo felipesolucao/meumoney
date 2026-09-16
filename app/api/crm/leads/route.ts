@@ -1,12 +1,13 @@
 // ============================================================================
 // API: /api/crm/leads
 // GET  -> lista todos os leads DO USUÁRIO LOGADO (para montar o quadro)
-// POST -> cria um novo lead, sempre no topo da coluna "1ª tentativa"
+// POST -> cria um novo lead, sempre no topo da coluna escolhida
 // ============================================================================
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "../../../../lib/prisma";
 import { obterSessao } from "../../../../lib/auth";
 import { ESTAGIOS_IDS } from "../../../../lib/crm";
+import { aplicarAutomacoes } from "../../../../lib/crmAutomacao";
 
 export async function GET() {
   const sessao = await obterSessao();
@@ -25,14 +26,21 @@ function numeroOuNull(valor: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+function dataOuNull(valor: unknown): Date | null {
+  if (!valor) return null;
+  const d = new Date(String(valor));
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
 export async function POST(req: NextRequest) {
   const sessao = await obterSessao();
   if (!sessao) return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
 
   const body = await req.json();
   const {
-    nome, estagio, valorEmAberto, quantidadeParcelas, quantidadeColaboradores,
+    nome, estagio, codigo, valorEmAberto, valorPago, quantidadeParcelas, quantidadeColaboradores,
     cnpj, telefone, telefone2, email, sindicatoPatronal, origem, observacoes,
+    parcelaMaisAntiga, parcelaMaisRecente, dataUltimoContato, statusPlanilha, progresso,
   } = body;
 
   if (!nome || !String(nome).trim()) {
@@ -47,12 +55,14 @@ export async function POST(req: NextRequest) {
     data: { ordem: { increment: 1 } },
   });
 
-  const lead = await prisma.leadCrm.create({
+  let lead = await prisma.leadCrm.create({
     data: {
       nome: String(nome).trim(),
       estagio: estagioFinal,
       ordem: 0,
+      codigo: codigo?.trim() || null,
       valorEmAberto: numeroOuNull(valorEmAberto),
+      valorPago: numeroOuNull(valorPago),
       quantidadeParcelas: numeroOuNull(quantidadeParcelas),
       quantidadeColaboradores: numeroOuNull(quantidadeColaboradores),
       cnpj: cnpj?.trim() || null,
@@ -62,9 +72,16 @@ export async function POST(req: NextRequest) {
       sindicatoPatronal: sindicatoPatronal?.trim() || null,
       origem: origem?.trim() || null,
       observacoes: observacoes?.trim() || null,
+      parcelaMaisAntiga: dataOuNull(parcelaMaisAntiga),
+      parcelaMaisRecente: dataOuNull(parcelaMaisRecente),
+      dataUltimoContato: dataOuNull(dataUltimoContato),
+      statusPlanilha: statusPlanilha?.trim() || null,
+      progresso: numeroOuNull(progresso) ?? 0,
       usuarioId: sessao.id,
     },
   });
+
+  lead = await aplicarAutomacoes(sessao.id, lead);
 
   return NextResponse.json(lead, { status: 201 });
 }
