@@ -263,6 +263,18 @@ h6 {
   box-sizing: border-box;
 }
 
+/* Sem isso, inputs/botões/selects/textareas usam a fonte padrão do
+   navegador/SO (não herdam --font-sans do body por padrão, é assim que o
+   HTML funciona) — por isso a troca pra Inter "não pegava" em formulários
+   inteiros mesmo com o body já em Inter. */
+button,
+input,
+optgroup,
+select,
+textarea {
+  font-family: inherit;
+}
+
 /* Área útil central, imitando a largura de um app mobile mesmo no desktop */
 .app-shell {
   max-width: var(--shell-max-width);
