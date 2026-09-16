@@ -72,12 +72,48 @@ export function formatarMoedaCompacta(valor: number): string {
   });
 }
 
+export function formatarDataCrm(data: string | Date | null | undefined): string {
+  if (!data) return "—";
+  const d = typeof data === "string" ? new Date(data) : data;
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString("pt-BR", { timeZone: "UTC" });
+}
+
+// Remove acentos e normaliza maiúsculas/minúsculas — usado para comparar
+// texto vindo de planilha ou de regra de automação sem depender de digitação
+// idêntica ("Em Cobrança" === "em cobranca").
+export function normalizarTexto(texto: string): string {
+  return texto
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .trim()
+    .toLowerCase();
+}
+
+// --------------------------------------------------------------------------
+// Progresso (0-100) — "temperatura" do lead, definida manualmente ou por
+// automação. Usada para destacar e filtrar cards no quadro.
+// --------------------------------------------------------------------------
+export const FAIXAS_PROGRESSO = [
+  { id: "frio", label: "Frio", min: 0, max: 33, cor: "#60A5FA" },
+  { id: "morno", label: "Morno", min: 34, max: 66, cor: "#FBBF24" },
+  { id: "quente", label: "Quente", min: 67, max: 100, cor: "#F87171" },
+] as const;
+
+export type FaixaProgressoId = (typeof FAIXAS_PROGRESSO)[number]["id"];
+
+export function faixaProgresso(progresso: number) {
+  return FAIXAS_PROGRESSO.find((f) => progresso >= f.min && progresso <= f.max) ?? FAIXAS_PROGRESSO[0];
+}
+
 export type LeadCrmResumo = {
   id: string;
   nome: string;
   estagio: string;
   ordem: number;
+  codigo: string | null;
   valorEmAberto: string | number | null;
+  valorPago: string | number | null;
   quantidadeParcelas: number | null;
   quantidadeColaboradores: number | null;
   cnpj: string | null;
@@ -87,29 +123,90 @@ export type LeadCrmResumo = {
   sindicatoPatronal: string | null;
   origem: string | null;
   observacoes: string | null;
+  parcelaMaisAntiga: string | null;
+  parcelaMaisRecente: string | null;
+  dataUltimoContato: string | null;
+  statusPlanilha: string | null;
+  progresso: number;
   camposExtras: Record<string, unknown> | null;
   movimentadoEm: string;
   criadoEm: string;
   atualizadoEm: string;
 };
 
+export type AtendimentoCrmResumo = {
+  id: string;
+  leadId: string;
+  observacao: string;
+  tentativaNumero: number | null;
+  dataTratativa: string;
+  criadoEm: string;
+  atualizadoEm: string;
+};
+
+export type RegraAutomacaoCrm = {
+  id: string;
+  nome: string;
+  ativo: boolean;
+  ordem: number;
+  statusPlanilha: string | null;
+  progressoMin: number | null;
+  progressoMax: number | null;
+  estagioDestino: string;
+};
+
+// Avalia as regras (em ordem) contra o status/progresso atual do lead e
+// devolve o estágio pro qual ele deve ir, ou null se nenhuma regra bateu ou
+// já é a coluna atual. Condições em branco (null) não restringem a regra.
+export function encontrarEstagioAutomatico(
+  regras: RegraAutomacaoCrm[],
+  lead: { statusPlanilha: string | null; progresso: number; estagio: string },
+): string | null {
+  const ordenadas = [...regras].filter((r) => r.ativo).sort((a, b) => a.ordem - b.ordem);
+  for (const regra of ordenadas) {
+    if (regra.statusPlanilha && normalizarTexto(regra.statusPlanilha) !== normalizarTexto(lead.statusPlanilha || "")) continue;
+    if (regra.progressoMin != null && lead.progresso < regra.progressoMin) continue;
+    if (regra.progressoMax != null && lead.progresso > regra.progressoMax) continue;
+    return regra.estagioDestino !== lead.estagio ? regra.estagioDestino : null;
+  }
+  return null;
+}
+
 // Cabeçalhos aceitos na importação por planilha (CSV), em português e sem
 // acento/maiúscula — a rota de import normaliza o cabeçalho recebido antes
 // de comparar com esta lista. Ver app/api/crm/leads/importar/route.ts.
 export const CAMPOS_IMPORTACAO: { chave: keyof LeadCrmResumo | "estagioLabel"; aliases: string[] }[] = [
-  { chave: "nome", aliases: ["nome", "cliente", "lead", "razao social", "razaosocial"] },
+  { chave: "codigo", aliases: ["codigo", "código", "cod"] },
+  { chave: "nome", aliases: ["nome", "associado", "cliente", "lead", "razao social", "razaosocial"] },
+  { chave: "cnpj", aliases: ["cnpj"] },
   { chave: "valorEmAberto", aliases: ["valor em aberto", "valoremaberto", "valor", "valor devido", "valordevido"] },
   { chave: "quantidadeParcelas", aliases: ["quantidade de parcelas", "qtd parcelas", "parcelas", "quantidadeparcelas"] },
   {
     chave: "quantidadeColaboradores",
-    aliases: ["quantidade de colaboradores", "qtd colaboradores", "colaboradores", "funcionarios", "quantidadecolaboradores"],
+    aliases: [
+      "quantidade de colaboradores",
+      "qtd colaboradores",
+      "colaboradores",
+      "funcionarios",
+      "quantidadecolaboradores",
+      "n func. ativos",
+      "n func ativos",
+      "no func. ativos",
+      "func. ativos",
+      "func ativos",
+      "funcionarios ativos",
+    ],
   },
-  { chave: "cnpj", aliases: ["cnpj"] },
-  { chave: "telefone", aliases: ["telefone", "telefone 1", "whatsapp", "celular"] },
-  { chave: "telefone2", aliases: ["telefone 2", "telefone2", "telefone secundario", "telefonesecundario"] },
+  { chave: "observacoes", aliases: ["observacoes", "observações", "observacao", "observação", "obs", "notas"] },
+  { chave: "parcelaMaisAntiga", aliases: ["parcela mais antiga", "mais antiga", "parcelamaisantiga"] },
+  { chave: "parcelaMaisRecente", aliases: ["parcela mais recente", "mais recente", "parcelamaisrecente"] },
+  { chave: "statusPlanilha", aliases: ["status"] },
+  { chave: "dataUltimoContato", aliases: ["data do ultimo contato", "data do último contato", "ultimo contato", "data"] },
+  { chave: "valorPago", aliases: ["pago", "valor pago"] },
   { chave: "email", aliases: ["email", "e-mail"] },
   { chave: "sindicatoPatronal", aliases: ["sindicato patronal", "sindicatopatronal", "sindicato"] },
+  { chave: "telefone", aliases: ["telefone", "telefone 1", "whatsapp", "celular"] },
+  { chave: "telefone2", aliases: ["telefone 2", "telefone2", "telefone secundario", "telefonesecundario"] },
   { chave: "origem", aliases: ["origem", "canal", "fonte"] },
-  { chave: "observacoes", aliases: ["observacoes", "observações", "obs", "notas"] },
-  { chave: "estagioLabel", aliases: ["estagio", "estágio", "etapa", "coluna", "status"] },
+  { chave: "estagioLabel", aliases: ["estagio", "estágio", "etapa", "coluna"] },
 ];

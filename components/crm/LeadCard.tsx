@@ -9,7 +9,7 @@
 
 import type { CSSProperties } from "react";
 import type { LeadCrmResumo } from "../../lib/crm";
-import { infoEstagio, diasParado, formatarMoedaCrm, DIAS_SEM_MOVIMENTO } from "../../lib/crm";
+import { infoEstagio, diasParado, formatarMoedaCrm, DIAS_SEM_MOVIMENTO, faixaProgresso } from "../../lib/crm";
 
 function somenteDigitos(texto: string): string {
   return texto.replace(/\D/g, "");
@@ -39,6 +39,7 @@ export default function LeadCard({
   const info = infoEstagio(lead.estagio);
   const dias = diasParado(lead.movimentadoEm);
   const parado = dias >= DIAS_SEM_MOVIMENTO;
+  const faixa = faixaProgresso(lead.progresso);
   const temMeta = lead.quantidadeParcelas != null || lead.quantidadeColaboradores != null || lead.sindicatoPatronal;
 
   return (
@@ -67,7 +68,22 @@ export default function LeadCard({
         </span>
       </div>
 
-      {lead.valorEmAberto != null && <div className="crm-card-value">{formatarMoedaCrm(lead.valorEmAberto)}</div>}
+      {/* Valor em aberto da empresa — em destaque, é a informação mais
+          importante do card pra cobrança/negociação. */}
+      {lead.valorEmAberto != null && (
+        <div className="crm-card-valores">
+          <div>
+            <span className="crm-card-value-label">Em aberto</span>
+            <span className="crm-card-value">{formatarMoedaCrm(lead.valorEmAberto)}</span>
+          </div>
+          {lead.valorPago != null && (
+            <div>
+              <span className="crm-card-value-label">Pago</span>
+              <span className="crm-card-value crm-card-value-pago">{formatarMoedaCrm(lead.valorPago)}</span>
+            </div>
+          )}
+        </div>
+      )}
 
       {temMeta && (
         <div className="crm-card-meta">
@@ -77,14 +93,28 @@ export default function LeadCard({
         </div>
       )}
 
+      {/* Botão de WhatsApp bem visível (não só um ícone perdido no rodapé) —
+          abre a conversa direto, sem precisar entrar no card. */}
+      {lead.telefone && (
+        <a
+          className="crm-card-whatsapp"
+          href={`https://wa.me/55${somenteDigitos(lead.telefone)}`}
+          target="_blank"
+          rel="noreferrer"
+          title="Abrir conversa no WhatsApp"
+          onClick={(e) => e.stopPropagation()}
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          <IconWhatsapp /> WhatsApp
+        </a>
+      )}
+
       <div className="crm-card-footer">
-        <span className="crm-card-origem">{lead.origem || "Sem origem"}</span>
+        <span className="crm-progress-badge" style={{ color: faixa.cor, borderColor: faixa.cor }}>
+          <span className="crm-progress-dot" style={{ background: faixa.cor }} />
+          {faixa.label} · {lead.progresso}%
+        </span>
         <div className="crm-card-quick" onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
-          {lead.telefone && (
-            <a href={`https://wa.me/55${somenteDigitos(lead.telefone)}`} target="_blank" rel="noreferrer" title="Abrir WhatsApp">
-              <IconWhatsapp />
-            </a>
-          )}
           {lead.email && (
             <a href={`mailto:${lead.email}`} title="Enviar e-mail">
               <IconMail />
@@ -92,6 +122,7 @@ export default function LeadCard({
           )}
         </div>
       </div>
+      {lead.origem && <div className="crm-card-origem">{lead.origem}</div>}
     </div>
   );
 }

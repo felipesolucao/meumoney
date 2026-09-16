@@ -6,21 +6,16 @@
 // Cada linha vira um novo lead. Colunas não reconhecidas (ver
 // CAMPOS_IMPORTACAO em lib/crm.ts) são preservadas em "camposExtras", sem
 // perder informação — o usuário disse que vai complementar a planilha com
-// novas colunas ao longo do tempo.
+// novas colunas ao longo do tempo. Depois de criado, cada lead passa pelas
+// automações do usuário (ver lib/crmAutomacao.ts) — útil pra planilha já vir
+// com uma coluna "STATUS" que deve empurrar o lead pra uma etapa específica.
 // ============================================================================
 import { NextRequest, NextResponse } from "next/server";
 import { EstagioLeadCrm } from "@prisma/client";
 import { prisma } from "../../../../../lib/prisma";
 import { obterSessao } from "../../../../../lib/auth";
-import { CAMPOS_IMPORTACAO, ESTAGIOS, ESTAGIOS_IDS } from "../../../../../lib/crm";
-
-function normalizar(texto: string): string {
-  return texto
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .trim()
-    .toLowerCase();
-}
+import { CAMPOS_IMPORTACAO, ESTAGIOS, ESTAGIOS_IDS, normalizarTexto } from "../../../../../lib/crm";
+import { aplicarAutomacoes } from "../../../../../lib/crmAutomacao";
 
 // Aceita CSV separado por vírgula ou por ponto-e-vírgula (padrão do Excel
 // em português), com campos entre aspas quando o valor tem o separador.
@@ -71,10 +66,26 @@ function paraNumero(valor: string): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+// Aceita dd/mm/aaaa, dd/mm/aa (formato comum de planilha brasileira) ou
+// qualquer formato que o Date do JS já reconheça (ISO, etc).
+function paraData(valor: string | undefined): Date | null {
+  if (!valor) return null;
+  const v = valor.trim();
+  const brasileiro = v.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+  if (brasileiro) {
+    const [, dia, mes, ano] = brasileiro;
+    const anoCompleto = ano.length === 2 ? 2000 + parseInt(ano, 10) : parseInt(ano, 10);
+    const data = new Date(Date.UTC(anoCompleto, parseInt(mes, 10) - 1, parseInt(dia, 10)));
+    return Number.isNaN(data.getTime()) ? null : data;
+  }
+  const data = new Date(v);
+  return Number.isNaN(data.getTime()) ? null : data;
+}
+
 function paraEstagio(valor: string | undefined): EstagioLeadCrm {
   if (!valor) return "primeira_tentativa";
-  const alvo = normalizar(valor);
-  const encontrado = ESTAGIOS.find((e) => normalizar(e.label) === alvo || e.id === alvo);
+  const alvo = normalizarTexto(valor);
+  const encontrado = ESTAGIOS.find((e) => normalizarTexto(e.label) === alvo || e.id === alvo);
   if (encontrado) return encontrado.id;
   const direto = ESTAGIOS_IDS.find((id) => id === alvo);
   return direto ?? "primeira_tentativa";
@@ -95,7 +106,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "A planilha precisa de um cabeçalho e ao menos uma linha de dados." }, { status: 400 });
   }
 
-  const cabecalho = linhas[0].map((c) => normalizar(c));
+  const cabecalho = linhas[0].map((c) => normalizarTexto(c));
   const indicePorChave = new Map<string, number>();
   cabecalho.forEach((coluna, indice) => {
     const campo = CAMPOS_IMPORTACAO.find((c) => c.aliases.includes(coluna));
@@ -103,7 +114,7 @@ export async function POST(req: NextRequest) {
   });
 
   if (!indicePorChave.has("nome")) {
-    return NextResponse.json({ error: 'A planilha precisa de uma coluna "Nome".' }, { status: 400 });
+    return NextResponse.json({ error: 'A planilha precisa de uma coluna "Nome" (ou "Associado").' }, { status: 400 });
   }
 
   const contadorPorEstagio = new Map<string, number>();
@@ -113,7 +124,7 @@ export async function POST(req: NextRequest) {
   }
 
   const linhasDeDados = linhas.slice(1);
-  const novosLeads = [];
+  let importados = 0;
 
   for (const linha of linhasDeDados) {
     const pega = (chave: string) => {
@@ -138,30 +149,39 @@ export async function POST(req: NextRequest) {
     const textoParcelas = pega("quantidadeParcelas");
     const textoColaboradores = pega("quantidadeColaboradores");
 
-    novosLeads.push({
-      nome,
-      estagio,
-      ordem,
-      valorEmAberto: paraNumero(pega("valorEmAberto") ?? ""),
-      quantidadeParcelas: textoParcelas ? parseInt(textoParcelas, 10) || null : null,
-      quantidadeColaboradores: textoColaboradores ? parseInt(textoColaboradores, 10) || null : null,
-      cnpj: pega("cnpj") || null,
-      telefone: pega("telefone") || null,
-      telefone2: pega("telefone2") || null,
-      email: pega("email") || null,
-      sindicatoPatronal: pega("sindicatoPatronal") || null,
-      origem: pega("origem") || null,
-      observacoes: pega("observacoes") || null,
-      camposExtras: Object.keys(camposExtras).length > 0 ? camposExtras : undefined,
-      usuarioId: sessao.id,
+    let lead = await prisma.leadCrm.create({
+      data: {
+        nome,
+        estagio,
+        ordem,
+        codigo: pega("codigo") || null,
+        valorEmAberto: paraNumero(pega("valorEmAberto") ?? ""),
+        valorPago: paraNumero(pega("valorPago") ?? ""),
+        quantidadeParcelas: textoParcelas ? parseInt(textoParcelas, 10) || null : null,
+        quantidadeColaboradores: textoColaboradores ? parseInt(textoColaboradores, 10) || null : null,
+        cnpj: pega("cnpj") || null,
+        telefone: pega("telefone") || null,
+        telefone2: pega("telefone2") || null,
+        email: pega("email") || null,
+        sindicatoPatronal: pega("sindicatoPatronal") || null,
+        origem: pega("origem") || null,
+        observacoes: pega("observacoes") || null,
+        parcelaMaisAntiga: paraData(pega("parcelaMaisAntiga")),
+        parcelaMaisRecente: paraData(pega("parcelaMaisRecente")),
+        dataUltimoContato: paraData(pega("dataUltimoContato")),
+        statusPlanilha: pega("statusPlanilha") || null,
+        camposExtras: Object.keys(camposExtras).length > 0 ? camposExtras : undefined,
+        usuarioId: sessao.id,
+      },
     });
+
+    lead = await aplicarAutomacoes(sessao.id, lead);
+    importados++;
   }
 
-  if (novosLeads.length === 0) {
-    return NextResponse.json({ error: "Nenhuma linha válida encontrada (verifique a coluna Nome)." }, { status: 400 });
+  if (importados === 0) {
+    return NextResponse.json({ error: "Nenhuma linha válida encontrada (verifique a coluna Nome/Associado)." }, { status: 400 });
   }
 
-  await prisma.leadCrm.createMany({ data: novosLeads });
-
-  return NextResponse.json({ ok: true, importados: novosLeads.length });
+  return NextResponse.json({ ok: true, importados });
 }
