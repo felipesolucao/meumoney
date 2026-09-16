@@ -46,6 +46,13 @@
 .crm-app ::-webkit-scrollbar-track {
   background: transparent;
 }
+/* Firefox não usa os pseudo-elementos ::-webkit-scrollbar-* acima — sem isso
+   a barra de rolagem lateral do quadro (crm-board-scroll) e a de cada coluna
+   ficam com a cor padrão do navegador, quase invisíveis no tema escuro. */
+.crm-app * {
+  scrollbar-width: thin;
+  scrollbar-color: var(--crm-surface-3) transparent;
+}
 
 /* --------------------------------------------------------------------------
    Topo: voltar ao MeuMoney, título, busca e ações
@@ -243,7 +250,10 @@
 .crm-board-scroll {
   flex: 1;
   min-height: 0;
-  overflow-x: auto;
+  /* "scroll" (em vez de "auto") — a barra fica sempre reservada e visível no
+     rodapé do quadro, mesmo sem passar o mouse por cima, pra ficar claro que
+     dá pra arrastar pros lados e ver todas as colunas. */
+  overflow-x: scroll;
   overflow-y: hidden;
   padding: 2px 20px 20px;
   display: flex;
@@ -251,6 +261,15 @@
   /* "stretch" (padrão do flex) — sem isso as colunas cresciam de acordo com o
      conteúdo em vez de ocupar a altura do quadro, e o scroll interno de cada
      coluna (.crm-column-body) nunca entrava em ação. */
+}
+.crm-board-scroll::-webkit-scrollbar {
+  height: 10px;
+}
+.crm-board-scroll::-webkit-scrollbar-thumb {
+  background: var(--crm-border-strong);
+}
+.crm-board-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--crm-text-faint);
 }
 
 .crm-column {
