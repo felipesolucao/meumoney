@@ -481,18 +481,49 @@
   flex-shrink: 0;
 }
 .crm-card-name {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
   font-weight: 700;
   font-size: 13px;
   line-height: 1.25;
+}
+.crm-card-name-texto {
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
 }
 .crm-card-cnpj {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   font-size: 11px;
   color: var(--crm-text-muted);
   margin-top: 1px;
+}
+
+/* Botão pequeno de copiar (nome/CNPJ) — ver BotaoCopiar.tsx. Reaproveitado
+   no card do quadro e no perfil do lead. */
+.crm-botao-copiar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  border: none;
+  background: transparent;
+  color: var(--crm-text-faint);
+  border-radius: 5px;
+  cursor: pointer;
+  padding: 0;
+}
+.crm-botao-copiar:hover {
+  background: var(--crm-surface-3);
+  color: var(--crm-text);
 }
 .crm-card-days {
   margin-left: auto;
@@ -725,6 +756,9 @@
   flex-shrink: 0;
 }
 .crm-painel-nome {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-size: 18px;
   font-weight: 800;
 }
@@ -1054,6 +1088,11 @@
   font-size: 12px;
   font-weight: 700;
   color: var(--crm-text-muted);
+}
+.crm-label-com-copia {
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 .crm-input,
 .crm-select,

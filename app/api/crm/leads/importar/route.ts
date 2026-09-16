@@ -14,7 +14,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { EstagioLeadCrm } from "@prisma/client";
 import { prisma } from "../../../../../lib/prisma";
 import { obterSessao } from "../../../../../lib/auth";
-import { CAMPOS_IMPORTACAO, ESTAGIOS, ESTAGIOS_IDS, normalizarTexto } from "../../../../../lib/crm";
+import { CAMPOS_IMPORTACAO, ESTAGIOS_IDS, mesclarEstagiosConfig, normalizarTexto, type EstagioConfigCrm } from "../../../../../lib/crm";
 import { aplicarAutomacoes } from "../../../../../lib/crmAutomacao";
 
 // Aceita CSV separado por vírgula ou por ponto-e-vírgula (padrão do Excel
@@ -82,13 +82,45 @@ function paraData(valor: string | undefined): Date | null {
   return Number.isNaN(data.getTime()) ? null : data;
 }
 
-function paraEstagio(valor: string | undefined): EstagioLeadCrm {
-  if (!valor) return "primeira_tentativa";
-  const alvo = normalizarTexto(valor);
-  const encontrado = ESTAGIOS.find((e) => normalizarTexto(e.label) === alvo || e.id === alvo);
-  if (encontrado) return encontrado.id;
-  const direto = ESTAGIOS_IDS.find((id) => id === alvo);
-  return direto ?? "primeira_tentativa";
+// Tenta achar o grupo/coluna certo pra cada linha da planilha, nessa ordem:
+// 1) coluna "Etapa"/"Estágio"/"Coluna", comparada com o nome de cada grupo
+//    (o nome PERSONALIZADO do usuário — ver "Gerenciar grupos" — tem
+//    prioridade sobre o padrão, já que é o que aparece pra ele no quadro);
+// 2) na falta ou sem bater, tenta a mesma comparação usando a coluna
+//    "Status" (aceita como sinônimo aqui, mesmo sendo um campo livre — ver
+//    statusPlanilha) — cobre a planilha que só tem "Status", sem "Etapa";
+// 3) korrespondência parcial (a planilha abrevia ou o texto vem com algo a
+//    mais colado, tipo "Cancelado - cliente pediu");
+// 4) se nada bateu, cai no primeiro grupo (ordem do quadro) — nunca falha
+//    silenciosamente pra um estágio que não existe mais.
+function paraEstagio(valorEtapa: string | undefined, valorStatus: string | undefined, estagios: EstagioConfigCrm[]): EstagioLeadCrm {
+  const candidatos = [valorEtapa, valorStatus];
+
+  for (const valor of candidatos) {
+    if (!valor) continue;
+    const alvo = normalizarTexto(valor);
+    if (!alvo) continue;
+
+    const exato = estagios.find(
+      (e) => normalizarTexto(e.label) === alvo || normalizarTexto(e.labelPadrao) === alvo || normalizarTexto(e.id) === alvo,
+    );
+    if (exato) return exato.id;
+  }
+
+  for (const valor of candidatos) {
+    if (!valor) continue;
+    const alvo = normalizarTexto(valor);
+    if (!alvo) continue;
+
+    const parcial = estagios.find((e) => {
+      const label = normalizarTexto(e.label);
+      const labelPadrao = normalizarTexto(e.labelPadrao);
+      return alvo.includes(label) || label.includes(alvo) || alvo.includes(labelPadrao) || labelPadrao.includes(alvo);
+    });
+    if (parcial) return parcial.id;
+  }
+
+  return estagios[0]?.id ?? "primeira_tentativa";
 }
 
 export async function POST(req: NextRequest) {
@@ -117,6 +149,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'A planilha precisa de uma coluna "Nome" (ou "Associado").' }, { status: 400 });
   }
 
+  const estagiosConfig = await prisma.estagioCrmConfig.findMany({ where: { usuarioId: sessao.id } });
+  const estagios = mesclarEstagiosConfig(estagiosConfig);
+
   const contadorPorEstagio = new Map<string, number>();
   for (const info of ESTAGIOS_IDS) {
     const atual = await prisma.leadCrm.count({ where: { usuarioId: sessao.id, estagio: info } });
@@ -134,7 +169,7 @@ export async function POST(req: NextRequest) {
     const nome = pega("nome");
     if (!nome) continue;
 
-    const estagio = paraEstagio(pega("estagioLabel"));
+    const estagio = paraEstagio(pega("estagioLabel"), pega("statusPlanilha"), estagios);
     const ordem = contadorPorEstagio.get(estagio) ?? 0;
     contadorPorEstagio.set(estagio, ordem + 1);
 
