@@ -5,7 +5,7 @@
 // a barra de navegação inferior fixa.
 // ============================================================================
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import { Public_Sans } from "next/font/google";
 import "./globals.css";
 import BottomNav from "../components/BottomNav";
 import AppShell from "../components/AppShell";
@@ -15,12 +15,15 @@ import ThemeProvider, { SCRIPT_TEMA_INICIAL } from "../components/ThemeProvider"
 import PwaAtualizador from "../components/PwaAtualizador";
 
 // Fonte única do projeto inteiro (ver --font-sans em app/globals.css, que
-// referencia esta variável) — next/font baixa e self-hospeda o Inter no
-// build, sem depender do Google Fonts em runtime nem de "flash" de fonte.
+// referencia esta variável) — next/font baixa e self-hospeda a Public Sans
+// no build, sem depender do Google Fonts em runtime nem de "flash" de
+// fonte. Public Sans é uma humanista sans-serif de licença aberta, com o
+// mesmo espírito da fonte usada na interface do Claude (claude.ai) — trocada
+// a pedido, no lugar da Inter usada antes.
 // Pesos fixos (400 pro texto normal, 700 pro bold dos títulos) em vez de
 // fonte variável — determinístico e sem risco de "bold sintético" do
 // navegador quando algum componente pedir um peso não carregado.
-const inter = Inter({ subsets: ["latin"], weight: ["400", "500", "600", "700"], variable: "--font-inter", display: "swap" });
+const fonteApp = Public_Sans({ subsets: ["latin"], weight: ["400", "500", "600", "700"], variable: "--font-app", display: "swap" });
 
 export const metadata: Metadata = {
   title: "MeuMoney — Sua vida financeira sob controle",
@@ -97,7 +100,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             página, para nunca "piscar" claro e só depois escurecer. */}
         <script dangerouslySetInnerHTML={{ __html: SCRIPT_TEMA_INICIAL }} />
       </head>
-      <body className={`${inter.variable} font-sans`}>
+      <body className={`${fonteApp.variable} font-sans`}>
         <PwaAtualizador />
         <ThemeProvider>
           <ToastProvider>
