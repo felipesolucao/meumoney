@@ -6,7 +6,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "../../../../lib/prisma";
 import { obterSessao } from "../../../../lib/auth";
-import { ESTAGIOS_IDS } from "../../../../lib/crm";
+import { estagiosValidosDoUsuario } from "../../../../lib/crmAutomacao";
 
 export async function GET() {
   const sessao = await obterSessao();
@@ -32,7 +32,8 @@ export async function POST(req: NextRequest) {
   if (!nome || !String(nome).trim()) {
     return NextResponse.json({ error: "Dê um nome para a regra." }, { status: 400 });
   }
-  if (!ESTAGIOS_IDS.includes(estagioDestino)) {
+  const validos = await estagiosValidosDoUsuario(sessao.id);
+  if (!validos.has(estagioDestino)) {
     return NextResponse.json({ error: "Escolha uma etapa de destino válida." }, { status: 400 });
   }
 

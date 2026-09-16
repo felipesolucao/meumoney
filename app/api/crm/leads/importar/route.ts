@@ -11,7 +11,6 @@
 // com uma coluna "STATUS" que deve empurrar o lead pra uma etapa específica.
 // ============================================================================
 import { NextRequest, NextResponse } from "next/server";
-import { EstagioLeadCrm } from "@prisma/client";
 import { prisma } from "../../../../../lib/prisma";
 import { obterSessao } from "../../../../../lib/auth";
 import { CAMPOS_IMPORTACAO, ESTAGIOS_IDS, mesclarEstagiosConfig, normalizarTexto, type EstagioConfigCrm } from "../../../../../lib/crm";
@@ -93,7 +92,7 @@ function paraData(valor: string | undefined): Date | null {
 //    mais colado, tipo "Cancelado - cliente pediu");
 // 4) se nada bateu, cai no primeiro grupo (ordem do quadro) — nunca falha
 //    silenciosamente pra um estágio que não existe mais.
-function paraEstagio(valorEtapa: string | undefined, valorStatus: string | undefined, estagios: EstagioConfigCrm[]): EstagioLeadCrm {
+function paraEstagio(valorEtapa: string | undefined, valorStatus: string | undefined, estagios: EstagioConfigCrm[]): string {
   const candidatos = [valorEtapa, valorStatus];
 
   for (const valor of candidatos) {

@@ -5,9 +5,18 @@
 // entra o Prisma Client, que só pode rodar no servidor. A lógica pura de
 // "qual regra bate" mora em lib/crm.ts (encontrarEstagioAutomatico).
 // ============================================================================
-import { EstagioLeadCrm, LeadCrm } from "@prisma/client";
+import { LeadCrm } from "@prisma/client";
 import { prisma } from "./prisma";
-import { encontrarEstagioAutomatico, type RegraAutomacaoCrm } from "./crm";
+import { encontrarEstagioAutomatico, ESTAGIOS_IDS, type RegraAutomacaoCrm } from "./crm";
+
+// Um "estagio" válido pra este usuário é um dos 11 padrão OU um grupo que
+// ele mesmo criou (ver EstagioCrmConfig/"Gerenciar grupos") — usado em toda
+// rota que recebe um id de estágio vindo do cliente (mover lead, reordenar
+// coluna, automação etc.) pra rejeitar um id inventado/de outro usuário.
+export async function estagiosValidosDoUsuario(usuarioId: string): Promise<Set<string>> {
+  const configs = await prisma.estagioCrmConfig.findMany({ where: { usuarioId }, select: { estagio: true } });
+  return new Set<string>([...ESTAGIOS_IDS, ...configs.map((c) => c.estagio)]);
+}
 
 // Chamado depois de criar/editar/importar um lead — se alguma automação
 // ativa bater com o status/progresso atual dele, move para o estágio
@@ -32,7 +41,7 @@ export async function aplicarAutomacoes(usuarioId: string, lead: LeadCrm): Promi
     statusPlanilha: lead.statusPlanilha,
     progresso: lead.progresso,
     estagio: lead.estagio,
-  }) as EstagioLeadCrm | null;
+  });
 
   if (!novoEstagio) return lead;
 

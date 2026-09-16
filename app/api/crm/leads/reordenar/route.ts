@@ -4,19 +4,19 @@
 //         de um arrastar-e-soltar (evita 1 PATCH por card reordenado).
 // ============================================================================
 import { NextRequest, NextResponse } from "next/server";
-import { EstagioLeadCrm } from "@prisma/client";
 import { prisma } from "../../../../../lib/prisma";
 import { obterSessao } from "../../../../../lib/auth";
-import { ESTAGIOS_IDS } from "../../../../../lib/crm";
+import { estagiosValidosDoUsuario } from "../../../../../lib/crmAutomacao";
 
 export async function POST(req: NextRequest) {
   const sessao = await obterSessao();
   if (!sessao) return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
 
   const body = await req.json();
-  const { estagio, idsNaOrdem } = body as { estagio: EstagioLeadCrm; idsNaOrdem: string[] };
+  const { estagio, idsNaOrdem } = body as { estagio: string; idsNaOrdem: string[] };
 
-  if (!ESTAGIOS_IDS.includes(estagio) || !Array.isArray(idsNaOrdem)) {
+  const validos = await estagiosValidosDoUsuario(sessao.id);
+  if (!validos.has(estagio) || !Array.isArray(idsNaOrdem)) {
     return NextResponse.json({ error: "Dados inválidos." }, { status: 400 });
   }
 

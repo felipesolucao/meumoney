@@ -752,7 +752,7 @@
 .crm-modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(3, 7, 18, 0.62);
+  background: rgba(4, 4, 5, 0.66);
   backdrop-filter: blur(2px);
   z-index: 500;
   display: flex;
@@ -815,7 +815,7 @@
 .crm-painel-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(3, 7, 18, 0.55);
+  background: rgba(4, 4, 5, 0.6);
   z-index: 500;
   display: flex;
   justify-content: flex-end;
@@ -1193,7 +1193,7 @@
 .crm-input,
 .crm-select,
 .crm-textarea {
-  background: #0e1630;
+  background: var(--crm-surface-2);
   border: 1px solid var(--crm-border);
   border-radius: 9px;
   padding: 10px 12px;
@@ -1293,6 +1293,27 @@
   border-radius: 10px;
   border: 1px solid var(--crm-border);
   background: var(--crm-surface-2);
+  transition: background 0.12s, box-shadow 0.12s, opacity 0.12s;
+}
+.crm-grupos-item.is-dragging {
+  opacity: 0.4;
+}
+.crm-grupos-item.is-drop-target {
+  background: var(--crm-surface-3);
+  box-shadow: inset 0 0 0 1.5px var(--crm-accent);
+}
+.crm-grupos-item-alca {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  color: var(--crm-text-faint);
+  cursor: grab;
+}
+.crm-grupos-item-alca:active {
+  cursor: grabbing;
 }
 .crm-grupos-item-info {
   flex: 1;
@@ -1321,6 +1342,20 @@
   align-items: center;
   gap: 2px;
   flex-shrink: 0;
+}
+.crm-grupos-novo-btn {
+  margin-top: 4px;
+  align-self: flex-start;
+}
+.crm-grupos-novo-form {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+.crm-grupos-novo-form .crm-input {
+  flex: 1;
+  min-width: 0;
 }
 
 /* Toggle estilo "ionic" (interruptor arredondado) — ver o

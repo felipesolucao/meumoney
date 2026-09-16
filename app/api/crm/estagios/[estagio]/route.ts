@@ -5,19 +5,20 @@
 //          cor continuam fixos — só existe upsert de ordem/visivel/nome.
 // ============================================================================
 import { NextRequest, NextResponse } from "next/server";
-import { EstagioLeadCrm } from "@prisma/client";
 import { prisma } from "../../../../../lib/prisma";
 import { obterSessao } from "../../../../../lib/auth";
-import { ESTAGIOS_IDS, mesclarEstagiosConfig } from "../../../../../lib/crm";
+import { mesclarEstagiosConfig } from "../../../../../lib/crm";
+import { estagiosValidosDoUsuario } from "../../../../../lib/crmAutomacao";
 
 export async function PATCH(req: NextRequest, { params }: { params: { estagio: string } }) {
   const sessao = await obterSessao();
   if (!sessao) return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
 
-  if (!ESTAGIOS_IDS.includes(params.estagio as EstagioLeadCrm)) {
+  const validos = await estagiosValidosDoUsuario(sessao.id);
+  if (!validos.has(params.estagio)) {
     return NextResponse.json({ error: "Grupo inválido." }, { status: 400 });
   }
-  const estagio = params.estagio as EstagioLeadCrm;
+  const estagio = params.estagio;
 
   const body = await req.json();
   const dados: { visivel?: boolean; nomePersonalizado?: string | null } = {};

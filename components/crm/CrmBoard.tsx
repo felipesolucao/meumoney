@@ -273,6 +273,7 @@ export default function CrmBoard({
                     {emArrasteAqui && overInfo?.index === indice && <div className="crm-drop-indicator" />}
                     <LeadCard
                       lead={lead}
+                      estagios={estagios}
                       fantasma={drag?.id === lead.id}
                       onAbrir={() => setLeadEditando(lead)}
                       onPointerDownArrastar={(e) => iniciarArraste(lead, e)}
@@ -290,6 +291,7 @@ export default function CrmBoard({
       {drag && leadArrastado && (
         <LeadCard
           lead={leadArrastado}
+          estagios={estagios}
           flutuante
           fantasma={false}
           onAbrir={() => {}}

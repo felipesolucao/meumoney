@@ -1,14 +1,15 @@
 // ============================================================================
 // CRM — constantes e helpers compartilhados (produto separado, ver app/crm)
 // ----------------------------------------------------------------------------
-// Fonte única de verdade para as colunas do Kanban: ordem, rótulo e cor de
-// cada estágio. Usado tanto no servidor (rotas de API, validação) quanto no
-// cliente (quadro, formulários, importação) — nunca duplique esta lista.
+// Fonte única de verdade para as colunas PADRÃO do Kanban: ordem, rótulo e
+// cor de cada estágio. Usado tanto no servidor (rotas de API, validação)
+// quanto no cliente (quadro, formulários, importação) — nunca duplique esta
+// lista. Grupos CRIADOS PELO USUÁRIO (além destes 11) vivem só no banco, ver
+// EstagioConfigCrm/mesclarEstagiosConfig logo abaixo.
 // ============================================================================
-import { EstagioLeadCrm } from "@prisma/client";
 
 export type EstagioInfo = {
-  id: EstagioLeadCrm;
+  id: string;
   label: string;
   /** cor sólida — barra da coluna, ponto do card, bordas em destaque */
   cor: string;
@@ -40,16 +41,19 @@ export function infoEstagio(id: string): EstagioInfo {
 }
 
 // --------------------------------------------------------------------------
-// Personalização por usuário das colunas do quadro (ordem, visibilidade e
-// nome) — ver model EstagioCrmConfig. Id e cor continuam fixos (ESTAGIOS
-// acima); só existe uma linha no banco pro estágio que o usuário mexeu, por
-// isso o merge abaixo sempre parte dos padrões.
+// Personalização por usuário das colunas do quadro (ordem, visibilidade,
+// nome e — pra grupo customizado — cor) — ver model EstagioCrmConfig. Um
+// grupo PADRÃO (dos 11 de ESTAGIOS) só tem linha no banco se o usuário mexeu
+// nele; um grupo CUSTOMIZADO (criado por ele, "estagio" fora da lista
+// padrão) existe inteiramente a partir dessa linha — sem ela, não existe.
 // --------------------------------------------------------------------------
 export type EstagioConfigCrm = EstagioInfo & {
   labelPadrao: string;
   ordem: number;
   visivel: boolean;
   nomePersonalizado: string | null;
+  /** true = criado pelo usuário via "Gerenciar grupos", não é um dos 11 padrão */
+  personalizado: boolean;
 };
 
 export type EstagioConfigCrmBruto = {
@@ -57,11 +61,30 @@ export type EstagioConfigCrmBruto = {
   ordem: number;
   visivel: boolean;
   nomePersonalizado: string | null;
+  cor: string | null;
 };
+
+// Cores de fallback pros grupos customizados, na ordem em que vão sendo
+// criados — cicla se o usuário criar mais grupos do que cores na lista.
+export const PALETA_CORES_GRUPO = [
+  "#3B82F6", "#A855F7", "#F59E0B", "#14B8A6", "#EC4899", "#84CC16", "#F43F5E", "#06B6D4",
+];
+
+export function corParaSuave(hex: string): string {
+  const limpo = hex.replace("#", "");
+  const normalizado = limpo.length === 3 ? limpo.split("").map((c) => c + c).join("") : limpo;
+  const bigint = parseInt(normalizado, 16);
+  if (Number.isNaN(bigint)) return "rgba(139,150,184,0.16)";
+  const r = (bigint >> 16) & 255;
+  const g = (bigint >> 8) & 255;
+  const b = bigint & 255;
+  return `rgba(${r}, ${g}, ${b}, 0.16)`;
+}
 
 export function mesclarEstagiosConfig(configs: EstagioConfigCrmBruto[]): EstagioConfigCrm[] {
   const porEstagio = new Map(configs.map((c) => [c.estagio, c]));
-  const mesclado = ESTAGIOS.map((info, indice) => {
+
+  const padrao: EstagioConfigCrm[] = ESTAGIOS.map((info, indice) => {
     const cfg = porEstagio.get(info.id);
     const nomePersonalizado = cfg?.nomePersonalizado?.trim() || null;
     return {
@@ -71,9 +94,30 @@ export function mesclarEstagiosConfig(configs: EstagioConfigCrmBruto[]): Estagio
       ordem: cfg?.ordem ?? indice,
       visivel: cfg?.visivel ?? true,
       nomePersonalizado,
+      personalizado: false,
     };
   });
-  return mesclado.sort((a, b) => a.ordem - b.ordem);
+
+  const idsPadrao = new Set(ESTAGIOS_IDS);
+  const customizados: EstagioConfigCrm[] = configs
+    .filter((c) => !idsPadrao.has(c.estagio))
+    .map((c) => {
+      const label = c.nomePersonalizado?.trim() || "Novo grupo";
+      const cor = c.cor || PALETA_CORES_GRUPO[0];
+      return {
+        id: c.estagio,
+        label,
+        labelPadrao: label,
+        cor,
+        corSuave: corParaSuave(cor),
+        ordem: c.ordem,
+        visivel: c.visivel,
+        nomePersonalizado: c.nomePersonalizado?.trim() || null,
+        personalizado: true,
+      };
+    });
+
+  return [...padrao, ...customizados].sort((a, b) => a.ordem - b.ordem);
 }
 
 // Estágios que encerram o funil — não contam mais como "backlog ativo".
