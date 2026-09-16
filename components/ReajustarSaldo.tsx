@@ -6,6 +6,16 @@ import { formatarMoeda } from "../lib/financeiro";
 import { useToast } from "./ToastProvider";
 import styles from "./ReajustarSaldo.module.css";
 
+// BUG CORRIGIDO: campo "calculadora" (cada dígito sempre se soma ao final da
+// sequência de centavos) — clicar no meio do valor já formatado e digitar
+// inseria o dígito ali, multiplicando o valor total por 10x/100x. Forçamos o
+// cursor pro final a cada clique/foco.
+function moverCursorParaFim(e: React.SyntheticEvent<HTMLInputElement>) {
+  const el = e.currentTarget;
+  const fim = el.value.length;
+  requestAnimationFrame(() => el.setSelectionRange(fim, fim));
+}
+
 export default function ReajustarSaldo({ conta, onFechar, onSalvo }: {
   conta: { id: string; nome: string; saldoAtual: number };
   onFechar: () => void; onSalvo: () => void;
@@ -66,6 +76,7 @@ export default function ReajustarSaldo({ conta, onFechar, onSalvo }: {
         <div className={styles.amount}>
           <span>R$ {negativo ? "−" : ""}</span>
           <input id="novo-saldo" inputMode="decimal" autoComplete="off" value={valor} disabled={salvando} maxLength={18}
+            onFocus={moverCursorParaFim} onClick={moverCursorParaFim} onKeyUp={moverCursorParaFim}
             onChange={(event) => setValor((Number(event.target.value.replace(/\D/g, "")) / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }))} />
           <button type="button" className={styles.sign} disabled={salvando} aria-label="Alternar saldo positivo ou negativo" aria-pressed={negativo} onClick={() => setNegativo(!negativo)}>±</button>
         </div>
