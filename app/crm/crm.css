@@ -23,7 +23,11 @@
   --crm-radius-sm: 10px;
   --crm-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
 
-  min-height: 100vh;
+  /* "height" (não "min-height") — precisa ser um valor travado pra que o
+     "flex: 1; min-height: 0" de .crm-board-scroll, logo abaixo, realmente
+     limite a altura do quadro à tela (ver .app-shell.crm-shell em
+     app/globals.css, que trava o mesmo tanto no wrapper por fora). */
+  height: 100vh;
   display: flex;
   flex-direction: column;
   color: var(--crm-text);

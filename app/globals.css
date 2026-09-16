@@ -278,6 +278,14 @@ h6 {
   max-width: none;
   padding-bottom: 0;
   background: #0b1120;
+  /* Sem isso, ".app-shell" só define "min-height: 100vh" — a altura cresce
+     com o conteúdo, o quadro Kanban nunca fica limitado à tela e quem rola é
+     a página inteira (as colunas ganham altura infinita e a barra de scroll
+     horizontal do quadro só aparece lá embaixo, fora da tela). Travando em
+     exatamente 100vh + overflow hidden, o scroll fica só dentro do quadro
+     (".crm-board-scroll", horizontal) e de cada coluna (vertical). */
+  height: 100vh;
+  overflow: hidden;
 }
 
 /* Transição leve ao trocar de página (mesma sensação de "show up" de app
