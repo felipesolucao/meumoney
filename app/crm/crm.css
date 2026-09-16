@@ -7,21 +7,26 @@
    ========================================================================== */
 
 .crm-app {
-  --crm-bg: #0b1120;
-  --crm-surface: #121a2e;
-  --crm-surface-2: #182241;
-  --crm-surface-3: #212d52;
-  --crm-border: rgba(255, 255, 255, 0.08);
-  --crm-border-strong: rgba(255, 255, 255, 0.16);
-  --crm-text: #e9edf9;
-  --crm-text-muted: #8b96b8;
-  --crm-text-faint: #5c6788;
+  /* Paleta neutra (cinza-chumbo, sem tingimento azulado) — mais próxima de
+     referências profissionais de CRM (SellFlux e afins) do que o navy usado
+     antes. Verde de destaque mantido: já era o mesmo tom do produto de
+     referência. */
+  --crm-bg: #0a0a0c;
+  --crm-surface: #131316;
+  --crm-surface-2: #19191d;
+  --crm-surface-3: #232328;
+  --crm-border: rgba(255, 255, 255, 0.07);
+  --crm-border-strong: rgba(255, 255, 255, 0.14);
+  --crm-text: #f2f2f5;
+  --crm-text-muted: #9a9aa6;
+  --crm-text-faint: #66666f;
   --crm-accent: #22c55e;
   --crm-accent-hover: #1ea852;
+  --crm-accent-soft: rgba(34, 197, 94, 0.14);
   --crm-danger: #ef4444;
   --crm-radius: 14px;
   --crm-radius-sm: 10px;
-  --crm-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+  --crm-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
 
   /* "height" (não "min-height") — precisa ser um valor travado pra que o
      "flex: 1; min-height: 0" de .crm-board-scroll, logo abaixo, realmente
@@ -59,25 +64,116 @@
 }
 
 /* --------------------------------------------------------------------------
-   Topo: voltar ao MeuMoney, título, busca e ações
+   Barra de navegação do topo (abas do CRM) — ver CrmTopNav.tsx
    -------------------------------------------------------------------------- */
-.crm-topbar {
-  padding: 18px 20px 0;
+.crm-nav {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  height: 56px;
+  padding: 0 20px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--crm-border);
+  background: var(--crm-surface);
+}
+.crm-nav-marca {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 14.5px;
+  font-weight: 700;
+  color: var(--crm-text);
+  flex-shrink: 0;
+}
+.crm-nav-voltar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  color: var(--crm-text-muted);
+  margin-right: 2px;
+}
+.crm-nav-voltar:hover {
+  background: var(--crm-surface-3);
+  color: var(--crm-text);
+}
+.crm-nav-abas {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: 1;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.crm-nav-abas::-webkit-scrollbar {
+  display: none;
+}
+.crm-nav-aba {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: none;
+  background: transparent;
+  color: var(--crm-text-faint);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: not-allowed;
+}
+.crm-nav-aba:disabled {
+  opacity: 0.55;
+}
+.crm-nav-aba.is-ativa {
+  background: var(--crm-text);
+  color: var(--crm-bg);
+  cursor: default;
+  opacity: 1;
+}
+.crm-nav-acoes {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.crm-nav-icone-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  border: 1px solid var(--crm-border);
+  background: transparent;
+  color: var(--crm-text-muted);
+}
+.crm-nav-icone-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.crm-nav-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #22c55e, #0ea5e9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12.5px;
+  font-weight: 800;
+  color: #06210f;
   flex-shrink: 0;
 }
 
-.crm-back {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--crm-text-muted);
-  font-size: 12.5px;
-  font-weight: 600;
-  text-decoration: none;
-  margin-bottom: 14px;
-}
-.crm-back:hover {
-  color: var(--crm-text);
+/* --------------------------------------------------------------------------
+   Título, busca e ações do quadro
+   -------------------------------------------------------------------------- */
+.crm-topbar {
+  padding: 16px 20px 0;
+  flex-shrink: 0;
 }
 
 .crm-topbar-row {

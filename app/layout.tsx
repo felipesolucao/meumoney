@@ -16,7 +16,10 @@ import ThemeProvider, { SCRIPT_TEMA_INICIAL } from "../components/ThemeProvider"
 // Fonte única do projeto inteiro (ver --font-sans em app/globals.css, que
 // referencia esta variável) — next/font baixa e self-hospeda o Inter no
 // build, sem depender do Google Fonts em runtime nem de "flash" de fonte.
-const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
+// Pesos fixos (400 pro texto normal, 700 pro bold dos títulos) em vez de
+// fonte variável — determinístico e sem risco de "bold sintético" do
+// navegador quando algum componente pedir um peso não carregado.
+const inter = Inter({ subsets: ["latin"], weight: ["400", "500", "600", "700"], variable: "--font-inter", display: "swap" });
 
 export const metadata: Metadata = {
   title: "MeuMoney — Sua vida financeira sob controle",
