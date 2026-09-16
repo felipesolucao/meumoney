@@ -246,6 +246,7 @@ body {
   background: var(--color-background);
   color: var(--color-foreground);
   font-family: var(--font-sans);
+  font-weight: 400;
   /* Troca suave de cor ao alternar claro/escuro no menu, em vez de um "flash" */
   transition: background-color 0.2s ease, color 0.2s ease;
 }
@@ -257,6 +258,7 @@ h4,
 h5,
 h6 {
   font-family: var(--font-heading);
+  font-weight: 700;
 }
 
 * {
@@ -291,7 +293,7 @@ textarea {
 .app-shell.crm-shell {
   max-width: none;
   padding-bottom: 0;
-  background: #0b1120;
+  background: #0a0a0c;
   /* Sem isso, ".app-shell" só define "min-height: 100vh" — a altura cresce
      com o conteúdo, o quadro Kanban nunca fica limitado à tela e quem rola é
      a página inteira (as colunas ganham altura infinita e a barra de scroll

@@ -15,7 +15,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
 import type { LeadCrmResumo, FaixaProgressoId, EstagioConfigCrm } from "../../lib/crm";
 import { ESTAGIOS, FAIXAS_PROGRESSO, faixaProgresso, formatarMoedaCompacta } from "../../lib/crm";
 import LeadCard from "./LeadCard";
@@ -26,9 +25,10 @@ import GerenciarLeadsPainel from "./GerenciarLeadsPainel";
 import GerenciarGruposPainel from "./GerenciarGruposPainel";
 import ColunaFiltros, { FILTRO_COLUNA_VAZIO, aplicarFiltroColuna, type ColunaFiltroState } from "./ColunaFiltros";
 import KpiHeader from "./KpiHeader";
+import CrmTopNav from "./CrmTopNav";
 import { useKanbanDrag } from "./useKanbanDrag";
 import { useToast } from "../ToastProvider";
-import { IconArrowLeft, IconPlus, IconSearch, IconDocument, IconUsers } from "../Icons";
+import { IconPlus, IconSearch, IconDocument, IconUsers } from "../Icons";
 
 type FiltroProgresso = FaixaProgressoId | "todos";
 
@@ -66,6 +66,7 @@ function filtrarColunas(
 export default function CrmBoard({
   leadsIniciais,
   estagiosIniciais,
+  nomeUsuario,
 }: {
   leadsIniciais: LeadCrmResumo[];
   estagiosIniciais: EstagioConfigCrm[];
@@ -162,11 +163,9 @@ export default function CrmBoard({
 
   return (
     <div className="crm-app">
-      <div className="crm-topbar">
-        <Link href="/" className="crm-back">
-          <IconArrowLeft size={14} /> Voltar ao MeuMoney
-        </Link>
+      <CrmTopNav nomeUsuario={nomeUsuario} />
 
+      <div className="crm-topbar">
         <div className="crm-topbar-row">
           <div className="crm-title-wrap">
             <div>

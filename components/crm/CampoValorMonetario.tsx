@@ -5,11 +5,29 @@
 // viram sempre os centavos e o separador de milhar aparece sozinho, sem
 // precisar digitar vírgula nem ponto. O valor guardado no formulário
 // continua um decimal simples ("1234.5"), só a exibição é mascarada.
+//
+// BUG CORRIGIDO: o campo lia TODOS os dígitos do texto formatado a cada
+// tecla, sem levar em conta onde o cursor estava — clicar no meio do valor
+// (ex.: "50.000,00") e digitar um dígito ali inseria esse dígito no meio da
+// sequência de centavos, multiplicando o valor final por 10x, 100x etc. (o
+// "número total" ficava com um bug visível). Como esse é um campo de
+// "calculadora" (sempre edita a partir do último centavo, não por posição de
+// texto), a correção é forçar o cursor pro final a cada clique/foco — assim
+// qualquer tecla sempre se soma ao final da sequência de dígitos, nunca no
+// meio.
 // ============================================================================
 "use client";
 
 function centavosParaExibicao(centavos: number): string {
   return (centavos / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function moverCursorParaFim(e: React.SyntheticEvent<HTMLInputElement>) {
+  const el = e.currentTarget;
+  const fim = el.value.length;
+  // Precisa ser no próximo frame — no momento do evento o navegador ainda
+  // não aplicou a seleção padrão (clique/foco), que sobrescreveria isto.
+  requestAnimationFrame(() => el.setSelectionRange(fim, fim));
 }
 
 export default function CampoValorMonetario({
@@ -34,6 +52,9 @@ export default function CampoValorMonetario({
           inputMode="decimal"
           placeholder="0,00"
           value={exibicao}
+          onFocus={moverCursorParaFim}
+          onClick={moverCursorParaFim}
+          onKeyUp={moverCursorParaFim}
           onChange={(e) => {
             const digitos = e.target.value.replace(/\D/g, "");
             if (!digitos) {
