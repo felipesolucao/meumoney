@@ -339,6 +339,68 @@
   flex-shrink: 0;
 }
 
+/* --------------------------------------------------------------------------
+   Filtros dentro de cada coluna (busca por empresa, parcelas e valor em
+   aberto) — ver components/crm/ColunaFiltros.tsx.
+   -------------------------------------------------------------------------- */
+.crm-column-filtros {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0 9px 10px;
+  flex-shrink: 0;
+}
+.crm-col-search-wrap {
+  position: relative;
+}
+.crm-col-search-wrap svg {
+  position: absolute;
+  left: 9px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--crm-text-faint);
+  pointer-events: none;
+}
+.crm-col-search {
+  width: 100%;
+  background: var(--crm-surface-2);
+  border: 1px solid var(--crm-border);
+  border-radius: 8px;
+  padding: 6px 10px 6px 26px;
+  color: var(--crm-text);
+  font-size: 12px;
+}
+.crm-col-search:focus {
+  outline: none;
+  border-color: var(--crm-accent);
+}
+.crm-col-search::placeholder {
+  color: var(--crm-text-faint);
+}
+.crm-col-filtro-linha {
+  display: grid;
+  grid-template-columns: 1fr 64px;
+  gap: 6px;
+}
+.crm-col-filtro-select,
+.crm-col-filtro-input {
+  background: var(--crm-surface-2);
+  border: 1px solid var(--crm-border);
+  border-radius: 8px;
+  padding: 6px 8px;
+  color: var(--crm-text);
+  font-size: 11.5px;
+  min-width: 0;
+}
+.crm-col-filtro-select:focus,
+.crm-col-filtro-input:focus {
+  outline: none;
+  border-color: var(--crm-accent);
+}
+.crm-col-filtro-input:disabled {
+  opacity: 0.5;
+}
+
 .crm-drop-indicator {
   height: 44px;
   border-radius: var(--crm-radius-sm);

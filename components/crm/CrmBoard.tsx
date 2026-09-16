@@ -23,6 +23,7 @@ import LeadPainel from "./LeadPainel";
 import ImportarModal from "./ImportarModal";
 import AutomacoesPainel from "./AutomacoesPainel";
 import GerenciarLeadsPainel from "./GerenciarLeadsPainel";
+import ColunaFiltros, { FILTRO_COLUNA_VAZIO, aplicarFiltroColuna, type ColunaFiltroState } from "./ColunaFiltros";
 import KpiHeader from "./KpiHeader";
 import { useKanbanDrag } from "./useKanbanDrag";
 import { useToast } from "../ToastProvider";
@@ -71,6 +72,15 @@ export default function CrmBoard({ leadsIniciais }: { leadsIniciais: LeadCrmResu
   const [modalAutomacoes, setModalAutomacoes] = useState(false);
   const [modalGerenciar, setModalGerenciar] = useState(false);
   const [filtroProgresso, setFiltroProgresso] = useState<FiltroProgresso>("todos");
+  const [filtrosColuna, setFiltrosColuna] = useState<Record<string, ColunaFiltroState>>({});
+
+  function filtroDaColuna(estagioId: string): ColunaFiltroState {
+    return filtrosColuna[estagioId] ?? FILTRO_COLUNA_VAZIO;
+  }
+
+  function atualizarFiltroColuna(estagioId: string, novo: ColunaFiltroState) {
+    setFiltrosColuna((prev) => ({ ...prev, [estagioId]: novo }));
+  }
 
   const { drag, overInfo, colBodyRefs, iniciarArraste } = useKanbanDrag(leads, setLeads, (msg) => showToast(msg, "erro"));
 
@@ -150,7 +160,8 @@ export default function CrmBoard({ leadsIniciais }: { leadsIniciais: LeadCrmResu
 
       <div className="crm-board-scroll">
         {ESTAGIOS.map((estagio) => {
-          const lista = colunas.get(estagio.id) ?? [];
+          const filtroColuna = filtroDaColuna(estagio.id);
+          const lista = aplicarFiltroColuna(colunas.get(estagio.id) ?? [], filtroColuna);
           const valorColuna = lista.reduce((s, l) => s + (l.valorEmAberto ? Number(l.valorEmAberto) : 0), 0);
           const emArrasteAqui = overInfo?.estagio === estagio.id;
 
@@ -170,6 +181,8 @@ export default function CrmBoard({ leadsIniciais }: { leadsIniciais: LeadCrmResu
               <button type="button" className="crm-btn crm-btn-ghost crm-btn-sm crm-column-add" onClick={() => setModalNovoEstagio(estagio.id)}>
                 <IconPlus size={13} /> Adicionar
               </button>
+
+              <ColunaFiltros filtro={filtroColuna} onMudar={(novo) => atualizarFiltroColuna(estagio.id, novo)} />
 
               <div
                 className="crm-column-body"
