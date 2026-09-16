@@ -114,9 +114,11 @@ export default function ImportarModal({ onFechar, onImportado }: { onFechar: () 
             <p className="crm-hint">
               Primeira linha = cabeçalho. Colunas reconhecidas: Código, Associado/Nome (obrigatório), CNPJ, Valor em aberto, Qtd parcelas,
               Nº func. ativos, Observação, Parcela mais antiga, Parcela mais recente, Status, Data do último contato, Pago, E-mail,
-              Sindicato patronal, Telefone, Telefone 2, Origem e Etapa. A coluna &quot;Status&quot; é livre (não precisa bater com o nome
-              da etapa) — use as automações para mover o lead automaticamente com base nela. Colunas extras que você adicionar são
-              guardadas junto do lead mesmo sem estar nessa lista.
+              Sindicato patronal, Telefone, Telefone 2, Origem e Etapa. Cada lead é separado automaticamente no grupo/coluna certa: a coluna
+              &quot;Etapa&quot; (ou &quot;Estágio&quot;/&quot;Coluna&quot;) tem prioridade, e na falta dela o &quot;Status&quot; é comparado
+              com o nome de cada grupo do seu quadro (inclusive nomes que você renomeou em &quot;Gerenciar grupos&quot;). Se nada bater, use
+              as automações pra mover pela regra que quiser. Colunas extras que você adicionar são guardadas junto do lead mesmo sem estar
+              nessa lista.
             </p>
           </div>
 

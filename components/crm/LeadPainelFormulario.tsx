@@ -10,6 +10,7 @@
 import { faixaProgresso, type EstagioConfigCrm } from "../../lib/crm";
 import type { LeadPainelFormState } from "./LeadPainel";
 import CampoValorMonetario from "./CampoValorMonetario";
+import BotaoCopiar from "./BotaoCopiar";
 
 const OPCOES_SCORE = [25, 50, 75, 100];
 
@@ -112,7 +113,10 @@ export default function LeadPainelFormulario({
           <input className="crm-input" value={form.codigo} onChange={(e) => campo("codigo", e.target.value)} />
         </div>
         <div className="crm-field">
-          <label className="crm-label">CNPJ</label>
+          <label className="crm-label crm-label-com-copia">
+            CNPJ
+            {form.cnpj && <BotaoCopiar valor={form.cnpj} rotulo="CNPJ" />}
+          </label>
           <input className="crm-input" value={form.cnpj} onChange={(e) => campo("cnpj", e.target.value)} placeholder="00.000.000/0000-00" />
         </div>
       </div>

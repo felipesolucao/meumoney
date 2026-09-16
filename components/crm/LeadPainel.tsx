@@ -15,6 +15,7 @@ import { infoEstagio, faixaProgresso } from "../../lib/crm";
 import { useToast } from "../ToastProvider";
 import AtendimentosHistorico from "./AtendimentosHistorico";
 import LeadPainelFormulario from "./LeadPainelFormulario";
+import BotaoCopiar from "./BotaoCopiar";
 import { IconClose } from "../Icons";
 
 export type LeadPainelFormState = {
@@ -175,7 +176,10 @@ export default function LeadPainel({
         <div className="crm-painel-header">
           <div className="crm-painel-avatar">{iniciais(form.nome || "?")}</div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div className="crm-painel-nome">{form.nome || "Novo lead"}</div>
+            <div className="crm-painel-nome">
+              {form.nome || "Novo lead"}
+              {form.nome && <BotaoCopiar valor={form.nome} rotulo="nome" />}
+            </div>
             <div className="crm-painel-sub">
               {editando && leadInicial ? `Cadastrado em ${new Date(leadInicial.criadoEm).toLocaleDateString("pt-BR")}` : "Preencha os dados e salve"}
             </div>

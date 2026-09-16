@@ -10,6 +10,7 @@
 import type { CSSProperties } from "react";
 import type { LeadCrmResumo } from "../../lib/crm";
 import { infoEstagio, diasParado, formatarMoedaCrm, DIAS_SEM_MOVIMENTO, faixaProgresso } from "../../lib/crm";
+import BotaoCopiar from "./BotaoCopiar";
 
 function somenteDigitos(texto: string): string {
   return texto.replace(/\D/g, "");
@@ -53,8 +54,16 @@ export default function LeadCard({
       <div className="crm-card-top">
         <div className="crm-card-avatar">{iniciais(lead.nome)}</div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div className="crm-card-name">{lead.nome}</div>
-          {lead.cnpj && <div className="crm-card-cnpj">{lead.cnpj}</div>}
+          <div className="crm-card-name">
+            <span className="crm-card-name-texto">{lead.nome}</span>
+            <BotaoCopiar valor={lead.nome} rotulo="nome" />
+          </div>
+          {lead.cnpj && (
+            <div className="crm-card-cnpj">
+              {lead.cnpj}
+              <BotaoCopiar valor={lead.cnpj} rotulo="CNPJ" />
+            </div>
+          )}
         </div>
         <span
           className="crm-card-days"

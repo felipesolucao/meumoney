@@ -366,3 +366,19 @@ export function IconSearch({ size = 20, className, strokeWidth = 1.8 }: IconProp
     </svg>
   );
 }
+
+// Dois quadradinhos sobrepostos — usado no botão de copiar nome/CNPJ (ver
+// BotaoCopiar.tsx).
+export function IconCopy({ size = 20, className, strokeWidth = 1.8 }: IconProps) {
+  return (
+    <svg {...base(size)} className={className}>
+      <rect x="8.5" y="8.5" width="12" height="12" rx="2.2" stroke="currentColor" strokeWidth={strokeWidth} />
+      <path
+        d="M15.5 8.5V5.7A2.2 2.2 0 0 0 13.3 3.5H5.7A2.2 2.2 0 0 0 3.5 5.7v7.6a2.2 2.2 0 0 0 2.2 2.2h2.8"
+        stroke="currentColor"
+        strokeWidth={strokeWidth}
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
