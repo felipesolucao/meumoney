@@ -20,10 +20,14 @@ import PwaAtualizador from "../components/PwaAtualizador";
 // fonte. Public Sans é uma humanista sans-serif de licença aberta, com o
 // mesmo espírito da fonte usada na interface do Claude (claude.ai) — trocada
 // a pedido, no lugar da Inter usada antes.
-// Pesos fixos (400 pro texto normal, 700 pro bold dos títulos) em vez de
-// fonte variável — determinístico e sem risco de "bold sintético" do
-// navegador quando algum componente pedir um peso não carregado.
-const fonteApp = Public_Sans({ subsets: ["latin"], weight: ["400", "500", "600", "700"], variable: "--font-app", display: "swap" });
+// Pesos fixos em vez de fonte variável — determinístico e sem risco de
+// "bold sintético" do navegador quando algum componente pedir um peso não
+// carregado. Inclui o 800 porque bastante componente usa `font-extrabold`
+// do Tailwind (ex.: o "R$" e o valor no campo de moeda) — sem o peso real
+// carregado, o navegador desenha um bold sintético (traço "duplicado" com
+// deslocamento horizontal) que, em fonte e tamanho grande, vaza pra fora da
+// largura do caractere e visualmente invade o texto vizinho.
+const fonteApp = Public_Sans({ subsets: ["latin"], weight: ["400", "500", "600", "700", "800"], variable: "--font-app", display: "swap" });
 
 export const metadata: Metadata = {
   title: "MeuMoney — Sua vida financeira sob controle",
