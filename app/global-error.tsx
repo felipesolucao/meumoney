@@ -15,6 +15,13 @@
 // folha de tokens por conta propria -- sem isso, var(--color-*) nao resolve.
 import "./globals.css";
 import { useEffect } from "react";
+import { Public_Sans } from "next/font/google";
+
+// Como este arquivo troca o <html>/<body> do RootLayout inteiro, ele não
+// herda a instância de fonte de app/layout.tsx (var(--font-app) ficaria
+// indefinida aqui) — por isso carrega a própria instância da mesma fonte,
+// pra essa tela de erro não cair pra fonte do sistema.
+const fonteApp = Public_Sans({ subsets: ["latin"], weight: ["400", "600", "700"], variable: "--font-app", display: "swap" });
 
 export default function GlobalError({
   error,
@@ -28,7 +35,7 @@ export default function GlobalError({
   }, [error]);
 
   return (
-    <html lang="pt-BR">
+    <html lang="pt-BR" className={fonteApp.variable}>
       <body style={{ fontFamily: "var(--font-sans)", background: "var(--color-background)", margin: 0 }}>
         <div
           style={{
