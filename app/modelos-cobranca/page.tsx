@@ -98,7 +98,7 @@ export default function ModelosCobrancaPage() {
         <section className="card">
           <p className="text-xs font-semibold tracking-wide text-muted">VARIÁVEIS DISPONÍVEIS</p>
           <p className="text-xs text-muted mt-2">Toque em uma variável para inseri-la na posição atual do texto.</p>
-          <div className="flex flex-wrap gap-2 mt-3">{VARIAVEIS_COBRANCA.map((variavel) => <button key={variavel} onClick={() => inserirVariavel(variavel)} className="rounded-pill bg-muted-surface px-3 py-1.5 text-xs font-mono font-semibold">+ {variavel}</button>)}</div>
+          <div className="flex flex-wrap gap-2 mt-3">{VARIAVEIS_COBRANCA.map((variavel) => <button key={variavel} onClick={() => inserirVariavel(variavel)} className="rounded-pill bg-muted-surface px-3 py-1.5 text-xs font-sans font-semibold">+ {variavel}</button>)}</div>
         </section>
 
         <section className="card">

@@ -5,7 +5,7 @@
 // a barra de navegação inferior fixa.
 // ============================================================================
 import type { Metadata, Viewport } from "next";
-import { Public_Sans } from "next/font/google";
+import { fonteApp } from "./fonts";
 import "./globals.css";
 import BottomNav from "../components/BottomNav";
 import AppShell from "../components/AppShell";
@@ -14,20 +14,6 @@ import ToastProvider from "../components/ToastProvider";
 import ThemeProvider, { SCRIPT_TEMA_INICIAL } from "../components/ThemeProvider";
 import PwaAtualizador from "../components/PwaAtualizador";
 
-// Fonte única do projeto inteiro (ver --font-sans em app/globals.css, que
-// referencia esta variável) — next/font baixa e self-hospeda a Public Sans
-// no build, sem depender do Google Fonts em runtime nem de "flash" de
-// fonte. Public Sans é uma humanista sans-serif de licença aberta, com o
-// mesmo espírito da fonte usada na interface do Claude (claude.ai) — trocada
-// a pedido, no lugar da Inter usada antes.
-// Pesos fixos em vez de fonte variável — determinístico e sem risco de
-// "bold sintético" do navegador quando algum componente pedir um peso não
-// carregado. Inclui o 800 porque bastante componente usa `font-extrabold`
-// do Tailwind (ex.: o "R$" e o valor no campo de moeda) — sem o peso real
-// carregado, o navegador desenha um bold sintético (traço "duplicado" com
-// deslocamento horizontal) que, em fonte e tamanho grande, vaza pra fora da
-// largura do caractere e visualmente invade o texto vizinho.
-const fonteApp = Public_Sans({ subsets: ["latin"], weight: ["400", "500", "600", "700", "800"], variable: "--font-app", display: "swap" });
 
 export const metadata: Metadata = {
   title: "MeuMoney — Sua vida financeira sob controle",
@@ -98,13 +84,13 @@ export const viewport: Viewport = {
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const sessao = await obterSessao();
   return (
-    <html lang="pt-BR">
+    <html lang="pt-BR" className={fonteApp.variable}>
       <head>
         {/* Aplica o tema salvo (claro/escuro) antes da primeira pintura da
             página, para nunca "piscar" claro e só depois escurecer. */}
         <script dangerouslySetInnerHTML={{ __html: SCRIPT_TEMA_INICIAL }} />
       </head>
-      <body className={`${fonteApp.variable} font-sans`}>
+      <body className="font-sans">
         <PwaAtualizador />
         <ThemeProvider>
           <ToastProvider>

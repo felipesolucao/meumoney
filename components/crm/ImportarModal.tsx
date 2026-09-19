@@ -106,7 +106,7 @@ export default function ImportarModal({ onFechar, onImportado }: { onFechar: () 
             <label className="crm-label">Ou cole o conteúdo do CSV</label>
             <textarea
               className="crm-textarea"
-              style={{ minHeight: 110, fontFamily: "monospace", fontSize: 12.5 }}
+              style={{ minHeight: 110, fontFamily: "inherit", fontSize: 12.5 }}
               value={csv}
               onChange={(e) => setCsv(e.target.value)}
               placeholder="Código,Associado,CNPJ,Valor em aberto,Qtd parcelas,Nº func. ativos,Status,Sindicato patronal"

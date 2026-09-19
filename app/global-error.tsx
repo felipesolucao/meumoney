@@ -14,6 +14,7 @@
 // Este arquivo substitui o layout raiz inteiro, entao precisa importar a
 // folha de tokens por conta propria -- sem isso, var(--color-*) nao resolve.
 import "./globals.css";
+import { fonteApp } from "./fonts";
 import { useEffect } from "react";
 
 export default function GlobalError({
@@ -28,7 +29,7 @@ export default function GlobalError({
   }, [error]);
 
   return (
-    <html lang="pt-BR">
+    <html lang="pt-BR" className={fonteApp.variable}>
       <body style={{ fontFamily: "var(--font-sans)", background: "var(--color-background)", margin: 0 }}>
         <div
           style={{

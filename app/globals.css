@@ -115,7 +115,7 @@
 
   /* --------------------------------------------------------------------------
      TIPOGRAFIA
-     Public Sans (via next/font, ver app/layout.tsx) é a fonte de todo o
+     Inter (via next/font, ver app/fonts.ts) é a fonte de todo o
      projeto — "--font-app" vem do next/font; o resto da lista é só o
      fallback caso a fonte ainda não tenha carregado. Título e corpo usam a
      mesma família; para dar uma fonte própria só aos títulos, troque

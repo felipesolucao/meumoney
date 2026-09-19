@@ -84,7 +84,7 @@ export default function ModeloContratoForm({ modelo }: { modelo?: ModeloContrato
         <p className="text-xs text-muted mt-2">Toque em uma variável para inseri-la na posição atual do texto.</p>
         <div className="flex flex-wrap gap-2 mt-3">
           {VARIAVEIS_MODELO_CONTRATO[categoria].map((variavel) => (
-            <button key={variavel} onClick={() => inserirVariavel(variavel)} className="rounded-pill bg-muted-surface px-3 py-1.5 text-xs font-mono font-semibold">
+            <button key={variavel} onClick={() => inserirVariavel(variavel)} className="rounded-pill bg-muted-surface px-3 py-1.5 text-xs font-sans font-semibold">
               + {variavel}
             </button>
           ))}
