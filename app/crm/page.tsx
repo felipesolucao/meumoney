@@ -33,6 +33,7 @@ export default async function CrmPage() {
     ordem: l.ordem,
     codigo: l.codigo,
     valorEmAberto: l.valorEmAberto ? l.valorEmAberto.toString() : null,
+    valorTotalComJuros: l.valorTotalComJuros ? l.valorTotalComJuros.toString() : null,
     valorPago: l.valorPago ? l.valorPago.toString() : null,
     quantidadeParcelas: l.quantidadeParcelas,
     quantidadeColaboradores: l.quantidadeColaboradores,

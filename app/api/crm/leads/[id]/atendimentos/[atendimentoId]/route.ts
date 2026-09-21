@@ -16,6 +16,8 @@ const SELECAO_SEM_ARQUIVO = {
   observacao: true,
   tentativaNumero: true,
   dataTratativa: true,
+  alertaEm: true,
+  alertaConcluidoEm: true,
   arquivoNome: true,
   arquivoTipo: true,
   arquivoTamanho: true,

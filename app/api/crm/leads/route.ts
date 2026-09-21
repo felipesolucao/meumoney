@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json();
   const {
-    nome, estagio, codigo, valorEmAberto, valorPago, quantidadeParcelas, quantidadeColaboradores,
+    nome, estagio, codigo, valorEmAberto, valorTotalComJuros, valorPago, quantidadeParcelas, quantidadeColaboradores,
     cnpj, telefone, telefone2, email, sindicatoPatronal, origem, observacoes,
     parcelaMaisAntiga, parcelaMaisRecente, dataUltimoContato, statusPlanilha, progresso,
   } = body;
@@ -65,6 +65,7 @@ export async function POST(req: NextRequest) {
       ordem: 0,
       codigo: codigo?.trim() || null,
       valorEmAberto: numeroOuNull(valorEmAberto),
+      valorTotalComJuros: numeroOuNull(valorTotalComJuros),
       valorPago: numeroOuNull(valorPago),
       quantidadeParcelas: numeroOuNull(quantidadeParcelas),
       quantidadeColaboradores: numeroOuNull(quantidadeColaboradores),

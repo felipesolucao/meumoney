@@ -19,6 +19,8 @@ const SELECAO_SEM_ARQUIVO = {
   observacao: true,
   tentativaNumero: true,
   dataTratativa: true,
+  alertaEm: true,
+  alertaConcluidoEm: true,
   arquivoNome: true,
   arquivoTipo: true,
   arquivoTamanho: true,
@@ -52,6 +54,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const observacao = formData.get("observacao");
   const tentativaNumero = formData.get("tentativaNumero");
   const dataTratativa = formData.get("dataTratativa");
+  const alertaEm = formData.get("alertaEm");
   const arquivo = formData.get("arquivo");
 
   if (!observacao || !String(observacao).trim()) {
@@ -63,8 +66,17 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     return NextResponse.json({ error: "Data inválida." }, { status: 400 });
   }
 
+  const dataAlerta = alertaEm ? new Date(String(alertaEm)) : null;
+  if (dataAlerta && Number.isNaN(dataAlerta.getTime())) {
+    return NextResponse.json({ error: "Data do alerta inválida." }, { status: 400 });
+  }
+
   let dadosAnexo: { arquivoNome: string; arquivoTipo: string; arquivoTamanho: number; arquivoDados: Buffer } | null = null;
-  if (arquivo instanceof File && arquivo.size > 0) {
+  // Não use `instanceof File` aqui: em runtimes Node nos quais `File` não é
+  // exposto globalmente essa expressão lança um ReferenceError, inclusive
+  // quando nenhum anexo foi enviado. O FormData já garante que uma entrada
+  // que não é string possui a interface de arquivo necessária.
+  if (arquivo !== null && typeof arquivo !== "string" && arquivo.size > 0) {
     if (arquivo.size > TAMANHO_MAXIMO_ANEXO) {
       return NextResponse.json({ error: "Anexo maior que 5MB." }, { status: 400 });
     }
@@ -81,6 +93,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       observacao: String(observacao).trim(),
       tentativaNumero: tentativaNumero !== null && tentativaNumero !== "" ? Number(tentativaNumero) : null,
       dataTratativa: dataFinal,
+      alertaEm: dataAlerta,
       leadId: params.id,
       usuarioId: sessao.id,
       ...dadosAnexo,

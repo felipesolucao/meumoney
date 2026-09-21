@@ -76,6 +76,13 @@ export default function LeadPainelFormulario({
       </div>
       <div className="crm-field-row">
         <CampoValorMonetario label="Valor em aberto" valor={form.valorEmAberto} onMudar={(v) => campo("valorEmAberto", v)} />
+        <CampoValorMonetario
+          label="Valor total em aberto com juros"
+          valor={form.valorTotalComJuros}
+          onMudar={(v) => campo("valorTotalComJuros", v)}
+        />
+      </div>
+      <div className="crm-field-row">
         <CampoValorMonetario label="Valor pago" valor={form.valorPago} onMudar={(v) => campo("valorPago", v)} />
       </div>
       <div className="crm-field-row">

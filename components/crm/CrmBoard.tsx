@@ -1,17 +1,11 @@
-// ============================================================================
-// COMPONENTE: Quadro Kanban do CRM (produto separado, ver app/crm)
-// ----------------------------------------------------------------------------
 // Estado mora aqui: a lista de leads, a busca e os modais. O arrastar-e-
 // soltar em si (Pointer Events, sem lib externa) vive em useKanbanDrag.ts —
 // separado porque é uma mecânica isolada, sem relação com o que é renderizado.
-//
-// Estratégia de sincronização com o servidor:
 //   - Criar/editar/excluir um lead único -> sempre busca a lista atualizada
 //     de novo (baixo volume, prioriza simplicidade e consistência).
 //   - Arrastar um card -> atualização otimista local (instantânea) + 1 ou 2
 //     chamadas de API em segundo plano (ver useKanbanDrag) — aqui sim
 //     compensa não esperar o servidor, porque acontece a cada arraste.
-// ============================================================================
 "use client";
 
 import { useMemo, useState } from "react";
@@ -26,6 +20,9 @@ import GerenciarGruposPainel from "./GerenciarGruposPainel";
 import ColunaFiltros, { FILTRO_COLUNA_VAZIO, aplicarFiltroColuna, type ColunaFiltroState } from "./ColunaFiltros";
 import KpiHeader from "./KpiHeader";
 import CrmTopNav from "./CrmTopNav";
+import AlertasPainel from "./AlertasPainel";
+import { useAlertasCrm } from "./useAlertasCrm";
+import { IconBolt, IconColunas } from "./CrmToolbarIcons";
 import { useKanbanDrag } from "./useKanbanDrag";
 import { useToast } from "../ToastProvider";
 import { IconPlus, IconSearch, IconDocument, IconUsers } from "../Icons";
@@ -86,6 +83,7 @@ export default function CrmBoard({
   const [filtrosColuna, setFiltrosColuna] = useState<Record<string, ColunaFiltroState>>({});
   const [arrastandoColuna, setArrastandoColuna] = useState<string | null>(null);
   const [colunaSobre, setColunaSobre] = useState<string | null>(null);
+  const { alertas, setAlertas, modalAlertas, setModalAlertas, abrirAlertas } = useAlertasCrm();
 
   function filtroDaColuna(estagioId: string): ColunaFiltroState {
     return filtrosColuna[estagioId] ?? FILTRO_COLUNA_VAZIO;
@@ -163,7 +161,11 @@ export default function CrmBoard({
 
   return (
     <div className="crm-app">
-      <CrmTopNav nomeUsuario={nomeUsuario} />
+      <CrmTopNav
+        nomeUsuario={nomeUsuario}
+        quantidadeAlertas={alertas.length}
+        onAbrirAlertas={abrirAlertas}
+      />
 
       <div className="crm-topbar">
         <div className="crm-topbar-row">
@@ -330,23 +332,18 @@ export default function CrmBoard({
       {modalGerenciarGrupos && (
         <GerenciarGruposPainel estagios={estagios} onFechar={() => setModalGerenciarGrupos(false)} onAtualizar={setEstagios} />
       )}
+
+      {modalAlertas && (
+        <AlertasPainel
+          alertas={alertas}
+          onFechar={() => setModalAlertas(false)}
+          onAtualizar={setAlertas}
+          onAbrirLead={(id) => {
+            const lead = leads.find((item) => item.id === id);
+            if (lead) setLeadEditando(lead);
+          }}
+        />
+      )}
     </div>
-  );
-}
-
-function IconBolt() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-      <path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function IconColunas() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-      <rect x="3.5" y="4" width="6" height="16" rx="1.5" stroke="currentColor" strokeWidth="1.8" />
-      <rect x="14.5" y="4" width="6" height="10" rx="1.5" stroke="currentColor" strokeWidth="1.8" />
-    </svg>
   );
 }

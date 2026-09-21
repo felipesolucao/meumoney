@@ -11,7 +11,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { AtendimentoCrmResumo } from "../../lib/crm";
 import { formatarDataCrm } from "../../lib/crm";
-import { IconEdit, IconTrash, IconCheck, IconClose, IconDocument } from "../Icons";
+import { IconEdit, IconTrash, IconCheck, IconClose, IconDocument, IconBell } from "../Icons";
 import { useToast } from "../ToastProvider";
 
 function paraInputDatetime(iso: string): string {
@@ -26,6 +26,20 @@ function formatarTamanhoArquivo(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+async function lerRespostaJson<T>(resposta: Response): Promise<T> {
+  const texto = await resposta.text();
+
+  if (!texto) {
+    throw new Error(resposta.ok ? "O servidor retornou uma resposta vazia." : "Não foi possível concluir a operação.");
+  }
+
+  try {
+    return JSON.parse(texto) as T;
+  } catch {
+    throw new Error("O servidor retornou uma resposta inválida.");
+  }
+}
+
 export default function AtendimentosHistorico({ leadId }: { leadId: string }) {
   const showToast = useToast();
   const [itens, setItens] = useState<AtendimentoCrmResumo[] | null>(null);
@@ -36,6 +50,7 @@ export default function AtendimentosHistorico({ leadId }: { leadId: string }) {
   const [novaObservacao, setNovaObservacao] = useState("");
   const [novaTentativa, setNovaTentativa] = useState("");
   const [novaData, setNovaData] = useState(() => paraInputDatetime(new Date().toISOString()));
+  const [novoAlertaEm, setNovoAlertaEm] = useState("");
   const [novoArquivo, setNovoArquivo] = useState<File | null>(null);
   const [enviando, setEnviando] = useState(false);
   const inputArquivoRef = useRef<HTMLInputElement>(null);
@@ -46,8 +61,13 @@ export default function AtendimentosHistorico({ leadId }: { leadId: string }) {
       setCarregando(true);
       try {
         const resposta = await fetch(`/api/crm/leads/${leadId}/atendimentos`);
-        const dados = await resposta.json();
-        if (!cancelado && resposta.ok) setItens(dados);
+        const dados = await lerRespostaJson<AtendimentoCrmResumo[] | { error?: string }>(resposta);
+        if (!resposta.ok) {
+          throw new Error(!Array.isArray(dados) && dados.error ? dados.error : "Não foi possível carregar o histórico.");
+        }
+        if (!cancelado) setItens(dados as AtendimentoCrmResumo[]);
+      } catch (e) {
+        if (!cancelado) showToast(e instanceof Error ? e.message : "Erro ao carregar histórico.", "erro");
       } finally {
         if (!cancelado) setCarregando(false);
       }
@@ -69,17 +89,20 @@ export default function AtendimentosHistorico({ leadId }: { leadId: string }) {
       formData.set("observacao", novaObservacao);
       if (novaTentativa) formData.set("tentativaNumero", novaTentativa);
       formData.set("dataTratativa", new Date(novaData).toISOString());
+      if (novoAlertaEm) formData.set("alertaEm", new Date(novoAlertaEm).toISOString());
       if (novoArquivo) formData.set("arquivo", novoArquivo);
 
       const resposta = await fetch(`/api/crm/leads/${leadId}/atendimentos`, { method: "POST", body: formData });
-      const dados = await resposta.json();
+      const dados = await lerRespostaJson<AtendimentoCrmResumo & { error?: string }>(resposta);
       if (!resposta.ok) throw new Error(dados.error || "Não foi possível salvar.");
       setItens((prev) => [dados, ...(prev ?? [])]);
       setNovaObservacao("");
       setNovaTentativa("");
       setNovaData(paraInputDatetime(new Date().toISOString()));
+      setNovoAlertaEm("");
       setNovoArquivo(null);
       if (inputArquivoRef.current) inputArquivoRef.current.value = "";
+      if (dados.alertaEm) window.dispatchEvent(new Event("crm-alertas-atualizar"));
       showToast("Atendimento registrado.");
     } catch (e) {
       showToast(e instanceof Error ? e.message : "Erro ao salvar atendimento.", "erro");
@@ -96,7 +119,7 @@ export default function AtendimentosHistorico({ leadId }: { leadId: string }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ observacao: textoEdicao }),
       });
-      const dados = await resposta.json();
+      const dados = await lerRespostaJson<AtendimentoCrmResumo & { error?: string }>(resposta);
       if (!resposta.ok) throw new Error(dados.error || "Não foi possível editar.");
       setItens((prev) => (prev ?? []).map((a) => (a.id === id ? dados : a)));
       setEditandoId(null);
@@ -176,6 +199,13 @@ export default function AtendimentosHistorico({ leadId }: { leadId: string }) {
                   {atendimento.arquivoTamanho != null && <span> · {formatarTamanhoArquivo(atendimento.arquivoTamanho)}</span>}
                 </a>
               )}
+              {atendimento.alertaEm && (
+                <div className={`crm-historico-alerta${atendimento.alertaConcluidoEm ? " is-concluido" : ""}`}>
+                  <IconBell size={13} />
+                  Revisar empresa em {new Date(atendimento.alertaEm).toLocaleString("pt-BR")}
+                  {atendimento.alertaConcluidoEm && " · concluído"}
+                </div>
+              )}
             </div>
           ))}
       </div>
@@ -227,6 +257,18 @@ export default function AtendimentosHistorico({ leadId }: { leadId: string }) {
           <button type="button" className="crm-btn crm-btn-primary crm-btn-sm" onClick={adicionar} disabled={enviando}>
             {enviando ? "Salvando..." : "Adicionar"}
           </button>
+        </div>
+        <div className="crm-field">
+          <label className="crm-label crm-label-alerta">
+            <IconBell size={13} /> Agendar alerta para revisar esta empresa (opcional)
+          </label>
+          <input
+            className="crm-input"
+            type="datetime-local"
+            value={novoAlertaEm}
+            min={paraInputDatetime(new Date().toISOString())}
+            onChange={(e) => setNovoAlertaEm(e.target.value)}
+          />
         </div>
       </div>
     </div>

@@ -1129,6 +1129,148 @@
   text-align: center;
   padding: 18px 8px;
 }
+
+/* Lembrete agendado exibido junto da atividade que o originou. */
+.crm-historico-alerta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  margin-top: 8px;
+  padding: 6px 9px;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  border-radius: 8px;
+  color: #fbbf24;
+  background: rgba(245, 158, 11, 0.09);
+  font-size: 11px;
+}
+
+.crm-historico-alerta.is-concluido {
+  opacity: 0.62;
+  color: var(--crm-text-muted);
+  border-color: var(--crm-border);
+  background: transparent;
+}
+
+.crm-label-alerta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Sino e contador de lembretes pendentes. */
+.crm-nav-alertas-btn {
+  position: relative;
+}
+
+.crm-nav-alertas-badge {
+  position: absolute;
+  top: -5px;
+  right: -7px;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--crm-bg);
+  border-radius: 999px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+/* Central de alertas aberta pelo sino do topo. */
+.crm-alertas-dialog {
+  --crm-bg: #0a0a0c;
+  --crm-surface-2: #19191d;
+  --crm-border: rgba(255, 255, 255, 0.07);
+  --crm-text: #f2f2f5;
+  --crm-text-muted: #9a9aa6;
+  --crm-text-faint: #66666f;
+  background: var(--crm-surface-2) !important;
+  color: var(--crm-text) !important;
+}
+
+.crm-alertas-intro {
+  margin: -4px 0 18px;
+  color: var(--crm-text-muted);
+  font-size: 13px;
+}
+
+.crm-alertas-grupo + .crm-alertas-grupo {
+  margin-top: 22px;
+}
+
+.crm-alertas-grupo-titulo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 9px;
+  color: var(--crm-text);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.crm-alertas-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #f59e0b;
+  box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.12);
+}
+
+.crm-alertas-status-dot.is-vencido {
+  background: #ef4444;
+  box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.12);
+}
+
+.crm-alertas-contagem {
+  margin-left: auto;
+  color: var(--crm-text-muted);
+}
+
+.crm-alertas-lista {
+  display: grid;
+  gap: 9px;
+}
+
+.crm-alerta-card {
+  padding: 12px;
+  border: 1px solid rgba(245, 158, 11, 0.28);
+  border-left: 3px solid #f59e0b;
+  border-radius: 10px;
+  background: rgba(245, 158, 11, 0.06);
+}
+
+.crm-alerta-card.is-vencido {
+  border-color: rgba(239, 68, 68, 0.28);
+  border-left-color: #ef4444;
+  background: rgba(239, 68, 68, 0.06);
+}
+
+.crm-alerta-empresa {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0;
+  border: 0;
+  color: var(--crm-text);
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.crm-alerta-empresa:hover strong { text-decoration: underline; }
+.crm-alerta-empresa span { color: var(--crm-text-muted); font-size: 11px; }
+.crm-alerta-horario { display: flex; align-items: center; gap: 5px; margin-top: 8px; color: #fbbf24; font-size: 12px; font-weight: 700; }
+.crm-alerta-card.is-vencido .crm-alerta-horario { color: #f87171; }
+.crm-alerta-card p { margin: 7px 0 0; color: var(--crm-text-muted); font-size: 12px; line-height: 1.45; white-space: pre-wrap; }
+.crm-alerta-acoes { display: flex; justify-content: flex-end; gap: 7px; margin-top: 11px; }
+.crm-alertas-vazio { padding: 12px; border: 1px dashed var(--crm-border); border-radius: 9px; color: var(--crm-text-faint); font-size: 12px; text-align: center; }
 .crm-historico-anexo {
   display: inline-flex;
   align-items: center;

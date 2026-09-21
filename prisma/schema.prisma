@@ -679,6 +679,7 @@ model LeadCrm {
   // --- Campos vindos da planilha de importação ------------------------------
   codigo                  String? // "Código" da planilha (identificador do associado no sistema de origem)
   valorEmAberto           Decimal? @db.Decimal(12, 2)
+  valorTotalComJuros      Decimal? @db.Decimal(12, 2)
   valorPago               Decimal? @db.Decimal(12, 2) // coluna "PAGO"
   quantidadeParcelas      Int?
   quantidadeColaboradores Int?
@@ -731,6 +732,10 @@ model AtendimentoCrm {
   observacao     String   @db.Text
   tentativaNumero Int?
   dataTratativa  DateTime @default(now())
+  // Lembrete opcional para revisar a empresa. Enquanto não for concluído,
+  // aparece na central de alertas do CRM, separado entre vencido e à vencer.
+  alertaEm          DateTime?
+  alertaConcluidoEm DateTime?
 
   // Anexo opcional (comprovante, print, etc.) — guardado direto no banco
   // (sem serviço de storage externo configurado no projeto ainda). Limitado
@@ -752,6 +757,7 @@ model AtendimentoCrm {
   usuario   Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 
   @@index([leadId, dataTratativa])
+  @@index([usuarioId, alertaConcluidoEm, alertaEm])
   @@map("crm_atendimentos")
 }
 

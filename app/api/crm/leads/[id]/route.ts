@@ -14,7 +14,7 @@ import { aplicarAutomacoes, estagiosValidosDoUsuario } from "../../../../../lib/
 const CAMPOS_TEXTO = [
   "nome", "codigo", "cnpj", "telefone", "telefone2", "email", "sindicatoPatronal", "origem", "observacoes", "statusPlanilha",
 ] as const;
-const CAMPOS_NUMERO = ["valorEmAberto", "valorPago", "quantidadeParcelas", "quantidadeColaboradores"] as const;
+const CAMPOS_NUMERO = ["valorEmAberto", "valorTotalComJuros", "valorPago", "quantidadeParcelas", "quantidadeColaboradores"] as const;
 const CAMPOS_DATA = ["parcelaMaisAntiga", "parcelaMaisRecente", "dataUltimoContato"] as const;
 
 function dataOuNull(valor: unknown): Date | null {

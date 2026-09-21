@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import styles from "./PopupCentral.module.css";
 
-export default function PopupCentral({ titulo, onFechar, children }: { titulo: string; onFechar: () => void; children: React.ReactNode }) {
+export default function PopupCentral({ titulo, onFechar, children, className = "" }: { titulo: string; onFechar: () => void; children: React.ReactNode; className?: string }) {
   const dialog = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const elemento = dialog.current;
@@ -14,7 +14,7 @@ export default function PopupCentral({ titulo, onFechar, children }: { titulo: s
     document.body.style.overflow = "hidden";
     return () => { elemento?.close(); document.body.style.overflow = overflow; foco?.focus(); };
   }, []);
-  return createPortal(<dialog ref={dialog} className={styles.dialog} aria-labelledby="titulo-popup-central"
+  return createPortal(<dialog ref={dialog} className={`${styles.dialog} ${className}`} aria-labelledby="titulo-popup-central"
     onCancel={(event) => { event.preventDefault(); onFechar(); }}
     onClick={(event) => { if (event.target === event.currentTarget) onFechar(); }}>
     <div className={styles.content}>

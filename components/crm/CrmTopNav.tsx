@@ -29,7 +29,15 @@ function iniciais(nome: string): string {
   return (partes[0][0] + (partes[1]?.[0] ?? "")).toUpperCase();
 }
 
-export default function CrmTopNav({ nomeUsuario }: { nomeUsuario?: string }) {
+export default function CrmTopNav({
+  nomeUsuario,
+  quantidadeAlertas,
+  onAbrirAlertas,
+}: {
+  nomeUsuario?: string;
+  quantidadeAlertas: number;
+  onAbrirAlertas: () => void;
+}) {
   return (
     <div className="crm-nav">
       <div className="crm-nav-marca">
@@ -56,8 +64,15 @@ export default function CrmTopNav({ nomeUsuario }: { nomeUsuario?: string }) {
       </nav>
 
       <div className="crm-nav-acoes">
-        <button type="button" className="crm-nav-icone-btn" title="Notificações — em breve" disabled>
+        <button
+          type="button"
+          className="crm-nav-icone-btn crm-nav-alertas-btn"
+          title="Abrir alertas"
+          aria-label={`Abrir alertas${quantidadeAlertas ? ` (${quantidadeAlertas} pendentes)` : ""}`}
+          onClick={onAbrirAlertas}
+        >
           <IconBell size={17} />
+          {quantidadeAlertas > 0 && <span className="crm-nav-alertas-badge">{quantidadeAlertas > 99 ? "99+" : quantidadeAlertas}</span>}
         </button>
         {nomeUsuario && (
           <div className="crm-nav-avatar" title={nomeUsuario}>

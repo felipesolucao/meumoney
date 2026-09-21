@@ -24,6 +24,7 @@ export type LeadPainelFormState = {
   codigo: string;
   cnpj: string;
   valorEmAberto: string;
+  valorTotalComJuros: string;
   valorPago: string;
   quantidadeParcelas: string;
   quantidadeColaboradores: string;
@@ -51,6 +52,7 @@ function paraFormulario(lead?: LeadCrmResumo | null, estagioInicial?: string): L
     codigo: lead?.codigo ?? "",
     cnpj: lead?.cnpj ?? "",
     valorEmAberto: lead?.valorEmAberto != null ? String(lead.valorEmAberto) : "",
+    valorTotalComJuros: lead?.valorTotalComJuros != null ? String(lead.valorTotalComJuros) : "",
     valorPago: lead?.valorPago != null ? String(lead.valorPago) : "",
     quantidadeParcelas: lead?.quantidadeParcelas != null ? String(lead.quantidadeParcelas) : "",
     quantidadeColaboradores: lead?.quantidadeColaboradores != null ? String(lead.quantidadeColaboradores) : "",
@@ -81,6 +83,7 @@ function montarPayload(form: LeadPainelFormState) {
     codigo: form.codigo || null,
     cnpj: form.cnpj || null,
     valorEmAberto: form.valorEmAberto === "" ? null : Number(form.valorEmAberto),
+    valorTotalComJuros: form.valorTotalComJuros === "" ? null : Number(form.valorTotalComJuros),
     valorPago: form.valorPago === "" ? null : Number(form.valorPago),
     quantidadeParcelas: form.quantidadeParcelas === "" ? null : Number(form.quantidadeParcelas),
     quantidadeColaboradores: form.quantidadeColaboradores === "" ? null : Number(form.quantidadeColaboradores),

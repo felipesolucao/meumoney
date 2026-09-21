@@ -194,6 +194,7 @@ export type LeadCrmResumo = {
   ordem: number;
   codigo: string | null;
   valorEmAberto: string | number | null;
+  valorTotalComJuros: string | number | null;
   valorPago: string | number | null;
   quantidadeParcelas: number | null;
   quantidadeColaboradores: number | null;
@@ -221,6 +222,8 @@ export type AtendimentoCrmResumo = {
   observacao: string;
   tentativaNumero: number | null;
   dataTratativa: string;
+  alertaEm: string | null;
+  alertaConcluidoEm: string | null;
   // Só metadados do anexo — o conteúdo (arquivoDados) nunca trafega na
   // listagem, só na rota de download (ver .../atendimentos/[id]/arquivo).
   arquivoNome: string | null;
@@ -228,6 +231,13 @@ export type AtendimentoCrmResumo = {
   arquivoTamanho: number | null;
   criadoEm: string;
   atualizadoEm: string;
+};
+
+export type AlertaCrmResumo = {
+  id: string;
+  observacao: string;
+  alertaEm: string;
+  lead: { id: string; nome: string; cnpj: string | null };
 };
 
 export type RegraAutomacaoCrm = {
