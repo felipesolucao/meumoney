@@ -64,7 +64,11 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   }
 
   let dadosAnexo: { arquivoNome: string; arquivoTipo: string; arquivoTamanho: number; arquivoDados: Buffer } | null = null;
-  if (arquivo instanceof File && arquivo.size > 0) {
+  // Não use `instanceof File` aqui: em runtimes Node nos quais `File` não é
+  // exposto globalmente essa expressão lança um ReferenceError, inclusive
+  // quando nenhum anexo foi enviado. O FormData já garante que uma entrada
+  // que não é string possui a interface de arquivo necessária.
+  if (arquivo !== null && typeof arquivo !== "string" && arquivo.size > 0) {
     if (arquivo.size > TAMANHO_MAXIMO_ANEXO) {
       return NextResponse.json({ error: "Anexo maior que 5MB." }, { status: 400 });
     }

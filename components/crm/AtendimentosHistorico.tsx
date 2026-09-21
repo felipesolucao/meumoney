@@ -26,6 +26,20 @@ function formatarTamanhoArquivo(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+async function lerRespostaJson<T>(resposta: Response): Promise<T> {
+  const texto = await resposta.text();
+
+  if (!texto) {
+    throw new Error(resposta.ok ? "O servidor retornou uma resposta vazia." : "Não foi possível concluir a operação.");
+  }
+
+  try {
+    return JSON.parse(texto) as T;
+  } catch {
+    throw new Error("O servidor retornou uma resposta inválida.");
+  }
+}
+
 export default function AtendimentosHistorico({ leadId }: { leadId: string }) {
   const showToast = useToast();
   const [itens, setItens] = useState<AtendimentoCrmResumo[] | null>(null);
@@ -46,8 +60,13 @@ export default function AtendimentosHistorico({ leadId }: { leadId: string }) {
       setCarregando(true);
       try {
         const resposta = await fetch(`/api/crm/leads/${leadId}/atendimentos`);
-        const dados = await resposta.json();
-        if (!cancelado && resposta.ok) setItens(dados);
+        const dados = await lerRespostaJson<AtendimentoCrmResumo[] | { error?: string }>(resposta);
+        if (!resposta.ok) {
+          throw new Error(!Array.isArray(dados) && dados.error ? dados.error : "Não foi possível carregar o histórico.");
+        }
+        if (!cancelado) setItens(dados as AtendimentoCrmResumo[]);
+      } catch (e) {
+        if (!cancelado) showToast(e instanceof Error ? e.message : "Erro ao carregar histórico.", "erro");
       } finally {
         if (!cancelado) setCarregando(false);
       }
@@ -72,7 +91,7 @@ export default function AtendimentosHistorico({ leadId }: { leadId: string }) {
       if (novoArquivo) formData.set("arquivo", novoArquivo);
 
       const resposta = await fetch(`/api/crm/leads/${leadId}/atendimentos`, { method: "POST", body: formData });
-      const dados = await resposta.json();
+      const dados = await lerRespostaJson<AtendimentoCrmResumo & { error?: string }>(resposta);
       if (!resposta.ok) throw new Error(dados.error || "Não foi possível salvar.");
       setItens((prev) => [dados, ...(prev ?? [])]);
       setNovaObservacao("");
@@ -96,7 +115,7 @@ export default function AtendimentosHistorico({ leadId }: { leadId: string }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ observacao: textoEdicao }),
       });
-      const dados = await resposta.json();
+      const dados = await lerRespostaJson<AtendimentoCrmResumo & { error?: string }>(resposta);
       if (!resposta.ok) throw new Error(dados.error || "Não foi possível editar.");
       setItens((prev) => (prev ?? []).map((a) => (a.id === id ? dados : a)));
       setEditandoId(null);
