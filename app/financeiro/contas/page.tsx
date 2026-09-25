@@ -31,6 +31,7 @@ import type { OrigemFinanceira } from "../../../lib/financeiro";
 import CardSaldo from "../../../components/CardSaldo";
 import BotaoVoltar from "../../../components/BotaoVoltar";
 import ReajustarSaldo from "../../../components/ReajustarSaldo";
+import TransferirSaldo from "../../../components/TransferirSaldo";
 import ContaFormulario from "../../../components/ContaFormulario";
 import CartaoFormulario from "../../../components/CartaoFormulario";
 import { useToast } from "../../../components/ToastProvider";
@@ -70,6 +71,7 @@ type CartaoCredito = {
 export default function ContasPage() {
   const showToast = useToast();
   const [ajustandoConta, setAjustandoConta] = useState<Conta | null>(null);
+  const [transferindo, setTransferindo] = useState(false);
 
   // --- Contas/carteiras -----------------------------------------------------
   const [resumo, setResumo] = useState<Resumo | null>(null);
@@ -340,6 +342,18 @@ export default function ContasPage() {
           corValor={(resumo?.totalGeral ?? 0) >= 0 ? "var(--color-success)" : "var(--color-error)"}
         />
 
+        <button
+          type="button"
+          className="btn-primary w-full"
+          onClick={() => setTransferindo(true)}
+          disabled={(resumo?.contas.length ?? 0) < 2}
+        >
+          Transferir entre contas
+        </button>
+        {(resumo?.contas.length ?? 0) === 1 && (
+          <p className="text-xs text-muted text-center">Cadastre pelo menos duas contas para fazer uma transferência.</p>
+        )}
+
         <div>
           <p className="text-xs font-semibold tracking-wide text-muted mb-3">SUAS CONTAS</p>
 
@@ -598,6 +612,13 @@ export default function ContasPage() {
         </div>
       </div>
       {ajustandoConta && <ReajustarSaldo conta={ajustandoConta} onFechar={() => setAjustandoConta(null)} onSalvo={() => { setAjustandoConta(null); carregarResumo(); }} />}
+      {transferindo && resumo && (
+        <TransferirSaldo
+          contas={resumo.contas}
+          onFechar={() => setTransferindo(false)}
+          onSalvo={() => { setTransferindo(false); showToast("Transferência concluída!"); carregarResumo(); }}
+        />
+      )}
     </div>
   );
 }
