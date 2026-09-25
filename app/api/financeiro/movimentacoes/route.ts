@@ -40,6 +40,7 @@ type Movimentacao = {
   formaPagamentoIcone: string | null;
   categoriaNome: string | null;
   categoriaIcone: string | null;
+  href: string;
 };
 
 export async function GET(req: NextRequest) {
@@ -69,6 +70,7 @@ export async function GET(req: NextRequest) {
     formaPagamentoIcone: l.conta?.icone ?? null,
     categoriaNome: l.categoria?.nome ?? null,
     categoriaIcone: l.categoria?.icone ?? null,
+    href: `/financeiro/${l.id}/editar`,
   }));
 
   // NOVO: compras no cartão — sempre despesa ("entrada: false"), com a
@@ -93,6 +95,7 @@ export async function GET(req: NextRequest) {
       formaPagamentoIcone: c.cartao.icone,
       categoriaNome: c.categoria?.nome ?? null,
       categoriaIcone: c.categoria?.icone ?? null,
+      href: `/financeiro/cartoes/compra/${c.id}`,
     }))
   );
 
@@ -119,6 +122,7 @@ export async function GET(req: NextRequest) {
           formaPagamentoIcone: p.conta?.icone ?? null,
           categoriaNome: null,
           categoriaIcone: null,
+          href: `/contratos/${p.contrato.id}`,
         }))
     );
   }

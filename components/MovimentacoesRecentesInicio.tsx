@@ -14,7 +14,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { formatarMoeda } from "../lib/financeiro";
 import { useCarteiraSelecionada } from "./CarteiraContext";
-import { IconTrendUp, IconTrendDown } from "./Icons";
+import { IconTrendUp, IconTrendDown, IconChevronRight } from "./Icons";
 
 type Movimentacao = {
   id: string;
@@ -27,6 +27,7 @@ type Movimentacao = {
   formaPagamentoIcone: string | null;
   categoriaNome: string | null;
   categoriaIcone: string | null;
+  href: string;
 };
 
 export default function MovimentacoesRecentesInicio() {
@@ -61,7 +62,7 @@ export default function MovimentacoesRecentesInicio() {
           <div className="card text-center text-muted text-sm">Nenhuma movimentação registrada ainda.</div>
         ) : (
           movimentacoes.map((m) => (
-            <div key={m.id} className="card flex items-center gap-3">
+            <Link key={m.id} href={m.href} className="card flex items-center gap-3" aria-label={`Ver detalhes de ${m.descricao}`}>
               <div
                 className="w-11 h-11 rounded-md flex items-center justify-center flex-shrink-0"
                 style={{
@@ -90,7 +91,8 @@ export default function MovimentacoesRecentesInicio() {
               <p className="font-bold flex-shrink-0" style={{ color: m.entrada ? "var(--color-success)" : "var(--color-error)" }}>
                 {m.entrada ? "+" : "−"} {formatarMoeda(m.valor)}
               </p>
-            </div>
+              <IconChevronRight size={16} className="text-muted shrink-0" />
+            </Link>
           ))
         )}
       </div>
