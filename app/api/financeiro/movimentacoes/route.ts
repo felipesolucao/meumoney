@@ -40,6 +40,9 @@ type Movimentacao = {
   formaPagamentoIcone: string | null;
   categoriaNome: string | null;
   categoriaIcone: string | null;
+  origemTipo: "lancamento" | "compra_cartao" | "parcela";
+  origemId: string;
+  contratoId: string | null;
 };
 
 export async function GET(req: NextRequest) {
@@ -69,6 +72,9 @@ export async function GET(req: NextRequest) {
     formaPagamentoIcone: l.conta?.icone ?? null,
     categoriaNome: l.categoria?.nome ?? null,
     categoriaIcone: l.categoria?.icone ?? null,
+    origemTipo: "lancamento",
+    origemId: l.id,
+    contratoId: null,
   }));
 
   // NOVO: compras no cartão — sempre despesa ("entrada: false"), com a
@@ -93,6 +99,9 @@ export async function GET(req: NextRequest) {
       formaPagamentoIcone: c.cartao.icone,
       categoriaNome: c.categoria?.nome ?? null,
       categoriaIcone: c.categoria?.icone ?? null,
+      origemTipo: "compra_cartao" as const,
+      origemId: c.id,
+      contratoId: null,
     }))
   );
 
@@ -119,6 +128,9 @@ export async function GET(req: NextRequest) {
           formaPagamentoIcone: p.conta?.icone ?? null,
           categoriaNome: null,
           categoriaIcone: null,
+          origemTipo: "parcela" as const,
+          origemId: p.id,
+          contratoId: p.contrato.id,
         }))
     );
   }
