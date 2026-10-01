@@ -65,6 +65,7 @@ model Usuario {
   modelosCobranca        CobrancaModelo[]
   modelosContrato        ContratoModelo[]
   // --- CRM (produto separado dentro do app — ver app/crm) -------------------
+  negociacoesCrm         NegociacaoCrm[]
   leadsCrm               LeadCrm[]
   atendimentosCrm        AtendimentoCrm[]
   automacoesCrm          AutomacaoCrm[]
@@ -815,4 +816,24 @@ model AutomacaoCrm {
 
   @@index([usuarioId, ordem])
   @@map("crm_automacoes")
+}
+
+model NegociacaoCrm {
+  id String @id @default(cuid())
+  usuarioId String
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  empresa String
+  cnpj String
+  tipo String
+  dataNegociacao String
+  debitoCentavos Int
+  totalCentavos Int
+  parcelasOriginais Int
+  observacoes String @default("")
+  parcelas Json
+  versao Int @default(1)
+  criadoEm DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+  @@index([usuarioId, dataNegociacao])
+  @@map("negociacoes_crm")
 }

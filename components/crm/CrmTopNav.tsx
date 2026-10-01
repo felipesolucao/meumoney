@@ -1,25 +1,22 @@
 // ============================================================================
 // COMPONENTE: Barra superior de navegação do CRM (abas do produto)
 // ----------------------------------------------------------------------------
-// Hoje só "Funil" existe de verdade (o quadro Kanban). As outras abas ficam
-// visíveis mas desativadas ("em breve") — são o lugar reservado pras
-// próximas páginas do CRM (Contatos, Chats, Negócios, Relatórios etc.),
-// pedido explícito pra já nascerem no mesmo padrão visual.
-// ============================================================================
+// Navegação entre o funil e a gestão de negociações.
 "use client";
 
 import type { ComponentType } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import IconKanban from "./IconKanban";
 import { IconArrowLeft, IconUsers, IconChat, IconReceipt, IconChart, IconBell } from "../Icons";
 
-type AbaNav = { label: string; Icone: ComponentType<{ size?: number }>; ativa?: boolean };
+type AbaNav = { label: string; Icone: ComponentType<{ size?: number }>; href?: string };
 
 const ABAS: AbaNav[] = [
-  { label: "Funil", Icone: IconKanban, ativa: true },
+  { label: "Funil", Icone: IconKanban, href: "/crm" },
   { label: "Contatos", Icone: IconUsers },
   { label: "Chats", Icone: IconChat },
-  { label: "Negócios", Icone: IconReceipt },
+  { label: "Negociações", Icone: IconReceipt, href: "/crm/negociacoes" },
   { label: "Relatórios", Icone: IconChart },
 ];
 
@@ -31,13 +28,14 @@ function iniciais(nome: string): string {
 
 export default function CrmTopNav({
   nomeUsuario,
-  quantidadeAlertas,
+  quantidadeAlertas = 0,
   onAbrirAlertas,
 }: {
   nomeUsuario?: string;
-  quantidadeAlertas: number;
-  onAbrirAlertas: () => void;
+  quantidadeAlertas?: number;
+  onAbrirAlertas?: () => void;
 }) {
+  const pathname = usePathname();
   return (
     <div className="crm-nav">
       <div className="crm-nav-marca">
@@ -49,22 +47,17 @@ export default function CrmTopNav({
       </div>
 
       <nav className="crm-nav-abas" aria-label="Seções do CRM">
-        {ABAS.map(({ label, Icone, ativa }) => (
-          <button
-            key={label}
-            type="button"
-            className={`crm-nav-aba${ativa ? " is-ativa" : ""}`}
-            disabled={!ativa}
-            title={ativa ? undefined : `${label} — em breve`}
-          >
-            <Icone size={15} />
-            {label}
-          </button>
+        {ABAS.map(({ label, Icone, href }) => href ? (
+          <Link key={label} href={href} className={`crm-nav-aba${pathname === href ? " is-ativa" : ""}`} aria-current={pathname === href ? "page" : undefined}>
+            <Icone size={15} />{label}
+          </Link>
+        ) : (
+          <button key={label} type="button" className="crm-nav-aba" disabled title={`${label} — em breve`}><Icone size={15} />{label}</button>
         ))}
       </nav>
 
       <div className="crm-nav-acoes">
-        <button
+        {onAbrirAlertas && <button
           type="button"
           className="crm-nav-icone-btn crm-nav-alertas-btn"
           title="Abrir alertas"
@@ -73,7 +66,7 @@ export default function CrmTopNav({
         >
           <IconBell size={17} />
           {quantidadeAlertas > 0 && <span className="crm-nav-alertas-badge">{quantidadeAlertas > 99 ? "99+" : quantidadeAlertas}</span>}
-        </button>
+        </button>}
         {nomeUsuario && (
           <div className="crm-nav-avatar" title={nomeUsuario}>
             {iniciais(nomeUsuario)}

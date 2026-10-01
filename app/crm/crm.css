@@ -1572,3 +1572,36 @@
   .crm-historico-form-linha input[type="number"],
   .crm-historico-form-linha input[type="datetime-local"] { width: 100%; }
 }
+
+/* Gestão dos acordos e pagamentos do CRM */
+.neg-page { flex: 1; min-height: 0; overflow: auto; padding: 28px; background: var(--crm-bg); }
+.neg-heading, .neg-actions, .neg-totals { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.neg-heading { justify-content: space-between; margin-bottom: 24px; }
+.neg-heading h1 { font-size: 26px; font-weight: 700; }
+.neg-page h2 { font-size: 19px; font-weight: 600; margin-bottom: 20px; }
+.neg-filters, .neg-form-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin: 20px 0; }
+.neg-filters { grid-template-columns: 2fr 1fr 1fr 1fr auto; align-items: end; }
+.neg-page label { display: flex; flex-direction: column; gap: 8px; color: var(--crm-text-muted); font-size: 12px; }
+.neg-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+.neg-kpi, .neg-editor { border: 1px solid var(--crm-border-strong); border-radius: 12px; background: var(--crm-surface); padding: 20px; }
+.neg-kpi span { display: block; color: var(--crm-text-muted); font-size: 12px; }
+.neg-kpi strong { display: block; font-size: 25px; margin-top: 10px; }
+.neg-page .crm-hint { margin: 12px 0; }
+.neg-totals { padding: 16px 0; font-size: 13px; gap: 24px; }
+.neg-table-scroll { overflow-x: auto; border: 1px solid var(--crm-border); border-radius: 10px; }
+.neg-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 13px; }
+.neg-table th { background: var(--crm-surface-2); font-size: 11px; color: var(--crm-text-muted); }
+.neg-table th, .neg-table td { padding: 14px; border-bottom: 1px solid var(--crm-border); white-space: nowrap; }
+.neg-table small { display: block; margin-top: 4px; color: var(--crm-text-muted); }
+.neg-table .crm-input { min-width: 125px; }
+.neg-table .neg-actions { flex-wrap: nowrap; }
+.neg-status { display: inline-block; padding: 5px 9px; border-radius: 6px; font-size: 11px; background: #292933; color: #ddd; }
+.neg-status.pago { background: #133b27; color: #86efac; }
+.neg-status.atrasado { background: #481c22; color: #fca5a5; }
+.neg-status.aguardando { background: #192f54; color: #93c5fd; }
+.neg-empty { padding: 48px 20px; text-align: center; color: var(--crm-text-muted); }
+.neg-editor { margin-bottom: 24px; }
+.neg-editor fieldset { border: 0; padding: 0; min-width: 0; }
+.neg-editor .neg-actions { margin-top: 20px; }
+@media (max-width: 1000px) { .neg-filters, .neg-form-grid, .neg-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 600px) { .neg-page { padding: 16px; } .neg-form-grid, .neg-filters { grid-template-columns: 1fr; } .neg-kpi { padding: 12px; } .neg-kpi strong { font-size: 20px; } }
