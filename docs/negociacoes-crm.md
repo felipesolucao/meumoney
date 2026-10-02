@@ -96,3 +96,31 @@ com `prisma migrate deploy` (incluído em `npm start`) antes de servir a versão
 Validação adicional: `node --test tests/negociacoes-funil.test.mjs` cobre busca,
 preenchimento editável, movimentações, múltiplos acordos, remoção de vínculos,
 controle de versão, isolamento de usuários e rollback em falha.
+
+## Relatório Excel
+
+Clique em **Exportar Excel** para baixar um arquivo `.xlsx` com as negociações
+visíveis após os filtros por empresa/CNPJ, mês da negociação, tipo e status.
+A exportação usa os dados já salvos; alterações abertas no formulário precisam
+ser salvas antes. O botão fica indisponível enquanto carrega ou sem resultados.
+
+A aba **Negociações** segue o modelo de 12 colunas: Ordem, Situação, Empresa,
+CNPJ, Parcelas em atraso, Data negociação, Débito, Negociação, Status,
+Data pgto, Valor pago e Obs. Há uma linha por parcela, numerada `1/3`, `2/3`
+etc. Status e cores são da parcela: verde para pago, azul para aguardando,
+vermelho para atrasada e branco para em aberto. O valor pago é o efetivamente
+recebido; a data é a do último pagamento registrado. Datas e moedas são células
+nativas do Excel; CNPJ e numeração da parcela são texto. Cabeçalho congelado,
+filtros e impressão horizontal estão configurados.
+
+Situação identifica negociações anteriores ou dentro do mês de referência
+(mês do filtro, ou mês atual quando não houver filtro). O filtro de mês continua
+sendo o mês da negociação, não o vencimento das parcelas. “Parcelas em atraso”
+corresponde às parcelas originais em aberto informadas no acordo.
+
+A aba **Resumo dos acordos** registra os filtros, total negociado, total pago,
+saldo e próximo vencimento por acordo. Os totais contam cada acordo uma vez:
+o débito original se repete nas linhas de parcelas da primeira aba e não deve
+ser somado ali. O arquivo não altera dados no CRM.
+
+Testes do relatório: `node --test tests/negociacoes-excel.test.mjs`.
