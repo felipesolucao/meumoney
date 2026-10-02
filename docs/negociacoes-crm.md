@@ -23,12 +23,13 @@ O status geral prioriza atraso caso alguma parcela esteja vencida. A quitação
 exige todas as parcelas pagas. O status é recalculado ao abrir a página e a cada
 minuto enquanto ela estiver aberta.
 
-Os filtros por mês **da negociação**, empresa/CNPJ, modalidade e status afetam
-todos os indicadores. Total pago corresponde aos recebimentos acumulados dos
-acordos selecionados, independentemente do mês em que ocorreram. Empresas são
-contadas por CNPJ; as parcelas originais são consideradas recuperadas somente
-quando o respectivo acordo está quitado. Esse número não se confunde com a
-quantidade de parcelas do novo acordo já pagas, exibida separadamente na tabela.
+O filtro **Mês dos recebíveis** abre no mês atual e seleciona somente parcelas
+com vencimento nesse mês, inclusive de acordos criados antes dele. Empresa/CNPJ,
+modalidade e status refinam esse recorte. Totais e status consideram apenas as
+parcelas do mês. Total pago corresponde aos recebimentos acumulados dessas
+parcelas, independentemente da data em que foram pagos. Empresas são
+contadas por CNPJ. O indicador de parcelas conta apenas as parcelas do mês;
+a tabela preserva a numeração original de cada parcela no acordo.
 Cada cadastro deve representar um débito distinto para evitar dupla contagem.
 
 Valores são armazenados em centavos inteiros. Na divisão do total, centavos
@@ -100,7 +101,7 @@ controle de versão, isolamento de usuários e rollback em falha.
 ## Relatório Excel
 
 Clique em **Exportar Excel** para baixar um arquivo `.xlsx` com as negociações
-visíveis após os filtros por empresa/CNPJ, mês da negociação, tipo e status.
+visíveis após os filtros por empresa/CNPJ, mês de vencimento, tipo e status.
 A exportação usa os dados já salvos; alterações abertas no formulário precisam
 ser salvas antes. O botão fica indisponível enquanto carrega ou sem resultados.
 
@@ -114,13 +115,25 @@ nativas do Excel; CNPJ e numeração da parcela são texto. Cabeçalho congelado
 filtros e impressão horizontal estão configurados.
 
 Situação identifica negociações anteriores ou dentro do mês de referência
-(mês do filtro, ou mês atual quando não houver filtro). O filtro de mês continua
-sendo o mês da negociação, não o vencimento das parcelas. “Parcelas em atraso”
+(mês de vencimento selecionado no filtro). O filtro mensal usa o vencimento
+das parcelas, não a data de criação da negociação. “Parcelas em atraso”
 corresponde às parcelas originais em aberto informadas no acordo.
 
-A aba **Resumo dos acordos** registra os filtros, total negociado, total pago,
-saldo e próximo vencimento por acordo. Os totais contam cada acordo uma vez:
+A aba **Resumo dos acordos** registra os filtros, valor das parcelas do mês, total pago dessas parcelas,
+saldo e próximo vencimento dentro do mês, por acordo. Os totais contam cada acordo uma vez:
 o débito original se repete nas linhas de parcelas da primeira aba e não deve
 ser somado ali. O arquivo não altera dados no CRM.
 
 Testes do relatório: `node --test tests/negociacoes-excel.test.mjs`.
+
+
+## Consulta mensal de recebíveis
+
+O mês nunca fica sem seleção: limpar o campo ou clicar em **Limpar filtros**
+retorna ao mês atual no fuso de São Paulo. Parcelas anteriores, futuras ou sem
+vencimento não entram nos indicadores, na lista ou no Excel do mês escolhido.
+A numeração original é preservada (por exemplo, `2/6`). A edição abre o acordo
+completo para preservar seus pagamentos e parcelas de outros meses; a consulta
+mensal não modifica o cadastro. O status filtrado é o das parcelas do mês.
+
+Validação: `node --test tests/negociacoes-periodo.test.mjs tests/negociacoes-excel.test.mjs`.

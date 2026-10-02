@@ -1,4 +1,5 @@
 import ExcelJS from 'exceljs';
+import { negociacoesDoMes, type NegociacaoPeriodo } from './negociacoesPeriodo';
 import { hojeBrasil, statusParcela, type Negociacao } from './negociacoes';
 
 const MOEDA = '"R$" #,##0.00';
@@ -45,15 +46,15 @@ export function criarRelatorioNegociacoes(negociacoes: Negociacao[], opcoes: Opc
   workbook.creator = 'MeuMoney CRM';
   const planilha = workbook.addWorksheet('Negociações');
   cabecalho(planilha, ['ORDEM', 'SITUAÇÃO', 'EMPRESA', 'CNPJ', 'PARCELAS EM ATRASO', 'DATA NEGOCIAÇÃO', 'DÉBITO', 'Negociação', 'STATUS', 'DATA PGTO', 'VALOR PAGO', 'OBS'], [9, 27, 48, 22, 15, 18, 18, 13, 19, 16, 18, 60]);
-  const ordenadas = [...negociacoes].sort((a, b) => a.dataNegociacao.localeCompare(b.dataNegociacao) || a.empresa.localeCompare(b.empresa, 'pt-BR') || a.id.localeCompare(b.id));
+  const ordenadas = (opcoes.mes ? negociacoesDoMes(negociacoes, referencia) : [...negociacoes] as NegociacaoPeriodo[]).sort((a, b) => a.dataNegociacao.localeCompare(b.dataNegociacao) || a.empresa.localeCompare(b.empresa, 'pt-BR') || a.id.localeCompare(b.id));
   let ordem = 0;
   for (const negociacao of ordenadas) {
-    for (const [i, parcela] of negociacao.parcelas.entries()) {
+    for (const parcela of negociacao.parcelas) {
       const estado = statusParcela(parcela, hoje);
       const linha = planilha.addRow([
         ++ordem, situacao(negociacao.dataNegociacao, referencia), negociacao.empresa, cnpjExcel(negociacao.cnpj),
         negociacao.parcelasOriginais, dataExcel(negociacao.dataNegociacao), negociacao.debitoCentavos / 100,
-        `${i + 1}/${negociacao.parcelas.length}`, ROTULOS[estado], dataExcel(parcela.dataPagamento), parcela.pagoCentavos / 100, negociacao.observacoes,
+        `${parcela.numero}/${negociacao.totalParcelasAcordo ?? negociacao.parcelas.length}`, ROTULOS[estado], dataExcel(parcela.dataPagamento), parcela.pagoCentavos / 100, negociacao.observacoes,
       ]);
       formatarLinha(linha, estado);
       for (const coluna of [1, 5, 6, 8, 9, 10]) linha.getCell(coluna).alignment = { horizontal: 'center', vertical: 'middle' };
@@ -72,10 +73,10 @@ export function criarRelatorioNegociacoes(negociacoes: Negociacao[], opcoes: Opc
 function adicionarResumo(workbook: ExcelJS.Workbook, negociacoes: Negociacao[], hoje: string, referencia: string, filtros?: string) {
   const resumo = workbook.addWorksheet('Resumo dos acordos');
   resumo.addRow(['RELATÓRIO DE NEGOCIAÇÕES']);
-  resumo.addRow([`Emitido em ${hoje.split('-').reverse().join('/')} · Mês de referência: ${referencia.split('-').reverse().join('/')}`]);
+  resumo.addRow([`Emitido em ${hoje.split('-').reverse().join('/')} · Mês de vencimento: ${referencia.split('-').reverse().join('/')}`]);
   resumo.addRow([`Filtros: ${filtros || 'Todas as negociações'}`]);
   for (let i = 1; i <= 3; i++) resumo.mergeCells(i, 1, i, 10);
-  cabecalho(resumo, ['EMPRESA', 'CNPJ', 'DATA NEGOCIAÇÃO', 'PARCELAS ORIGINAIS', 'DÉBITO ORIGINAL', 'TOTAL NEGOCIADO', 'VALOR PAGO', 'SALDO', 'PARCELAS PAGAS', 'PRÓXIMO VENCIMENTO'], [48, 22, 19, 19, 20, 20, 20, 20, 19, 23], 5);
+  cabecalho(resumo, ['EMPRESA', 'CNPJ', 'DATA NEGOCIAÇÃO', 'PARCELAS ORIGINAIS', 'DÉBITO ORIGINAL', 'VALOR NO PERÍODO', 'PAGO DAS PARCELAS', 'SALDO NO PERÍODO', 'PARCELAS PAGAS NO PERÍODO', 'VENCIMENTO NO PERÍODO'], [48, 22, 19, 19, 20, 20, 20, 20, 19, 23], 5);
   const totais = { debito: 0, negociado: 0, pago: 0 };
   for (const n of negociacoes) {
     const pago = n.parcelas.reduce((total, p) => total + p.pagoCentavos, 0);
@@ -92,10 +93,10 @@ function adicionarResumo(workbook: ExcelJS.Workbook, negociacoes: Negociacao[], 
   total.font = { bold: true };
   for (const coluna of [5, 6, 7, 8]) total.getCell(coluna).numFmt = MOEDA;
   resumo.addRow([]);
-  resumo.addRow(['Aba Negociações: uma linha por parcela. Débito e parcelas originais se repetem; use os totais desta aba para evitar duplicidade.']);
+  resumo.addRow(['Aba Negociações: uma linha por parcela do período selecionado. Débito e parcelas originais se repetem; use os totais desta aba para evitar duplicidade.']);
   resumo.addRow(['Negociação = parcela/total. Valor pago = valor efetivamente recebido da parcela; Data PGTO = último pagamento registrado.']);
   resumo.addRow(['Parcelas em atraso = parcelas originais em aberto informadas no acordo. Situação compara a data do acordo ao mês de referência.']);
-  resumo.addRow(['Cores: verde = pago; azul = aguardando pagamento; vermelho = atrasada; branco = em aberto. Status calculados na data de emissão.']);
+  resumo.addRow(['Cores: verde = pago; azul = aguardando pagamento; vermelho = atrasada; branco = em aberto. Status calculados na data de emissão. Valores e saldo limitados às parcelas do período.']);
   for (let i = resumo.rowCount - 3; i <= resumo.rowCount; i++) { resumo.mergeCells(i, 1, i, 10); resumo.getRow(i).height = 30; resumo.getCell(i, 1).alignment = { wrapText: true }; }
 }
 
