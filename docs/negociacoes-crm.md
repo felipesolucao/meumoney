@@ -62,3 +62,37 @@ npx tsc --noEmit
 
 Os testes cobrem divisão em centavos, fim do mês/ano bissexto, atrasos,
 pagamentos parciais, validação, indicadores, autenticação e controle de versão.
+
+## Empresas e funil
+
+No campo **Empresa**, digite pelo menos dois caracteres do nome ou CNPJ e
+selecione um resultado (mouse ou setas + Enter). A busca ignora acentos no nome
+e a máscara do CNPJ. A seleção vincula o acordo ao cadastro e preenche nome,
+CNPJ, débito e parcelas originais em aberto. Todos esses valores continuam
+editáveis para acrescentar encargos, ajustar parcelas ou conceder descontos.
+O total negociado é sugerido quando ainda não existe cronograma; cronogramas
+e pagamentos existentes são preservados. Esses ajustes não sobrescrevem os
+valores importados no cadastro da empresa.
+
+Ao salvar, o acordo e a etapa do funil são atualizados na mesma transação:
+
+- Acordos com saldo, inclusive parciais e atrasados: **Aguardando pagamento**.
+- Todos os acordos vinculados à empresa quitados: **Negociado**.
+- Correção de pagamento que reabre saldo: **Aguardando pagamento** novamente.
+- Remover o último vínculo ou excluir o último acordo: volta para
+  **Em negociação**, se estava em uma das etapas geridas pela integração.
+
+A movimentação fica registrada no histórico de atendimentos. Com vários
+acordos para a mesma empresa, quitar apenas um não conclui o funil.
+Ao trocar a empresa vinculada, os dois cadastros têm sua etapa recalculada.
+Negociações antigas e cadastros manuais continuam sem vínculo até selecionar
+uma empresa na busca; não há associação automática por nomes parecidos ou
+CNPJs duplicados. Excluir uma empresa preserva o acordo, removendo seu vínculo.
+
+A migração `20261002160000_vincula_negociacoes_funil` adiciona a referência
+opcional à empresa e seu índice, sem alterar os acordos existentes. Aplique-a
+com `prisma migrate deploy` (incluído em `npm start`) antes de servir a versão.
+
+Validação adicional: `node --test tests/negociacoes-funil.test.mjs` cobre busca,
+preenchimento editável, movimentações, múltiplos acordos, remoção de vínculos,
+controle de versão, isolamento de usuários e rollback em falha.

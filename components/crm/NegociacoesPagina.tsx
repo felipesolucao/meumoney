@@ -1,6 +1,7 @@
 'use client';
 import { useCallback, useEffect, useState } from 'react';
 import CrmTopNav from './CrmTopNav';
+import { useRouter } from 'next/navigation';
 import NegociacaoFormulario from './NegociacaoFormulario';
 import type { DadosNegociacao, Negociacao } from '../../lib/negociacoes';
 import { hojeBrasil, moeda, resumoNegociacoes, STATUS, statusNegociacao, statusParcela } from '../../lib/negociacoes';
@@ -8,6 +9,7 @@ import { hojeBrasil, moeda, resumoNegociacoes, STATUS, statusNegociacao, statusP
 const data = (v: string) => v ? v.split('-').reverse().join('/') : '—';
 const cnpj = (v: string) => v.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
 export default function NegociacoesPagina({ nomeUsuario }: { nomeUsuario: string }) {
+  const router = useRouter();
   const [lista, setLista] = useState<Negociacao[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState('');
@@ -33,7 +35,7 @@ export default function NegociacoesPagina({ nomeUsuario }: { nomeUsuario: string
     const existente = editor && editor !== 'novo' ? editor : null;
     const resposta = await fetch(`/api/crm/negociacoes${existente ? `/${existente.id}` : ''}`, { method: existente ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...dados, versao: existente?.versao }) });
     if (!resposta.ok) { const json = await resposta.json().catch(() => ({})); throw new Error(json.error || 'Não foi possível salvar.'); }
-    setEditor(null); setAviso('Negociação salva.'); await carregar();
+    setEditor(null); setAviso(dados.leadId ? 'Negociação salva e funil atualizado.' : 'Negociação salva.'); router.refresh(); await carregar();
   }
   async function excluir(n: Negociacao) {
     if (!window.confirm(`Excluir a negociação de ${n.empresa} e seus pagamentos? Esta ação não pode ser desfeita.`)) return;
@@ -41,7 +43,7 @@ export default function NegociacoesPagina({ nomeUsuario }: { nomeUsuario: string
     try {
       const r = await fetch(`/api/crm/negociacoes/${n.id}?versao=${n.versao}`, { method: 'DELETE' });
       if (!r.ok) { const json = await r.json().catch(() => ({})); throw new Error(json.error || 'Não foi possível excluir.'); }
-      setAviso('Negociação excluída.'); await carregar();
+      setAviso('Negociação excluída.'); router.refresh(); await carregar();
     } catch (e) { setErro(e instanceof Error ? e.message : 'Falha ao excluir.'); }
     finally { setExcluindo(null); }
   }
@@ -62,7 +64,7 @@ export default function NegociacoesPagina({ nomeUsuario }: { nomeUsuario: string
     <div className="neg-totals"><span>Saldo a receber: <strong>{moeda(resumo.negociado - resumo.pago)}</strong></span><span>Em atraso: <strong>{moeda(atraso)}</strong></span><span>Negociado à vista: <strong>{moeda(filtradas.filter(n => n.tipo === 'avista').reduce((s, n) => s + n.totalCentavos, 0))}</strong></span><span>Negociado parcelado: <strong>{moeda(filtradas.filter(n => n.tipo === 'parcelada').reduce((s, n) => s + n.totalCentavos, 0))}</strong></span></div>
     {carregando ? <p role="status">Carregando negociações…</p> : <><p className="crm-hint">{filtradas.length} negociação(ões)</p><div className="neg-table-scroll"><table className="neg-table"><thead><tr><th>Empresa / CNPJ</th><th>Data da negociação</th><th>Tipo</th><th>Parcelas originais</th><th>Débito original</th><th>Negociado</th><th>Parcelas pagas</th><th>Valor pago</th><th>Saldo</th><th>Próximo vencimento em aberto</th><th>Status</th><th>Ações</th></tr></thead><tbody>
       {filtradas.map(n => { const pago = n.parcelas.reduce((s, p) => s + p.pagoCentavos, 0); const estado = statusNegociacao(n, hoje); const vencimento = n.parcelas.filter(p => p.pagoCentavos < p.valorCentavos && p.vencimento).map(p => p.vencimento).sort()[0]; return <tr key={n.id}>
-        <td><strong>{n.empresa}</strong><small>{cnpj(n.cnpj)}</small></td><td>{data(n.dataNegociacao)}</td><td>{n.tipo === 'avista' ? 'À vista' : `${n.parcelas.length}x`}</td><td>{n.parcelasOriginais}</td><td>{moeda(n.debitoCentavos)}</td><td>{moeda(n.totalCentavos)}</td><td>{n.parcelas.filter(p => p.pagoCentavos === p.valorCentavos).length}/{n.parcelas.length}</td><td>{moeda(pago)}</td><td>{moeda(n.totalCentavos - pago)}</td><td>{data(vencimento)}</td><td><span className={`neg-status ${estado}`}>{STATUS[estado]}</span></td><td><div className="neg-actions"><button className="crm-btn crm-btn-ghost" disabled={editor !== null} onClick={() => { setEditor(n); setAviso(''); document.querySelector('.neg-page')?.scrollTo({ top: 0, behavior: 'smooth' }); }}>Editar / pagamentos</button><button className="crm-btn crm-btn-danger" disabled={editor !== null || excluindo !== null} onClick={() => void excluir(n)}>{excluindo === n.id ? 'Excluindo…' : 'Excluir'}</button></div></td>
+        <td><strong>{n.empresa}</strong><small>{cnpj(n.cnpj)}</small><small>{n.lead ? `Vinculada: ${n.lead.nome}` : 'Sem vínculo com o funil'}</small></td><td>{data(n.dataNegociacao)}</td><td>{n.tipo === 'avista' ? 'À vista' : `${n.parcelas.length}x`}</td><td>{n.parcelasOriginais}</td><td>{moeda(n.debitoCentavos)}</td><td>{moeda(n.totalCentavos)}</td><td>{n.parcelas.filter(p => p.pagoCentavos === p.valorCentavos).length}/{n.parcelas.length}</td><td>{moeda(pago)}</td><td>{moeda(n.totalCentavos - pago)}</td><td>{data(vencimento)}</td><td><span className={`neg-status ${estado}`}>{STATUS[estado]}</span></td><td><div className="neg-actions"><button className="crm-btn crm-btn-ghost" disabled={editor !== null} onClick={() => { setEditor(n); setAviso(''); document.querySelector('.neg-page')?.scrollTo({ top: 0, behavior: 'smooth' }); }}>Editar / pagamentos</button><button className="crm-btn crm-btn-danger" disabled={editor !== null || excluindo !== null} onClick={() => void excluir(n)}>{excluindo === n.id ? 'Excluindo…' : 'Excluir'}</button></div></td>
       </tr>; })}
     </tbody></table></div>{filtradas.length === 0 && <div className="neg-empty">{lista.length ? 'Nenhuma negociação corresponde aos filtros.' : 'Cadastre sua primeira negociação para acompanhar os pagamentos.'}</div>}</>}
   </main></div>;

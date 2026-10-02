@@ -1,6 +1,6 @@
 export type ParcelaNegociacao = { numero: number; valorCentavos: number; vencimento: string; pagoCentavos: number; dataPagamento: string; situacao: 'em_aberto' | 'aguardando' };
-export type DadosNegociacao = { empresa: string; cnpj: string; tipo: 'avista' | 'parcelada'; dataNegociacao: string; debitoCentavos: number; totalCentavos: number; parcelasOriginais: number; observacoes: string; parcelas: ParcelaNegociacao[] };
-export type Negociacao = DadosNegociacao & { id: string; versao: number };
+export type DadosNegociacao = { leadId?: string | null; empresa: string; cnpj: string; tipo: 'avista' | 'parcelada'; dataNegociacao: string; debitoCentavos: number; totalCentavos: number; parcelasOriginais: number; observacoes: string; parcelas: ParcelaNegociacao[] };
+export type Negociacao = DadosNegociacao & { id: string; versao: number; lead?: { id: string; nome: string; estagio: string } | null };
 export const STATUS = { em_aberto: 'Em aberto', aguardando: 'Aguardando pagamento', atrasado: 'Em atraso', pago: 'Pago' };
 export function hojeBrasil() { return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date()); }
 export function moeda(c: number) { return (c / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
@@ -24,6 +24,7 @@ function inteiro(v: unknown, min: number, max = 2000000000): v is number { retur
 export function validarNegociacao(valor: unknown): DadosNegociacao {
   if (!valor || typeof valor !== 'object') throw new Error('Dados inválidos.');
   const n = valor as Record<string, unknown>;
+  if (n.leadId != null && (typeof n.leadId !== 'string' || !n.leadId.trim() || n.leadId.length > 100)) throw new Error('Empresa do funil inválida.');
   if (typeof n.empresa !== 'string' || !n.empresa.trim() || n.empresa.length > 200) throw new Error('Informe a empresa (até 200 caracteres).');
   const cnpj = typeof n.cnpj === 'string' ? n.cnpj.replace(/\D/g, '') : '';
   if (cnpj.length !== 14) throw new Error('Informe o CNPJ com 14 dígitos.');
@@ -47,7 +48,7 @@ export function validarNegociacao(valor: unknown): DadosNegociacao {
   });
   if (parcelas.reduce((s, p) => s + p.valorCentavos, 0) !== n.totalCentavos) throw new Error('A soma das parcelas deve ser igual ao total negociado.');
   if (typeof n.observacoes !== 'string' || n.observacoes.length > 5000) throw new Error('Observações devem ter até 5.000 caracteres.');
-  return { empresa: n.empresa.trim(), cnpj, tipo: n.tipo, dataNegociacao: n.dataNegociacao, debitoCentavos: n.debitoCentavos, totalCentavos: n.totalCentavos, parcelasOriginais: n.parcelasOriginais, observacoes: n.observacoes, parcelas };
+  return { ...(n.leadId !== undefined ? { leadId: n.leadId as string | null } : {}), empresa: n.empresa.trim(), cnpj, tipo: n.tipo, dataNegociacao: n.dataNegociacao, debitoCentavos: n.debitoCentavos, totalCentavos: n.totalCentavos, parcelasOriginais: n.parcelasOriginais, observacoes: n.observacoes, parcelas };
 }
 export function gerarParcelas(total: number, quantidade: number, primeiroVencimento: string): ParcelaNegociacao[] {
   if (!inteiro(total, 1) || !inteiro(quantidade, 1, 360) || total < quantidade || !dataValida(primeiroVencimento)) throw new Error('Informe total, quantidade e primeiro vencimento válidos.');

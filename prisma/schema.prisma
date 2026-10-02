@@ -717,6 +717,7 @@ model LeadCrm {
   usuario   Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 
   atendimentos AtendimentoCrm[]
+  negociacoes NegociacaoCrm[]
 
   @@index([usuarioId, estagio, ordem])
   @@map("crm_leads")
@@ -819,6 +820,8 @@ model AutomacaoCrm {
 }
 
 model NegociacaoCrm {
+  leadId String?
+  lead LeadCrm? @relation(fields: [leadId], references: [id], onDelete: SetNull)
   id String @id @default(cuid())
   usuarioId String
   usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
@@ -835,5 +838,6 @@ model NegociacaoCrm {
   criadoEm DateTime @default(now())
   atualizadoEm DateTime @updatedAt
   @@index([usuarioId, dataNegociacao])
+  @@index([usuarioId, leadId])
   @@map("negociacoes_crm")
 }

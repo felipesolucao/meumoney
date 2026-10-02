@@ -1605,3 +1605,12 @@
 .neg-editor .neg-actions { margin-top: 20px; }
 @media (max-width: 1000px) { .neg-filters, .neg-form-grid, .neg-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 600px) { .neg-page { padding: 16px; } .neg-form-grid, .neg-filters { grid-template-columns: 1fr; } .neg-kpi { padding: 12px; } .neg-kpi strong { font-size: 20px; } }
+
+.neg-empresa-busca { position: relative; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.neg-empresa-resultados { position: absolute; z-index: 20; top: 100%; left: 0; right: 0; max-height: 320px; overflow-y: auto; border: 1px solid var(--crm-border-strong); border-radius: 8px; background: var(--crm-surface); box-shadow: 0 8px 24px rgba(0,0,0,.25); }
+.neg-empresa-resultados ul { list-style: none; padding: 0; margin: 0; }
+.neg-empresa-resultados li { display: flex; flex-direction: column; gap: 4px; padding: 12px; cursor: pointer; overflow-wrap: anywhere; border-bottom: 1px solid var(--crm-border-strong); }
+.neg-empresa-resultados li:hover, .neg-empresa-resultados li[aria-selected="true"] { background: var(--crm-bg); outline: 2px solid #3b82f6; outline-offset: -2px; }
+.neg-empresa-resultados p { padding: 12px; margin: 0; }
+.neg-empresa-resultados small, .neg-empresa-resultados span { opacity: .8; }
+.neg-vinculo { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; padding: 12px; margin-bottom: 12px; border: 1px solid var(--crm-border-strong); border-radius: 8px; }

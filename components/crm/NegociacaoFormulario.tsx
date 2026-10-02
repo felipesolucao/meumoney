@@ -1,12 +1,15 @@
 'use client';
 import { useState } from 'react';
+import NegociacaoEmpresaBusca from './NegociacaoEmpresaBusca';
+import { preencherEmpresa } from '../../lib/negociacaoEmpresa';
 import type { DadosNegociacao, Negociacao, ParcelaNegociacao } from '../../lib/negociacoes';
 import { centavos, gerarParcelas, hojeBrasil, moeda, STATUS, statusParcela, prepararNegociacaoParaSalvar } from '../../lib/negociacoes';
 
 export default function NegociacaoFormulario({ inicial, onSalvar, onFechar }: { inicial: Negociacao | null; onSalvar: (dados: DadosNegociacao) => Promise<void>; onFechar: () => void }) {
-  const [dados, setDados] = useState<DadosNegociacao>(() => inicial ?? { empresa: '', cnpj: '', tipo: 'avista', dataNegociacao: hojeBrasil(), debitoCentavos: 0, totalCentavos: 0, parcelasOriginais: 1, observacoes: '', parcelas: [] });
+  const [dados, setDados] = useState<DadosNegociacao>(() => inicial ?? { leadId: null, empresa: '', cnpj: '', tipo: 'avista', dataNegociacao: hojeBrasil(), debitoCentavos: 0, totalCentavos: 0, parcelasOriginais: 1, observacoes: '', parcelas: [] });
   const [quantidade, setQuantidade] = useState(inicial?.parcelas.length ?? 1);
   const [primeiro, setPrimeiro] = useState(inicial?.parcelas[0]?.vencimento || hojeBrasil());
+  const [empresaVinculada, setEmpresaVinculada] = useState(inicial?.lead?.nome ?? (inicial?.leadId ? inicial.empresa : ''));
   const [erro, setErro] = useState('');
   const [salvando, setSalvando] = useState(false);
   function campo<K extends keyof DadosNegociacao>(chave: K, valor: DadosNegociacao[K]) { setDados(d => ({ ...d, [chave]: valor })); }
@@ -27,7 +30,7 @@ export default function NegociacaoFormulario({ inicial, onSalvar, onFechar }: { 
     <form onSubmit={salvar}>
       <fieldset disabled={salvando}>
         <div className="neg-form-grid">
-          <label>Empresa<input className="crm-input" required maxLength={200} value={dados.empresa} onChange={e => campo('empresa', e.target.value)} /></label>
+          <NegociacaoEmpresaBusca valor={dados.empresa} onChange={valor => campo('empresa', valor)} onSelecionar={empresa => { setDados(d => preencherEmpresa(d, empresa)); setEmpresaVinculada(empresa.nome); }} />
           <label>CNPJ<input className="crm-input" required inputMode="numeric" maxLength={18} value={dados.cnpj} onChange={e => campo('cnpj', e.target.value)} placeholder="00.000.000/0000-00" /></label>
           <label>Data da negociação<input className="crm-input" type="date" required value={dados.dataNegociacao} onChange={e => campo('dataNegociacao', e.target.value)} /></label>
           <label>Tipo<select className="crm-input" value={dados.tipo} onChange={e => { campo('tipo', e.target.value as DadosNegociacao['tipo']); setQuantidade(e.target.value === 'avista' ? 1 : 2); }}><option value="avista">À vista</option><option value="parcelada">Parcelada</option></select></label>
@@ -37,6 +40,8 @@ export default function NegociacaoFormulario({ inicial, onSalvar, onFechar }: { 
           <label>Parcelar em quantas vezes<input className="crm-input" type="number" min={dados.tipo === 'avista' ? 1 : 2} max="360" disabled={dados.tipo === 'avista'} value={dados.tipo === 'avista' ? 1 : quantidade} onChange={e => setQuantidade(Number(e.target.value))} /></label>
           <label>Primeiro vencimento<input className="crm-input" type="date" value={primeiro} onChange={e => setPrimeiro(e.target.value)} /></label>
         </div>
+        {dados.leadId ? <div className="neg-vinculo" role="status"><span>Vinculada no funil: <strong>{empresaVinculada}</strong>. Valores e parcelas podem ser ajustados neste acordo.</span><button className="crm-btn crm-btn-ghost" type="button" onClick={() => { campo('leadId', null); setEmpresaVinculada(''); }}>Remover vínculo</button></div> : <p className="crm-hint">Selecione uma empresa nos resultados da busca para vincular ao funil. O preenchimento manual salva sem vínculo.</p>}
+        <p className="crm-hint">Ao salvar um acordo vinculado, a empresa vai para Aguardando pagamento. Quando todos os acordos dela estiverem quitados, vai para Negociado.</p>
         <button className="crm-btn crm-btn-ghost" type="button" onClick={gerar}>{dados.parcelas.length ? 'Refazer cronograma mensal' : 'Gerar cronograma mensal'}</button>
         <p className="crm-hint">Se o cronograma estiver vazio, ele será gerado automaticamente ao salvar. Ajuste valores e datas abaixo. Valor pago é o total já recebido da parcela; a data corresponde ao último pagamento. Pago e Em atraso são calculados automaticamente.</p>
         <div className="neg-table-scroll"><table className="neg-table"><thead><tr><th>Parcela</th><th>Valor (R$)</th><th>Vencimento</th><th>Situação</th><th>Total pago (R$)</th><th>Último pagamento</th><th>Status</th><th>Ação</th></tr></thead>

@@ -1,11 +1,5 @@
-// Estado mora aqui: a lista de leads, a busca e os modais. O arrastar-e-
-// soltar em si (Pointer Events, sem lib externa) vive em useKanbanDrag.ts —
-// separado porque é uma mecânica isolada, sem relação com o que é renderizado.
-//   - Criar/editar/excluir um lead único -> sempre busca a lista atualizada
-//     de novo (baixo volume, prioriza simplicidade e consistência).
-//   - Arrastar um card -> atualização otimista local (instantânea) + 1 ou 2
-//     chamadas de API em segundo plano (ver useKanbanDrag) — aqui sim
-//     compensa não esperar o servidor, porque acontece a cada arraste.
+// Estado do quadro, busca e modais. Arraste de cards vive em useKanbanDrag;
+// atualização ao voltar de outra aba vive em useAtualizarFunil.
 "use client";
 
 import { useMemo, useState } from "react";
@@ -23,6 +17,7 @@ import CrmTopNav from "./CrmTopNav";
 import AlertasPainel from "./AlertasPainel";
 import { useAlertasCrm } from "./useAlertasCrm";
 import { IconBolt, IconColunas } from "./CrmToolbarIcons";
+import { useAtualizarFunil } from './useAtualizarFunil';
 import { useKanbanDrag } from "./useKanbanDrag";
 import { useToast } from "../ToastProvider";
 import { IconPlus, IconSearch, IconDocument, IconUsers } from "../Icons";
@@ -151,6 +146,8 @@ export default function CrmBoard({
       showToast("Não foi possível atualizar a lista de leads.", "erro");
     }
   }
+
+  useAtualizarFunil(leadsIniciais, setLeads, Boolean(drag || leadEditando || modalNovoEstagio));
 
   const buscaNormalizada = busca.trim().toLowerCase();
   const colunas = useMemo(

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import ts from 'typescript';
 import { NextResponse } from 'next/server.js';
+import { Prisma } from '@prisma/client';
 function load(file, dependencies = {}) {
   const output = ts.transpileModule(fs.readFileSync(new URL(`../${file}`, import.meta.url), 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } }).outputText;
   const mod = { exports: {} };
@@ -41,8 +42,10 @@ test('indicadores deduplicam empresas, somam parciais e recuperam originais só 
 });
 function api({ sessao = { id: 'u1' }, count = 1 } = {}) {
   const chamadas = [];
-  const db = { findMany: async q => { chamadas.push(q); return []; }, create: async q => { chamadas.push(q); return { id: 'n1', ...q.data }; }, updateMany: async q => { chamadas.push(q); return { count }; }, deleteMany: async q => { chamadas.push(q); return { count }; } };
-  function rota(file, prefix) { return load(file, { 'next/server': { NextResponse }, [`${prefix}/auth`]: { obterSessao: async () => sessao }, [`${prefix}/prisma`]: { prisma: { negociacaoCrm: db } }, [`${prefix}/negociacoes`]: lib }); }
+  const db = { findFirst: async () => ({ leadId: null }), findMany: async q => { chamadas.push(q); return []; }, create: async q => { chamadas.push(q); return { id: 'n1', ...q.data }; }, updateMany: async q => { chamadas.push(q); return { count }; }, deleteMany: async q => { chamadas.push(q); return { count }; } };
+  const prisma = { negociacaoCrm: db, $transaction: async fn => fn({ negociacaoCrm: db }) };
+  const funil = load('lib/negociacoesFunil.ts', { '@prisma/client': { Prisma }, './prisma': { prisma } });
+  function rota(file, prefix) { return load(file, { 'next/server': { NextResponse }, [`${prefix}/auth`]: { obterSessao: async () => sessao }, [`${prefix}/prisma`]: { prisma }, [`${prefix}/negociacoes`]: lib, [`${prefix}/negociacoesFunil`]: funil }); }
   return { chamadas, colecao: rota('app/api/crm/negociacoes/route.ts', '../../../../lib'), item: rota('app/api/crm/negociacoes/[id]/route.ts', '../../../../../lib') };
 }
 test('todas as operações exigem sessão antes de acessar banco', async () => {
