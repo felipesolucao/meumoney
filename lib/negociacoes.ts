@@ -31,7 +31,10 @@ export function validarNegociacao(valor: unknown): DadosNegociacao {
   if (!dataValida(n.dataNegociacao)) throw new Error('Data da negociação inválida.');
   if (!inteiro(n.debitoCentavos, 1) || !inteiro(n.totalCentavos, 1)) throw new Error('Informe valores positivos de até R$ 20 milhões.');
   if (!inteiro(n.parcelasOriginais, 1, 10000)) throw new Error('Informe quantas parcelas originais estavam em aberto.');
-  if (!Array.isArray(n.parcelas) || n.parcelas.length < 1 || n.parcelas.length > 360 || (n.tipo === 'avista' && n.parcelas.length !== 1) || (n.tipo === 'parcelada' && n.parcelas.length < 2)) throw new Error('Quantidade de parcelas inválida (máximo 360).');
+  if (!Array.isArray(n.parcelas) || n.parcelas.length < 1) throw new Error('Gere o cronograma de parcelas antes de salvar.');
+  if (n.parcelas.length > 360) throw new Error('Quantidade de parcelas inválida (máximo 360).');
+  if (n.tipo === 'avista' && n.parcelas.length !== 1) throw new Error('Negociação à vista deve ter exatamente uma parcela.');
+  if (n.tipo === 'parcelada' && n.parcelas.length < 2) throw new Error('Negociação parcelada deve ter pelo menos duas parcelas. Para pagar em uma vez, selecione À vista.');
   const parcelas = n.parcelas.map((item: unknown, i): ParcelaNegociacao => {
     if (!item || typeof item !== 'object') throw new Error('Parcela inválida.');
     const p = item as Record<string, unknown>;
@@ -52,5 +55,12 @@ export function gerarParcelas(total: number, quantidade: number, primeiroVencime
   return Array.from({ length: quantidade }, (_, i) => {
     const ultimoDia = new Date(Date.UTC(ano, mes + i, 0)).getUTCDate();
     return { numero: i + 1, valorCentavos: Math.floor(total / quantidade) + (i < total % quantidade ? 1 : 0), vencimento: new Date(Date.UTC(ano, mes - 1 + i, Math.min(dia, ultimoDia))).toISOString().slice(0, 10), pagoCentavos: 0, dataPagamento: '', situacao: 'aguardando' };
+  });
+}
+
+export function prepararNegociacaoParaSalvar(dados: DadosNegociacao, quantidade: number, primeiroVencimento: string): DadosNegociacao {
+  return validarNegociacao({
+    ...dados,
+    parcelas: dados.parcelas.length ? dados.parcelas : gerarParcelas(dados.totalCentavos, dados.tipo === 'avista' ? 1 : quantidade, primeiroVencimento),
   });
 }

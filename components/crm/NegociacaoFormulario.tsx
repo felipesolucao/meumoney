@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import type { DadosNegociacao, Negociacao, ParcelaNegociacao } from '../../lib/negociacoes';
-import { centavos, gerarParcelas, hojeBrasil, moeda, STATUS, statusParcela, validarNegociacao } from '../../lib/negociacoes';
+import { centavos, gerarParcelas, hojeBrasil, moeda, STATUS, statusParcela, prepararNegociacaoParaSalvar } from '../../lib/negociacoes';
 
 export default function NegociacaoFormulario({ inicial, onSalvar, onFechar }: { inicial: Negociacao | null; onSalvar: (dados: DadosNegociacao) => Promise<void>; onFechar: () => void }) {
   const [dados, setDados] = useState<DadosNegociacao>(() => inicial ?? { empresa: '', cnpj: '', tipo: 'avista', dataNegociacao: hojeBrasil(), debitoCentavos: 0, totalCentavos: 0, parcelasOriginais: 1, observacoes: '', parcelas: [] });
@@ -18,7 +18,7 @@ export default function NegociacaoFormulario({ inicial, onSalvar, onFechar }: { 
   }
   async function salvar(e: React.FormEvent) {
     e.preventDefault(); setErro(''); setSalvando(true);
-    try { await onSalvar(validarNegociacao(dados)); }
+    try { await onSalvar(prepararNegociacaoParaSalvar(dados, quantidade, primeiro)); }
     catch (e) { setErro(e instanceof Error ? e.message : 'Não foi possível salvar.'); }
     finally { setSalvando(false); }
   }
@@ -38,7 +38,7 @@ export default function NegociacaoFormulario({ inicial, onSalvar, onFechar }: { 
           <label>Primeiro vencimento<input className="crm-input" type="date" value={primeiro} onChange={e => setPrimeiro(e.target.value)} /></label>
         </div>
         <button className="crm-btn crm-btn-ghost" type="button" onClick={gerar}>{dados.parcelas.length ? 'Refazer cronograma mensal' : 'Gerar cronograma mensal'}</button>
-        <p className="crm-hint">Ajuste valores e datas abaixo. Valor pago é o total já recebido da parcela; a data corresponde ao último pagamento. Pago e Em atraso são calculados automaticamente.</p>
+        <p className="crm-hint">Se o cronograma estiver vazio, ele será gerado automaticamente ao salvar. Ajuste valores e datas abaixo. Valor pago é o total já recebido da parcela; a data corresponde ao último pagamento. Pago e Em atraso são calculados automaticamente.</p>
         <div className="neg-table-scroll"><table className="neg-table"><thead><tr><th>Parcela</th><th>Valor (R$)</th><th>Vencimento</th><th>Situação</th><th>Total pago (R$)</th><th>Último pagamento</th><th>Status</th><th>Ação</th></tr></thead>
           <tbody>{dados.parcelas.map((p, i) => <tr key={p.numero}>
             <td>{p.numero}/{dados.parcelas.length}</td>

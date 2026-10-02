@@ -3,7 +3,10 @@
 Acesse **CRM → Negociações** (`/crm/negociacoes`). Cadastre empresa, CNPJ,
 data da negociação, débito original, total acordado, quantidade de parcelas
 originais em aberto e modalidade à vista ou parcelada. Gere o cronograma mensal
-e ajuste individualmente seus valores e vencimentos antes de salvar.
+e ajuste individualmente seus valores e vencimentos antes de salvar. Se o cronograma
+estiver vazio, ele será gerado automaticamente ao salvar, usando a quantidade
+e o primeiro vencimento informados. À vista gera uma parcela; parcelada exige
+pelo menos duas. Cronogramas existentes são preservados ao salvar.
 
 Em **Editar / pagamentos**, informe o total acumulado recebido em cada parcela
 e a data do último pagamento. **Quitar hoje** preenche esses campos; a alteração

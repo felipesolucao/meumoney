@@ -68,3 +68,27 @@ test('entrada inválida e JSON malformado não gravam dados', async () => {
   assert.equal((await a.colecao.POST({ json: async () => { throw new SyntaxError(); } })).status, 400);
   assert.equal(a.chamadas.length, 0);
 });
+test('salvar à vista gera uma parcela mesmo com duas parcelas originais em aberto', async () => {
+  const dados = { ...acordo(), tipo: 'avista', parcelasOriginais: 2, parcelas: [] };
+  const preparado = lib.prepararNegociacaoParaSalvar(dados, 1, '2026-10-02');
+  assert.equal(preparado.parcelasOriginais, 2);
+  assert.deepEqual(preparado.parcelas, gerarParcelas(dados.totalCentavos, 1, '2026-10-02'));
+  const a = api();
+  const resposta = await a.colecao.POST({ json: async () => preparado });
+  assert.equal(resposta.status, 201);
+  assert.equal(a.chamadas[0].data.parcelasOriginais, 2);
+});
+test('salvar gera cronograma parcelado vazio e preserva cronograma editado com pagamentos', () => {
+  const dados = acordo();
+  assert.deepEqual(lib.prepararNegociacaoParaSalvar({ ...dados, parcelas: [] }, 3, '2026-01-31').parcelas, dados.parcelas);
+  dados.parcelas[0] = { ...dados.parcelas[0], pagoCentavos: 100, dataPagamento: '2026-01-20', vencimento: '2026-02-05' };
+  assert.deepEqual(lib.prepararNegociacaoParaSalvar(dados, 4, '2026-10-02').parcelas, dados.parcelas);
+});
+test('validação distingue cronograma vazio, limite e incompatibilidade com modalidade', () => {
+  const dados = acordo();
+  assert.throws(() => validarNegociacao({ ...dados, parcelas: [] }), /Gere o cronograma/);
+  assert.throws(() => validarNegociacao({ ...dados, parcelas: Array(361).fill(dados.parcelas[0]) }), /máximo 360/);
+  assert.throws(() => validarNegociacao({ ...dados, tipo: 'avista' }), /exatamente uma parcela/);
+  assert.throws(() => lib.prepararNegociacaoParaSalvar({ ...dados, parcelas: [] }, 1, '2026-10-02'), /pelo menos duas parcelas/);
+  assert.equal(lib.prepararNegociacaoParaSalvar({ ...dados, parcelas: [] }, 360, '2026-10-02').parcelas.length, 360);
+});
