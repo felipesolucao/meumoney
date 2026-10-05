@@ -1,5 +1,6 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { IconClose } from '../Icons';
 import NegociacaoEmpresaBusca from './NegociacaoEmpresaBusca';
 import { preencherEmpresa } from '../../lib/negociacaoEmpresa';
 import type { DadosNegociacao, Negociacao, ParcelaNegociacao } from '../../lib/negociacoes';
@@ -12,6 +13,23 @@ export default function NegociacaoFormulario({ inicial, onSalvar, onFechar }: { 
   const [empresaVinculada, setEmpresaVinculada] = useState(inicial?.lead?.nome ?? (inicial?.leadId ? inicial.empresa : ''));
   const [erro, setErro] = useState('');
   const [salvando, setSalvando] = useState(false);
+  const painelRef = useRef<HTMLFormElement>(null);
+  useEffect(() => {
+    const anterior = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    painelRef.current?.focus();
+    return () => anterior?.focus();
+  }, []);
+  function fechar() { if (!salvando) onFechar(); }
+  function teclado(e: React.KeyboardEvent<HTMLFormElement>) {
+    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); fechar(); }
+    if (e.key !== 'Tab') return;
+    const elementos = Array.from(e.currentTarget.querySelectorAll<HTMLElement>('button, input, select, textarea, a[href], [tabindex="0"]')).filter(el => !el.matches(':disabled') && el.getClientRects().length > 0);
+    const primeiro = elementos[0];
+    const ultimo = elementos[elementos.length - 1];
+    if (!primeiro) { e.preventDefault(); return; }
+    if (e.shiftKey && (document.activeElement === primeiro || document.activeElement === e.currentTarget)) { e.preventDefault(); ultimo.focus(); }
+    else if (!e.shiftKey && (document.activeElement === ultimo || document.activeElement === e.currentTarget)) { e.preventDefault(); primeiro.focus(); }
+  }
   function campo<K extends keyof DadosNegociacao>(chave: K, valor: DadosNegociacao[K]) { setDados(d => ({ ...d, [chave]: valor })); }
   function parcela(i: number, alteracoes: Partial<ParcelaNegociacao>) { campo('parcelas', dados.parcelas.map((p, j) => j === i ? { ...p, ...alteracoes } : p)); }
   function gerar() {
@@ -25,15 +43,33 @@ export default function NegociacaoFormulario({ inicial, onSalvar, onFechar }: { 
     catch (e) { setErro(e instanceof Error ? e.message : 'Não foi possível salvar.'); }
     finally { setSalvando(false); }
   }
-  return <section className="neg-editor" aria-label={inicial ? 'Editar negociação' : 'Nova negociação'}>
-    <h2>{inicial ? 'Editar negociação e pagamentos' : 'Nova negociação'}</h2>
-    <form onSubmit={salvar}>
+  return <div className="crm-painel-overlay" onClick={fechar}>
+    <form ref={painelRef} className="crm-painel neg-painel" role="dialog" aria-modal="true" aria-labelledby="neg-painel-titulo" tabIndex={-1} onKeyDown={teclado} onClick={e => e.stopPropagation()} onSubmit={salvar}>
+      <div className="crm-painel-header">
+        <div className="crm-painel-avatar">{dados.empresa.trim().split(/\s+/).filter(Boolean).slice(0, 2).map(parte => parte[0]).join('').toUpperCase() || '?'}</div>
+        <div className="neg-painel-titulo">
+          <h2 id="neg-painel-titulo" className="crm-painel-nome">{inicial ? 'Detalhes da negociação' : 'Nova negociação'}</h2>
+          <div className="crm-painel-sub">{dados.empresa || 'Preencha os dados e salve'}</div>
+          <div className="crm-painel-tags">
+            <span className="crm-badge">{dados.tipo === 'avista' ? 'À vista' : 'Parcelada'}</span>
+            <span className="crm-badge">{dados.leadId ? 'Vinculada ao funil' : 'Sem vínculo'}</span>
+          </div>
+        </div>
+        <button type="button" className="crm-icon-btn" onClick={fechar} disabled={salvando} aria-label="Fechar"><IconClose size={16} /></button>
+      </div>
+      <div className="crm-painel-body neg-painel-body">
       <fieldset disabled={salvando}>
+        <div className="neg-painel-colunas">
+        <div className="crm-painel-secao">
+        <h3 className="crm-painel-secao-titulo">Dados principais</h3>
         <div className="neg-form-grid">
           <NegociacaoEmpresaBusca valor={dados.empresa} onChange={valor => campo('empresa', valor)} onSelecionar={empresa => { setDados(d => preencherEmpresa(d, empresa)); setEmpresaVinculada(empresa.nome); }} />
           <label>CNPJ<input className="crm-input" required inputMode="numeric" maxLength={18} value={dados.cnpj} onChange={e => campo('cnpj', e.target.value)} placeholder="00.000.000/0000-00" /></label>
           <label>Data da negociação<input className="crm-input" type="date" required value={dados.dataNegociacao} onChange={e => campo('dataNegociacao', e.target.value)} /></label>
           <label>Tipo<select className="crm-input" value={dados.tipo} onChange={e => { campo('tipo', e.target.value as DadosNegociacao['tipo']); setQuantidade(e.target.value === 'avista' ? 1 : 2); }}><option value="avista">À vista</option><option value="parcelada">Parcelada</option></select></label>
+        </div>
+        <h3 className="crm-painel-secao-titulo">Financeiro</h3>
+        <div className="neg-form-grid">
           <label>Débito original em aberto (R$)<input className="crm-input" type="number" min="0.01" max="20000000" step="0.01" required value={dados.debitoCentavos / 100 || ''} onChange={e => campo('debitoCentavos', centavos(e.target.value))} /></label>
           <label>Total negociado (R$)<input className="crm-input" type="number" min="0.01" max="20000000" step="0.01" required value={dados.totalCentavos / 100 || ''} onChange={e => campo('totalCentavos', centavos(e.target.value))} /></label>
           <label>Parcelas originais em aberto<input className="crm-input" type="number" min="1" max="10000" required value={dados.parcelasOriginais} onChange={e => campo('parcelasOriginais', Number(e.target.value))} /></label>
@@ -42,6 +78,19 @@ export default function NegociacaoFormulario({ inicial, onSalvar, onFechar }: { 
         </div>
         {dados.leadId ? <div className="neg-vinculo" role="status"><span>Vinculada no funil: <strong>{empresaVinculada}</strong>. Valores e parcelas podem ser ajustados neste acordo.</span><button className="crm-btn crm-btn-ghost" type="button" onClick={() => { campo('leadId', null); setEmpresaVinculada(''); }}>Remover vínculo</button></div> : <p className="crm-hint">Selecione uma empresa nos resultados da busca para vincular ao funil. O preenchimento manual salva sem vínculo.</p>}
         <p className="crm-hint">Ao salvar um acordo vinculado, a empresa vai para Aguardando pagamento. Quando todos os acordos dela estiverem quitados, vai para Negociado.</p>
+        </div>
+        <aside className="crm-painel-secao" aria-label="Resumo da negociação">
+          <h3 className="crm-painel-secao-titulo">Resumo da negociação</h3>
+          <dl className="neg-painel-resumo">
+            <div><dt>Débito original</dt><dd>{moeda(dados.debitoCentavos)}</dd></div>
+            <div><dt>Total negociado</dt><dd>{moeda(dados.totalCentavos)}</dd></div>
+            <div><dt>Total pago</dt><dd>{moeda(dados.parcelas.reduce((s, p) => s + p.pagoCentavos, 0))}</dd></div>
+            <div><dt>Saldo a receber</dt><dd>{moeda(dados.totalCentavos - dados.parcelas.reduce((s, p) => s + p.pagoCentavos, 0))}</dd></div>
+          </dl>
+          <label>Observações<textarea className="crm-input" maxLength={5000} rows={6} value={dados.observacoes} onChange={e => campo('observacoes', e.target.value)} /></label>
+        </aside>
+        </div>
+        <h3 className="crm-painel-secao-titulo">Parcelas e pagamentos</h3>
         <button className="crm-btn crm-btn-ghost" type="button" onClick={gerar}>{dados.parcelas.length ? 'Refazer cronograma mensal' : 'Gerar cronograma mensal'}</button>
         <p className="crm-hint">Se o cronograma estiver vazio, ele será gerado automaticamente ao salvar. Ajuste valores e datas abaixo. Valor pago é o total já recebido da parcela; a data corresponde ao pagamento daquela parcela e define em qual mês ela aparece, mesmo em pagamentos parciais. Pago e Em atraso são calculados automaticamente.</p>
         <div className="neg-table-scroll"><table className="neg-table"><thead><tr><th>Parcela</th><th>Valor (R$)</th><th>Vencimento</th><th>Situação</th><th>Total pago (R$)</th><th>Data do pagamento</th><th>Status</th><th>Ação</th></tr></thead>
@@ -56,10 +105,13 @@ export default function NegociacaoFormulario({ inicial, onSalvar, onFechar }: { 
             <td><button type="button" className="crm-btn crm-btn-ghost" disabled={p.pagoCentavos === p.valorCentavos} onClick={() => parcela(i, { pagoCentavos: p.valorCentavos, dataPagamento: hojeBrasil() })}>Quitar hoje</button></td>
           </tr>)}</tbody></table></div>
         <p className="crm-hint">Cronograma: {dados.parcelas.length} parcela(s) • Soma: {moeda(dados.parcelas.reduce((s, p) => s + p.valorCentavos, 0))}</p>
-        <label>Observações<textarea className="crm-input" maxLength={5000} rows={3} value={dados.observacoes} onChange={e => campo('observacoes', e.target.value)} /></label>
         {erro && <p className="crm-error" role="alert">{erro}</p>}
-        <div className="neg-actions"><button className="crm-btn crm-btn-primary" type="submit">{salvando ? 'Salvando…' : 'Salvar negociação'}</button><button className="crm-btn crm-btn-ghost" type="button" onClick={onFechar}>Cancelar</button></div>
       </fieldset>
+      </div>
+      <div className="crm-painel-footer">
+        <button className="crm-btn crm-btn-ghost" type="button" onClick={fechar} disabled={salvando}>Cancelar</button>
+        <button className="crm-btn crm-btn-primary" type="submit" disabled={salvando}>{salvando ? 'Salvando…' : 'Salvar negociação'}</button>
+      </div>
     </form>
-  </section>;
+  </div>;
 }

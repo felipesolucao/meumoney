@@ -1583,7 +1583,7 @@
 .neg-filters { grid-template-columns: 2fr 1fr 1fr 1fr auto; align-items: end; }
 .neg-page label { display: flex; flex-direction: column; gap: 8px; color: var(--crm-text-muted); font-size: 12px; }
 .neg-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
-.neg-kpi, .neg-editor { border: 1px solid var(--crm-border-strong); border-radius: 12px; background: var(--crm-surface); padding: 20px; }
+.neg-kpi { border: 1px solid var(--crm-border-strong); border-radius: 12px; background: var(--crm-surface); padding: 20px; }
 .neg-kpi span { display: block; color: var(--crm-text-muted); font-size: 12px; }
 .neg-kpi strong { display: block; font-size: 25px; margin-top: 10px; }
 .neg-page .crm-hint { margin: 12px 0; }
@@ -1603,9 +1603,22 @@
 .neg-status.atrasado { background: #481c22; color: #fca5a5; }
 .neg-status.aguardando { background: #192f54; color: #93c5fd; }
 .neg-empty { padding: 48px 20px; text-align: center; color: var(--crm-text-muted); }
-.neg-editor { margin-bottom: 24px; }
-.neg-editor fieldset { border: 0; padding: 0; min-width: 0; }
-.neg-editor .neg-actions { margin-top: 20px; }
+.neg-painel { min-width: 0; }
+.neg-painel-colunas { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 22px; margin-bottom: 24px; }
+.neg-painel-colunas > * { min-width: 0; }
+.neg-painel .crm-painel-footer { justify-content: flex-end; }
+.neg-painel .crm-badge { color: var(--crm-accent, #60a5fa); border-color: currentColor; }
+.neg-painel-resumo { display: grid; gap: 16px; margin: 0 0 12px; }
+.neg-painel-resumo > div { display: flex; justify-content: space-between; gap: 12px; }
+.neg-painel-resumo dt { color: var(--crm-text-muted); font-size: 12px; }
+.neg-painel-resumo dd { margin: 0; font-weight: 700; }
+@media (max-width: 819px) { .neg-painel-colunas { grid-template-columns: minmax(0, 1fr); } }
+.neg-painel-titulo { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.neg-painel h2 { margin: 0; }
+.neg-painel-body { display: block; min-height: 0; overscroll-behavior: contain; }
+.neg-painel fieldset { border: 0; padding: 0; min-width: 0; }
+.neg-painel .neg-form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 0; }
+@media (max-width: 600px) { .neg-painel .neg-form-grid { grid-template-columns: 1fr; } }
 @media (max-width: 1000px) { .neg-filters, .neg-form-grid, .neg-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 600px) { .neg-page { padding: 16px; } .neg-form-grid, .neg-filters { grid-template-columns: 1fr; } .neg-kpi { padding: 12px; } .neg-kpi strong { font-size: 20px; } }
 
