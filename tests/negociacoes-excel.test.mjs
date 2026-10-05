@@ -62,11 +62,13 @@ test('lista vazia gera cabeçalhos válidos e totais zerados', async () => {
 test('Excel mensal exclui outras competências e preserva número original da parcela', async () => {
   const workbook = criarRelatorioNegociacoes([acordo()], { hoje: '2026-10-02', mes: '2026-10' });
   const sheet = workbook.getWorksheet('Negociações');
-  assert.equal(sheet.rowCount, 3);
-  assert.equal(sheet.getCell('H2').value, '2/4');
-  assert.equal(sheet.getCell('H3').value, '3/4');
+  assert.equal(sheet.rowCount, 2);
+  assert.equal(sheet.getCell('H2').value, '3/4');
   const resumo = workbook.getWorksheet('Resumo dos acordos');
-  assert.equal(resumo.getCell('F7').value, 50);
-  assert.equal(resumo.getCell('G7').value, 5);
-  assert.equal(resumo.getCell('H7').value, 45);
+  assert.equal(resumo.getCell('F7').value, 25);
+  assert.equal(resumo.getCell('G7').value, 0);
+  assert.equal(resumo.getCell('H7').value, 25);
+  const setembro = criarRelatorioNegociacoes([acordo()], { hoje: '2026-10-02', mes: '2026-09' });
+  assert.equal(setembro.getWorksheet('Negociações').getCell('H3').value, '2/4');
+  assert.equal(setembro.getWorksheet('Resumo dos acordos').getCell('G7').value, 30);
 });

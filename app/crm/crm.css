@@ -1589,6 +1589,9 @@
 .neg-page .crm-hint { margin: 12px 0; }
 .neg-totals { padding: 16px 0; font-size: 13px; gap: 24px; }
 .neg-table-scroll { overflow-x: auto; border: 1px solid var(--crm-border); border-radius: 10px; }
+.neg-company-list { max-height: 60vh; overflow: auto; scrollbar-gutter: stable; }
+.neg-company-list .neg-table { border-collapse: separate; border-spacing: 0; }
+.neg-company-list th { position: sticky; top: 0; z-index: 1; }
 .neg-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 13px; }
 .neg-table th { background: var(--crm-surface-2); font-size: 11px; color: var(--crm-text-muted); }
 .neg-table th, .neg-table td { padding: 14px; border-bottom: 1px solid var(--crm-border); white-space: nowrap; }

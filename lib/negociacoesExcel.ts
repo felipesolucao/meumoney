@@ -73,7 +73,7 @@ export function criarRelatorioNegociacoes(negociacoes: Negociacao[], opcoes: Opc
 function adicionarResumo(workbook: ExcelJS.Workbook, negociacoes: Negociacao[], hoje: string, referencia: string, filtros?: string) {
   const resumo = workbook.addWorksheet('Resumo dos acordos');
   resumo.addRow(['RELATÓRIO DE NEGOCIAÇÕES']);
-  resumo.addRow([`Emitido em ${hoje.split('-').reverse().join('/')} · Mês de vencimento: ${referencia.split('-').reverse().join('/')}`]);
+  resumo.addRow([`Emitido em ${hoje.split('-').reverse().join('/')} · Mês dos recebíveis: ${referencia.split('-').reverse().join('/')}`]);
   resumo.addRow([`Filtros: ${filtros || 'Todas as negociações'}`]);
   for (let i = 1; i <= 3; i++) resumo.mergeCells(i, 1, i, 10);
   cabecalho(resumo, ['EMPRESA', 'CNPJ', 'DATA NEGOCIAÇÃO', 'PARCELAS ORIGINAIS', 'DÉBITO ORIGINAL', 'VALOR NO PERÍODO', 'PAGO DAS PARCELAS', 'SALDO NO PERÍODO', 'PARCELAS PAGAS NO PERÍODO', 'VENCIMENTO NO PERÍODO'], [48, 22, 19, 19, 20, 20, 20, 20, 19, 23], 5);
@@ -94,7 +94,7 @@ function adicionarResumo(workbook: ExcelJS.Workbook, negociacoes: Negociacao[], 
   for (const coluna of [5, 6, 7, 8]) total.getCell(coluna).numFmt = MOEDA;
   resumo.addRow([]);
   resumo.addRow(['Aba Negociações: uma linha por parcela do período selecionado. Débito e parcelas originais se repetem; use os totais desta aba para evitar duplicidade.']);
-  resumo.addRow(['Negociação = parcela/total. Valor pago = valor efetivamente recebido da parcela; Data PGTO = último pagamento registrado.']);
+  resumo.addRow(['Negociação = parcela/total. Valor pago = valor efetivamente recebido da parcela; Data PGTO = data do pagamento da parcela. Com valor pago, a parcela entra no mês do pagamento; sem pagamento, no mês do vencimento.']);
   resumo.addRow(['Parcelas em atraso = parcelas originais em aberto informadas no acordo. Situação compara a data do acordo ao mês de referência.']);
   resumo.addRow(['Cores: verde = pago; azul = aguardando pagamento; vermelho = atrasada; branco = em aberto. Status calculados na data de emissão. Valores e saldo limitados às parcelas do período.']);
   for (let i = resumo.rowCount - 3; i <= resumo.rowCount; i++) { resumo.mergeCells(i, 1, i, 10); resumo.getRow(i).height = 30; resumo.getCell(i, 1).alignment = { wrapText: true }; }
