@@ -1,5 +1,6 @@
 'use client';
 import { useCallback, useEffect, useState } from 'react';
+import { resumoNegociacoesDiarias } from '../../lib/negociacoesDiarias';
 import { negociacoesDoMes } from '../../lib/negociacoesPeriodo';
 import CrmTopNav from './CrmTopNav';
 import { useRouter } from 'next/navigation';
@@ -33,6 +34,7 @@ export default function NegociacoesPagina({ nomeUsuario }: { nomeUsuario: string
   useEffect(() => { void carregar(); const timer = window.setInterval(() => setHoje(hojeBrasil()), 60000); return () => window.clearInterval(timer); }, [carregar]);
   const filtradas = negociacoesDoMes(lista, mes).filter(n => (!tipo || n.tipo === tipo) && (!status || statusNegociacao(n, hoje) === status) && (!busca || n.empresa.toLocaleLowerCase('pt-BR').includes(busca.toLocaleLowerCase('pt-BR')) || n.cnpj.includes(busca.replace(/\D/g, '') || busca)));
   const resumo = resumoNegociacoes(filtradas);
+  const diario = resumoNegociacoesDiarias(lista.filter(n => (!tipo || n.tipo === tipo) && (!status || statusNegociacao(n, hoje) === status) && (!busca || n.empresa.toLocaleLowerCase('pt-BR').includes(busca.toLocaleLowerCase('pt-BR')) || n.cnpj.includes(busca.replace(/\D/g, '') || busca))), mes);
   async function exportarExcel() {
     setExportando(true); setErro('');
     try {
@@ -66,11 +68,26 @@ export default function NegociacoesPagina({ nomeUsuario }: { nomeUsuario: string
     {editor !== null && <NegociacaoFormulario key={editor === 'novo' ? 'novo' : editor.id} inicial={editor === 'novo' ? null : editor} onSalvar={salvar} onFechar={() => setEditor(null)} />}
     <div className="neg-filters">
       <label>Empresa ou CNPJ<input className="crm-input" type="search" value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar negociação" /></label>
-      <label>Mês dos recebíveis<input className="crm-input" type="month" value={mes} required onChange={e => setMes(e.target.value || hojeBrasil().slice(0, 7))} /></label>
+      <label>Mês de referência<input className="crm-input" type="month" value={mes} required onChange={e => setMes(e.target.value || hojeBrasil().slice(0, 7))} /></label>
       <label>Tipo<select className="crm-input" value={tipo} onChange={e => setTipo(e.target.value)}><option value="">Todos</option><option value="avista">À vista</option><option value="parcelada">Parcelada</option></select></label>
       <label>Status<select className="crm-input" value={status} onChange={e => setStatus(e.target.value)}><option value="">Todos</option>{Object.entries(STATUS).map(([v, label]) => <option key={v} value={v}>{label}</option>)}</select></label>
       <button className="crm-btn crm-btn-ghost" onClick={() => { setBusca(''); setMes(hojeBrasil().slice(0, 7)); setTipo(''); setStatus(''); }}>Limpar filtros</button>
     </div>
+    <section className="neg-daily" aria-labelledby="neg-daily-title" aria-busy={carregando}>
+      <h2 id="neg-daily-title">Resumo diário de negociações · {mes.split('-').reverse().join('/')}</h2>
+      <p className="crm-hint">Por data da negociação, com os filtros de empresa, tipo e status do acordo. Empresas únicas por CNPJ; valores completos dos acordos feitos no mês, incluindo parcelas futuras. O saldo a receber desconta todos os pagamentos já registrados.</p>
+      {carregando ? <p role="status">Carregando resumo diário…</p> : <>
+        <div className="neg-kpis">{[['Empresas atendidas no mês', diario.empresas], ['Valor negociado', moeda(diario.negociado)], ['Já recebido', moeda(diario.pago)], ['A receber dos acordos', moeda(diario.aReceber)]].map(([label, valor]) => <article key={label} className="neg-kpi"><span>{label}</span><strong>{valor}</strong></article>)}</div>
+        {diario.dias.length ? <div className="neg-table-scroll neg-daily-table" role="region" aria-label="Resumo por dia da negociação" tabIndex={0}>
+          <table className="neg-table"><thead><tr><th scope="col">Dia da negociação</th><th scope="col">Empresas atendidas</th><th scope="col">Valor negociado</th><th scope="col">Já recebido</th><th scope="col">A receber</th></tr></thead>
+            <tbody>{diario.dias.map(dia => <tr key={dia.data}><th scope="row">{data(dia.data)}</th><td>{dia.empresas}</td><td>{moeda(dia.negociado)}</td><td>{moeda(dia.pago)}</td><td><strong>{moeda(dia.aReceber)}</strong></td></tr>)}</tbody>
+            <tfoot><tr><th scope="row">Total do mês (empresas únicas)</th><td>{diario.empresas}</td><td>{moeda(diario.negociado)}</td><td>{moeda(diario.pago)}</td><td>{moeda(diario.aReceber)}</td></tr></tfoot>
+          </table>
+        </div> : <p className="neg-empty">Nenhuma negociação feita no mês selecionado corresponde aos filtros.</p>}
+        <p className="crm-hint">Uma empresa pode aparecer em mais de um dia, mas é contada apenas uma vez no total do mês.</p>
+      </>}
+    </section>
+    <h2>Recebíveis do mês</h2>
     <div className="neg-kpis">{[['Recebíveis do mês', moeda(resumo.negociado)], ['Pago das parcelas do mês', moeda(resumo.pago)], ['Empresas negociadas', resumo.empresas], ['Parcelas do mês', filtradas.reduce((total, n) => total + n.parcelas.length, 0)]].map(([label, valor]) => <article key={label} className="neg-kpi"><span>{label}</span><strong>{carregando ? '…' : valor}</strong></article>)}</div>
     <p className="crm-hint">Exibindo parcelas do mês de {mes.split('-').reverse().join('/')}, inclusive de acordos anteriores. Totais, status e Excel consideram apenas essas parcelas. Parcelas com valor pago entram no mês da data do pagamento; as demais entram no mês do vencimento. Pagamentos parciais também transferem a parcela inteira. Parcelas sem essas datas não entram no filtro mensal.</p>
     <div className="neg-totals"><span>Saldo do mês: <strong>{moeda(resumo.negociado - resumo.pago)}</strong></span><span>Em atraso no mês: <strong>{moeda(atraso)}</strong></span><span>À vista no mês: <strong>{moeda(filtradas.filter(n => n.tipo === 'avista').reduce((s, n) => s + n.totalCentavos, 0))}</strong></span><span>Parcelado no mês: <strong>{moeda(filtradas.filter(n => n.tipo === 'parcelada').reduce((s, n) => s + n.totalCentavos, 0))}</strong></span></div>

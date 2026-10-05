@@ -1630,3 +1630,9 @@
 .neg-empresa-resultados p { padding: 12px; margin: 0; }
 .neg-empresa-resultados small, .neg-empresa-resultados span { opacity: .8; }
 .neg-vinculo { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; padding: 12px; margin-bottom: 12px; border: 1px solid var(--crm-border-strong); border-radius: 8px; }
+
+.neg-daily { margin: 24px 0; padding-bottom: 12px; border-bottom: 1px solid var(--crm-border); }
+.neg-daily-table { margin-top: 16px; max-height: 420px; overflow: auto; }
+.neg-daily-table thead th { position: sticky; top: 0; z-index: 1; }
+.neg-daily-table tbody th { background: transparent; color: inherit; font-size: 13px; font-weight: 400; }
+.neg-daily-table tfoot { background: var(--crm-surface-2); font-weight: 700; }

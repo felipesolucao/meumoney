@@ -137,3 +137,14 @@ completo para preservar seus pagamentos e parcelas de outros meses; a consulta
 mensal não modifica o cadastro. O status filtrado é o das parcelas do mês.
 
 Validação: `node --test tests/negociacoes-periodo.test.mjs tests/negociacoes-excel.test.mjs`.
+
+## Resumo diário de negociações
+
+O **Mês de referência** também controla o resumo por **data da negociação**.
+Ele mostra empresas atendidas (CNPJs únicos), valor integral negociado, pagamentos
+já registrados e saldo a receber dos acordos feitos naquele mês, incluindo
+parcelas futuras. Empresa, tipo e status refinam o resumo; aqui o status considera
+o acordo completo. A tabela mostra os dias com negociações em ordem cronológica.
+Uma empresa em vários dias conta em cada dia, mas apenas uma vez no total mensal.
+A seção **Recebíveis do mês** mantém seu recorte por pagamento/vencimento das
+parcelas; por isso seus totais podem ser diferentes do resumo de negociações.
