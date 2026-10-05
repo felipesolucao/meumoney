@@ -1636,3 +1636,12 @@
 .neg-daily-table thead th { position: sticky; top: 0; z-index: 1; }
 .neg-daily-table tbody th { background: transparent; color: inherit; font-size: 13px; font-weight: 400; }
 .neg-daily-table tfoot { background: var(--crm-surface-2); font-weight: 700; }
+
+/* Painel no topo da página, fora de ancestrais com animação/rolagem. */
+.neg-overlay { flex-direction: row; height: 100dvh; }
+.neg-painel label { display: flex; flex-direction: column; gap: 8px; color: var(--crm-text-muted); font-size: 12px; }
+.neg-painel .crm-hint { margin: 12px 0; }
+.neg-painel .crm-painel-header { overflow-wrap: anywhere; }
+.neg-company-list .neg-company-cell { width: clamp(180px, 22vw, 300px); min-width: 180px; max-width: 300px; white-space: normal; overflow-wrap: anywhere; }
+.neg-company-cell strong, .neg-company-cell small { display: block; max-width: 100%; }
+@media (max-width: 600px) { .neg-company-list .neg-company-cell { width: 180px; max-width: 180px; } }

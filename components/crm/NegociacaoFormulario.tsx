@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { IconClose } from '../Icons';
 import NegociacaoEmpresaBusca from './NegociacaoEmpresaBusca';
 import { preencherEmpresa } from '../../lib/negociacaoEmpresa';
@@ -13,12 +14,23 @@ export default function NegociacaoFormulario({ inicial, onSalvar, onFechar }: { 
   const [empresaVinculada, setEmpresaVinculada] = useState(inicial?.lead?.nome ?? (inicial?.leadId ? inicial.empresa : ''));
   const [erro, setErro] = useState('');
   const [salvando, setSalvando] = useState(false);
+  const [montado, setMontado] = useState(false);
   const painelRef = useRef<HTMLFormElement>(null);
   useEffect(() => {
     const anterior = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    painelRef.current?.focus();
-    return () => anterior?.focus();
+    const overflow = document.body.style.overflow;
+    const pagina = document.querySelector<HTMLElement>('.neg-page');
+    const overflowPagina = pagina?.style.overflow ?? '';
+    document.body.style.overflow = 'hidden';
+    if (pagina) pagina.style.overflow = 'hidden';
+    setMontado(true);
+    return () => {
+      document.body.style.overflow = overflow;
+      if (pagina) pagina.style.overflow = overflowPagina;
+      anterior?.focus();
+    };
   }, []);
+  useEffect(() => { if (montado) painelRef.current?.focus(); }, [montado]);
   function fechar() { if (!salvando) onFechar(); }
   function teclado(e: React.KeyboardEvent<HTMLFormElement>) {
     if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); fechar(); }
@@ -43,7 +55,8 @@ export default function NegociacaoFormulario({ inicial, onSalvar, onFechar }: { 
     catch (e) { setErro(e instanceof Error ? e.message : 'Não foi possível salvar.'); }
     finally { setSalvando(false); }
   }
-  return <div className="crm-painel-overlay" onClick={fechar}>
+  if (!montado) return null;
+  return createPortal(<div className="crm-app crm-painel-overlay neg-overlay" onClick={fechar}>
     <form ref={painelRef} className="crm-painel neg-painel" role="dialog" aria-modal="true" aria-labelledby="neg-painel-titulo" tabIndex={-1} onKeyDown={teclado} onClick={e => e.stopPropagation()} onSubmit={salvar}>
       <div className="crm-painel-header">
         <div className="crm-painel-avatar">{dados.empresa.trim().split(/\s+/).filter(Boolean).slice(0, 2).map(parte => parte[0]).join('').toUpperCase() || '?'}</div>
@@ -113,5 +126,5 @@ export default function NegociacaoFormulario({ inicial, onSalvar, onFechar }: { 
         <button className="crm-btn crm-btn-primary" type="submit" disabled={salvando}>{salvando ? 'Salvando…' : 'Salvar negociação'}</button>
       </div>
     </form>
-  </div>;
+  </div>, document.body);
 }
