@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import ts from 'typescript';
 import ExcelJS from 'exceljs';
 import crypto from 'node:crypto';
+import { Buffer } from 'node:buffer';
 function load(file, dependencies = {}) {
   const output = ts.transpileModule(fs.readFileSync(new URL(`../${file}`, import.meta.url), 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, esModuleInterop: true } }).outputText;
   const mod = { exports: {} };
@@ -71,7 +72,7 @@ test('lista apenas ausentes reais e impede duas empresas atualizando o mesmo cad
 function servidorFixture() {
   let state={leads:[lead()],importacao:null};
   const fakePrisma={ $transaction:async fn=>{
-    const draft=structuredClone(state);
+    const draft=globalThis.structuredClone(state);
     const tx={
       importacaoDebitosCrm:{findFirst:async({where})=>draft.importacao?.id===where.id&&draft.importacao.usuarioId===where.usuarioId?draft.importacao:null,
         update:async({data})=>(draft.importacao={...draft.importacao,...data})},
@@ -83,7 +84,7 @@ function servidorFixture() {
   }};
   const service=load('lib/crmDebitosServidor.ts',{'node:crypto':crypto,'@prisma/client':{Prisma:{TransactionIsolationLevel:{Serializable:'Serializable'}}},'./prisma':{prisma:fakePrisma},'./crmDebitos':core});
   state.importacao={id:'import',usuarioId:'u',arquivo:'test.xlsx',criadoEm:new Date(),aplicadoEm:null,desfeitoEm:null,fingerprint:service.fingerprintLeads(state.leads),
-    relatorio:{estagios:['em_negociacao'],...structuredClone(core.conciliarDebitos([empresa({valorEmAberto:'200.00'})],state.leads))}};
+    relatorio:{estagios:['em_negociacao'],...globalThis.structuredClone(core.conciliarDebitos([empresa({valorEmAberto:'200.00'})],state.leads))}};
   return {service,get:()=>state,set:fn=>fn(state)};
 }
 function dbLead(l) {return {...l,atualizadoEm:new Date(l.atualizadoEm),valorEmAberto:l.valorEmAberto===null?null:{toFixed:()=>l.valorEmAberto},parcelaMaisAntiga:l.parcelaMaisAntiga?new Date(l.parcelaMaisAntiga):null,parcelaMaisRecente:l.parcelaMaisRecente?new Date(l.parcelaMaisRecente):null};}
