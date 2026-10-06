@@ -1,4 +1,4 @@
-import { ESTAGIOS, type LeadCrmResumo } from "./crm";
+import { ESTAGIOS, faixaProgresso, type FaixaProgressoId, type LeadCrmResumo } from "./crm";
 
 export function agruparPorColuna(leads: LeadCrmResumo[]): Map<string, LeadCrmResumo[]> {
   const mapa = new Map<string, LeadCrmResumo[]>();
@@ -30,4 +30,24 @@ export function aplicarFiltroColuna(lista: LeadCrmResumo[], filtro: ColunaFiltro
     if (vazioA || vazioB) return Number(vazioA) - Number(vazioB);
     return (Number(valorA) - Number(valorB)) * direcao;
   });
+}
+
+export function filtrarColunas(
+  mapa: Map<string, LeadCrmResumo[]>,
+  buscaNormalizada: string,
+  filtroProgresso: FaixaProgressoId | "todos",
+): Map<string, LeadCrmResumo[]> {
+  if (!buscaNormalizada && filtroProgresso === "todos") return mapa;
+  const filtrado = new Map<string, LeadCrmResumo[]>();
+  for (const [estagio, lista] of mapa) {
+    filtrado.set(
+      estagio,
+      lista.filter((l) => {
+        const bateBusca = !buscaNormalizada || [l.nome, l.cnpj, l.telefone, l.email, l.sindicatoPatronal].some((v) => v?.toLowerCase().includes(buscaNormalizada));
+        const bateProgresso = filtroProgresso === "todos" || faixaProgresso(l.progresso).id === filtroProgresso;
+        return bateBusca && bateProgresso;
+      }),
+    );
+  }
+  return filtrado;
 }

@@ -1,5 +1,7 @@
 # Histórico e movimentação de empresas
 
+O botão **Histórico geral** no topo do CRM abre um popup com os eventos de todas as empresas da conta, em ordem decrescente de data. Cada evento identifica a empresa e permite abrir seu perfil. A listagem carrega 50 registros por vez e oferece “Carregar mais” para consultar os anteriores.
+
 O painel da empresa inclui “Movimentações e edições”, com data/hora, responsável e valores anteriores e novos. O registro acompanha edições de cadastro, mudanças de grupo manuais/automáticas, atendimentos (inclusão, edição e exclusão), conclusão de alertas, importação/reversão de débitos e movimentações por negociação. Os logs de atendimentos permanecem mesmo após a exclusão do atendimento; não incluem o conteúdo binário dos anexos.
 
 Alterações efetivas reiniciam `movimentadoEm` na data da operação, inclusive quando um atendimento tem data retroativa. Salvar dados idênticos ou apenas reordenar cards na mesma coluna não reinicia a contagem. Os indicadores e cards usam a mesma regra: mais de sete períodos de 24 horas desde a última atividade. O totalizador mantém a exclusão dos estágios encerrados.

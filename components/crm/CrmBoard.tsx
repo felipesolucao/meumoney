@@ -4,11 +4,11 @@
 
 import { useMemo, useState } from "react";
 import type { LeadCrmResumo, FaixaProgressoId, EstagioConfigCrm } from "../../lib/crm";
-import { ESTAGIOS, FAIXAS_PROGRESSO, faixaProgresso, formatarMoedaCompacta } from "../../lib/crm";
+import { ESTAGIOS, FAIXAS_PROGRESSO, formatarMoedaCompacta } from "../../lib/crm";
 import LeadCard from "./LeadCard";
 import LeadPainel from "./LeadPainel";
 import ImportarModal from "./ImportarModal";
-import { agruparPorColuna, FILTRO_COLUNA_VAZIO, aplicarFiltroColuna, type ColunaFiltroState } from "../../lib/crmQuadro";
+import { agruparPorColuna, filtrarColunas, FILTRO_COLUNA_VAZIO, aplicarFiltroColuna, type ColunaFiltroState } from "../../lib/crmQuadro";
 import AtualizarDebitosModal from "./AtualizarDebitosModal";
 import AutomacoesPainel from "./AutomacoesPainel";
 import GerenciarLeadsPainel from "./GerenciarLeadsPainel";
@@ -16,6 +16,7 @@ import GerenciarGruposPainel from "./GerenciarGruposPainel";
 import ColunaFiltros from "./ColunaFiltros";
 import KpiHeader from "./KpiHeader";
 import CrmTopNav from "./CrmTopNav";
+import HistoricoGeralPainel from "./HistoricoGeralPainel";
 import AlertasPainel from "./AlertasPainel";
 import { useAlertasCrm } from "./useAlertasCrm";
 import { IconBolt, IconColunas } from "./CrmToolbarIcons";
@@ -26,26 +27,6 @@ import { IconPlus, IconSearch, IconDocument, IconUsers } from "../Icons";
 
 type FiltroProgresso = FaixaProgressoId | "todos";
 
-
-function filtrarColunas(
-  mapa: Map<string, LeadCrmResumo[]>,
-  buscaNormalizada: string,
-  filtroProgresso: FiltroProgresso,
-): Map<string, LeadCrmResumo[]> {
-  if (!buscaNormalizada && filtroProgresso === "todos") return mapa;
-  const filtrado = new Map<string, LeadCrmResumo[]>();
-  for (const [estagio, lista] of mapa) {
-    filtrado.set(
-      estagio,
-      lista.filter((l) => {
-        const bateBusca = !buscaNormalizada || [l.nome, l.cnpj, l.telefone, l.email, l.sindicatoPatronal].some((v) => v?.toLowerCase().includes(buscaNormalizada));
-        const bateProgresso = filtroProgresso === "todos" || faixaProgresso(l.progresso).id === filtroProgresso;
-        return bateBusca && bateProgresso;
-      }),
-    );
-  }
-  return filtrado;
-}
 
 export default function CrmBoard({
   leadsIniciais,
@@ -62,6 +43,7 @@ export default function CrmBoard({
   const [busca, setBusca] = useState("");
   const [modalNovoEstagio, setModalNovoEstagio] = useState<string | null>(null);
   const [leadEditando, setLeadEditando] = useState<LeadCrmResumo | null>(null);
+  const [modalHistorico, setModalHistorico] = useState(false);
   const [modalImportar, setModalImportar] = useState(false);
   const [modalDebitos, setModalDebitos] = useState(false);
   const [modalAutomacoes, setModalAutomacoes] = useState(false);
@@ -190,6 +172,9 @@ export default function CrmBoard({
                 </option>
               ))}
             </select>
+            <button type="button" className="crm-btn crm-btn-ghost" onClick={() => setModalHistorico(true)}>
+              <IconDocument size={16} /> Histórico geral
+            </button>
             <button type="button" className="crm-btn crm-btn-ghost" onClick={() => setModalAutomacoes(true)}>
               <IconBolt /> Automações
             </button>
@@ -330,6 +315,13 @@ export default function CrmBoard({
       {modalGerenciarGrupos && (
         <GerenciarGruposPainel estagios={estagios} onFechar={() => setModalGerenciarGrupos(false)} onAtualizar={setEstagios} />
       )}
+
+      {modalHistorico && <HistoricoGeralPainel estagios={estagios} onFechar={() => setModalHistorico(false)} onAbrirLead={id => {
+        const lead = leads.find(item => item.id === id);
+        if (!lead) { showToast("Empresa indisponível. Atualize o quadro.", "erro"); return; }
+        setModalHistorico(false);
+        setLeadEditando(lead);
+      }} />}
 
       {modalAlertas && (
         <AlertasPainel
