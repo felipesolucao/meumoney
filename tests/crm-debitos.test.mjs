@@ -104,3 +104,44 @@ test('erro no segundo cadastro reverte a transação inteira',async()=>{
   const f=servidorFixture();f.set(s=>s.importacao.relatorio.atualizacoes.push({...s.importacao.relatorio.atualizacoes[0],lead:lead({id:'inexistente'})}));
   await assert.rejects(f.service.executarImportacao('import','u','aplicar'),/alterado ou removido/);assert.equal(f.get().leads[0].valorEmAberto,'100.00');assert.equal(f.get().importacao.aplicadoEm,null);
 });
+
+test('upload multipart funciona sem global File e rejeita campos que não são arquivos', async () => {
+  const { File: NodeFile } = await import('node:buffer');
+  let gravacoes = 0;
+  const rota = load('app/api/crm/debitos/route.ts', {
+    'next/server': { NextResponse: { json: (data, init) => Response.json(data, init) } },
+    '../../../../lib/auth': { obterSessao: async () => ({ id: 'u' }) },
+    '../../../../lib/prisma': { prisma: {
+      estagioCrmConfig: { findMany: async () => [] },
+      leadCrm: { findMany: async () => [] },
+      importacaoDebitosCrm: { create: async ({ data }) => { gravacoes++; return { id: 'previa', ...data }; } },
+    } },
+    '../../../../lib/crmDebitosExcel': { lerPlanilhaDebitos },
+    '../../../../lib/crmDebitos': core,
+    '../../../../lib/crmDebitosServidor': { fingerprintLeads: () => 'hash', serializarLeadDebito: l => l },
+    '../../../../lib/crm': { mesclarEstagiosConfig: () => [{ id: 'em_negociacao' }] },
+  });
+  const bytes = await xlsx([parcela()]);
+  // Inicializa o Undici do Node atual antes de simular o global ausente no servidor.
+  const FormData = globalThis.FormData, Request = globalThis.Request;
+  const descriptor = Object.getOwnPropertyDescriptor(globalThis, 'File');
+  try {
+    for (const [arquivo, status] of [[new NodeFile([bytes], 'debitos.xlsx'), 200], ['texto', 400], [null, 400], [new NodeFile([bytes], 'arquivo.txt'), 400]]) {
+      const form = new FormData();
+      if (arquivo !== null) form.set('arquivo', arquivo);
+      form.set('estagios', JSON.stringify(['em_negociacao']));
+      const req = new Request('http://localhost/api/crm/debitos', { method: 'POST', body: form });
+      const parsed = await req.formData();
+      delete globalThis.File;
+      const resposta = await rota.POST({ headers: req.headers, formData: async () => parsed });
+      if (descriptor) Object.defineProperty(globalThis, 'File', descriptor);
+      const body = await resposta.json();
+      assert.equal(resposta.status, status, JSON.stringify(body));
+      if (status === 200) assert.equal(body.relatorio.empresas, 1);
+      else assert.match(body.error, /Selecione um arquivo/);
+    }
+    assert.equal(gravacoes, 1);
+  } finally {
+    if (descriptor) Object.defineProperty(globalThis, 'File', descriptor);
+  }
+});

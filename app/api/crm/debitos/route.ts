@@ -24,7 +24,8 @@ export async function POST(req: NextRequest) {
   try {
     const form = await req.formData();
     const enviado = form.get('arquivo');
-    if (!(enviado instanceof File) || !enviado.name.toLowerCase().endsWith('.xlsx') || !enviado.size || enviado.size > 10 * 1024 * 1024) throw new Error('Selecione um arquivo .xlsx de até 10 MB.');
+    // FormData retorna string, File ou null; não depende do global File (ausente no Node 18).
+    if (!enviado || typeof enviado === 'string' || !enviado.name.toLowerCase().endsWith('.xlsx') || !enviado.size || enviado.size > 10 * 1024 * 1024) throw new Error('Selecione um arquivo .xlsx de até 10 MB.');
     arquivo = enviado;
     const escopo: unknown = JSON.parse(String(form.get('estagios')));
     if (!Array.isArray(escopo) || !escopo.length || !escopo.every(e => typeof e === 'string')) throw new Error('Selecione os grupos que pertencem à listagem importada.');
