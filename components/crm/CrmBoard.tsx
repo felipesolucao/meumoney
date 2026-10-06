@@ -8,12 +8,12 @@ import { ESTAGIOS, FAIXAS_PROGRESSO, faixaProgresso, formatarMoedaCompacta } fro
 import LeadCard from "./LeadCard";
 import LeadPainel from "./LeadPainel";
 import ImportarModal from "./ImportarModal";
-import { agruparPorColuna } from "../../lib/crmQuadro";
+import { agruparPorColuna, FILTRO_COLUNA_VAZIO, aplicarFiltroColuna, type ColunaFiltroState } from "../../lib/crmQuadro";
 import AtualizarDebitosModal from "./AtualizarDebitosModal";
 import AutomacoesPainel from "./AutomacoesPainel";
 import GerenciarLeadsPainel from "./GerenciarLeadsPainel";
 import GerenciarGruposPainel from "./GerenciarGruposPainel";
-import ColunaFiltros, { FILTRO_COLUNA_VAZIO, aplicarFiltroColuna, type ColunaFiltroState } from "./ColunaFiltros";
+import ColunaFiltros from "./ColunaFiltros";
 import KpiHeader from "./KpiHeader";
 import CrmTopNav from "./CrmTopNav";
 import AlertasPainel from "./AlertasPainel";

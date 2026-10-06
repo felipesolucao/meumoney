@@ -11,3 +11,23 @@ export function agruparPorColuna(leads: LeadCrmResumo[]): Map<string, LeadCrmRes
   return mapa;
 }
 
+export type OrdenacaoColuna = 'manual' | 'parcelas_desc' | 'parcelas_asc' | 'valor_desc' | 'valor_asc';
+export type ColunaFiltroState = { busca: string; ordenacao: OrdenacaoColuna };
+export const FILTRO_COLUNA_VAZIO: ColunaFiltroState = { busca: '', ordenacao: 'manual' };
+
+export function aplicarFiltroColuna(lista: LeadCrmResumo[], filtro: ColunaFiltroState): LeadCrmResumo[] {
+  const busca = filtro.busca.trim().toLowerCase();
+  const resultado = busca ? lista.filter(lead => lead.nome.toLowerCase().includes(busca)) : [...lista];
+  if (filtro.ordenacao === 'manual') return resultado;
+  const campo = filtro.ordenacao.startsWith('parcelas_') ? 'quantidadeParcelas' : 'valorEmAberto';
+  const direcao = filtro.ordenacao.endsWith('_asc') ? 1 : -1;
+  return resultado.sort((a, b) => {
+    const valorA = a[campo] == null ? null : Number(a[campo]);
+    const valorB = b[campo] == null ? null : Number(b[campo]);
+    // Sem informação fica no fim em ambas as direções; zero é um valor válido.
+    const vazioA = valorA === null || !Number.isFinite(valorA);
+    const vazioB = valorB === null || !Number.isFinite(valorB);
+    if (vazioA || vazioB) return Number(vazioA) - Number(vazioB);
+    return (Number(valorA) - Number(valorB)) * direcao;
+  });
+}

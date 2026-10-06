@@ -492,7 +492,7 @@
 }
 .crm-col-filtro-linha {
   display: grid;
-  grid-template-columns: 1fr 64px;
+  grid-template-columns: minmax(0, 1fr);
   gap: 6px;
 }
 .crm-col-filtro-select,
