@@ -16,7 +16,9 @@ export default function KpiHeader({ leads }: { leads: LeadCrmResumo[] }) {
     const total = leads.length;
     const ativos = leads.filter((l) => !ESTAGIOS_ENCERRADOS.includes(l.estagio));
     const semMovimento = ativos.filter((l) => diasParado(l.movimentadoEm) >= DIAS_SEM_MOVIMENTO);
-    const valorAberto = ativos.reduce((soma, l) => soma + (l.valorEmAberto ? Number(l.valorEmAberto) : 0), 0);
+    const valorAberto = leads
+      .filter((l) => l.estagio !== "negociacao_ok" && l.estagio !== "negociado")
+      .reduce((soma, l) => soma + (l.valorEmAberto ? Number(l.valorEmAberto) : 0), 0);
     const negociados = leads.filter((l) => l.estagio === "negociado" || l.estagio === "aguardando_pagamento");
     const cancelados = leads.filter((l) => l.estagio === "cancelado" || l.estagio === "a_cancelar");
     const pct = (n: number) => (total > 0 ? Math.round((n / total) * 100) : 0);
@@ -46,7 +48,7 @@ export default function KpiHeader({ leads }: { leads: LeadCrmResumo[] }) {
       <div className="crm-kpi crm-kpi--accent">
         <div className="crm-kpi-label">Valor em aberto</div>
         <div className="crm-kpi-value">{formatarMoedaCompacta(dados.valorAberto)}</div>
-        <div className="crm-kpi-sub">soma do backlog ativo</div>
+        <div className="crm-kpi-sub">exceto Negociação OK e Negociado/Finalizado</div>
       </div>
       <div className="crm-kpi crm-kpi--success">
         <div className="crm-kpi-label">Negociado</div>
