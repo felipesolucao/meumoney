@@ -19,6 +19,12 @@ export default function KpiHeader({ leads }: { leads: LeadCrmResumo[] }) {
     const valorAberto = leads
       .filter((l) => l.estagio !== "negociacao_ok" && l.estagio !== "negociado")
       .reduce((soma, l) => soma + (l.valorEmAberto ? Number(l.valorEmAberto) : 0), 0);
+    const valorNegociacaoOk = leads
+      .filter((l) => l.estagio === "negociacao_ok")
+      .reduce((soma, l) => soma + Number(l.valorEmAberto ?? 0), 0);
+    const valorAguardandoPagamento = leads
+      .filter((l) => l.estagio === "aguardando_pagamento")
+      .reduce((soma, l) => soma + Number(l.valorEmAberto ?? 0), 0);
     const negociados = leads.filter((l) => l.estagio === "negociado" || l.estagio === "aguardando_pagamento");
     const cancelados = leads.filter((l) => l.estagio === "cancelado" || l.estagio === "a_cancelar");
     const pct = (n: number) => (total > 0 ? Math.round((n / total) * 100) : 0);
@@ -27,6 +33,8 @@ export default function KpiHeader({ leads }: { leads: LeadCrmResumo[] }) {
       ativos: ativos.length,
       semMovimento: semMovimento.length,
       valorAberto,
+      valorNegociacaoOk,
+      valorAguardandoPagamento,
       negociados: negociados.length,
       cancelados: cancelados.length,
       pct,
@@ -49,6 +57,16 @@ export default function KpiHeader({ leads }: { leads: LeadCrmResumo[] }) {
         <div className="crm-kpi-label">Valor em aberto</div>
         <div className="crm-kpi-value">{formatarMoedaCompacta(dados.valorAberto)}</div>
         <div className="crm-kpi-sub">exceto Negociação OK e Negociado/Finalizado</div>
+      </div>
+      <div className="crm-kpi crm-kpi--success">
+        <div className="crm-kpi-label">Negociação OK</div>
+        <div className="crm-kpi-value">{formatarMoedaCompacta(dados.valorNegociacaoOk)}</div>
+        <div className="crm-kpi-sub">valor em aberto das empresas do grupo</div>
+      </div>
+      <div className="crm-kpi crm-kpi--warn">
+        <div className="crm-kpi-label">Aguardando pagamento</div>
+        <div className="crm-kpi-value">{formatarMoedaCompacta(dados.valorAguardandoPagamento)}</div>
+        <div className="crm-kpi-sub">valor em aberto das empresas do grupo</div>
       </div>
       <div className="crm-kpi crm-kpi--success">
         <div className="crm-kpi-label">Negociado</div>
