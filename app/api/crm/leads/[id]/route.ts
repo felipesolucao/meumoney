@@ -11,6 +11,9 @@ import { prisma } from "../../../../../lib/prisma";
 import { obterSessao } from "../../../../../lib/auth";
 import { aplicarAutomacoes, estagiosValidosDoUsuario } from "../../../../../lib/crmAutomacao";
 
+import { compararCamposCrm } from "../../../../../lib/crmHistorico";
+import { registrarHistoricoCrm } from "../../../../../lib/crmHistoricoServidor";
+
 const CAMPOS_TEXTO = [
   "nome", "codigo", "cnpj", "telefone", "telefone2", "email", "sindicatoPatronal", "origem", "observacoes", "statusPlanilha",
 ] as const;
@@ -50,30 +53,31 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     dados.progresso = Number.isFinite(n) ? Math.min(100, Math.max(0, Math.round(n))) : 0;
   }
 
-  if (body.nome !== undefined && !String(body.nome).trim()) {
+  if (body.nome !== undefined && !dados.nome) {
     return NextResponse.json({ error: "Nome é obrigatório." }, { status: 400 });
   }
 
   // Mudança de coluna (drag and drop) ou de posição dentro da mesma coluna.
-  const estagioMudou = body.estagio !== undefined && body.estagio !== existente.estagio;
   if (body.estagio !== undefined) {
     const validos = await estagiosValidosDoUsuario(sessao.id);
     if (!validos.has(body.estagio)) {
       return NextResponse.json({ error: "Estágio inválido." }, { status: 400 });
     }
     dados.estagio = body.estagio;
-    if (estagioMudou) dados.movimentadoEm = new Date();
   }
   if (body.ordem !== undefined) dados.ordem = Number(body.ordem) || 0;
 
-  let lead = await prisma.leadCrm.update({ where: { id: params.id }, data: dados });
-
-  // Automação só roda quando status/progresso realmente fazem parte desta
-  // edição — nunca depois de um arraste manual (senão a regra "desfaria" a
-  // troca de coluna feita à mão na hora).
-  if (body.statusPlanilha !== undefined || body.progresso !== undefined) {
-    lead = await aplicarAutomacoes(sessao.id, lead);
-  }
+  const lead = await prisma.$transaction(async tx => {
+    const atual = await tx.leadCrm.findUniqueOrThrow({ where: { id: params.id, usuarioId: sessao.id } });
+    const alteracoes = compararCamposCrm(atual, dados);
+    if (alteracoes.length) dados.movimentadoEm = new Date();
+    let salvo = await tx.leadCrm.update({ where: { id: params.id }, data: dados });
+    await registrarHistoricoCrm(tx, sessao.id, params.id, alteracoes.some(a => a.campo === "estagio") ? "Grupo alterado" : "Cadastro editado", alteracoes);
+    if (alteracoes.some(a => a.campo === "statusPlanilha" || a.campo === "progresso")) {
+      salvo = await aplicarAutomacoes(sessao.id, salvo, tx);
+    }
+    return salvo;
+  });
 
   return NextResponse.json(lead);
 }

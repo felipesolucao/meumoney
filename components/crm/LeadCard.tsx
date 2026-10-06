@@ -9,7 +9,7 @@
 
 import type { CSSProperties } from "react";
 import type { LeadCrmResumo, EstagioConfigCrm } from "../../lib/crm";
-import { ESTAGIOS, diasParado, formatarMoedaCrm, DIAS_SEM_MOVIMENTO, faixaProgresso } from "../../lib/crm";
+import { ESTAGIOS, diasParado, formatarMoedaCrm, semMovimento, faixaProgresso } from "../../lib/crm";
 import BotaoCopiar from "./BotaoCopiar";
 
 function somenteDigitos(texto: string): string {
@@ -44,7 +44,7 @@ export default function LeadCard({
   // lead pode estar num grupo criado pelo usuário.
   const info = estagios.find((e) => e.id === lead.estagio) ?? ESTAGIOS[0];
   const dias = diasParado(lead.movimentadoEm);
-  const parado = dias >= DIAS_SEM_MOVIMENTO;
+  const parado = semMovimento(lead.movimentadoEm);
   const faixa = faixaProgresso(lead.progresso);
   const temMeta = lead.quantidadeParcelas != null || lead.quantidadeColaboradores != null || lead.sindicatoPatronal;
 
@@ -76,7 +76,7 @@ export default function LeadCard({
             background: parado ? "rgba(239,68,68,0.18)" : "rgba(255,255,255,0.06)",
             color: parado ? "#fca5a5" : "var(--crm-text-faint)",
           }}
-          title={`${dias} dia(s) sem trocar de etapa`}
+          title={`${dias} dia(s) desde a última movimentação`}
         >
           {dias}d
         </span>

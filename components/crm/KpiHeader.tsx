@@ -9,13 +9,13 @@
 
 import { useMemo } from "react";
 import type { LeadCrmResumo } from "../../lib/crm";
-import { ESTAGIOS_ENCERRADOS, DIAS_SEM_MOVIMENTO, diasParado, formatarMoedaCompacta } from "../../lib/crm";
+import { ESTAGIOS_ENCERRADOS, DIAS_SEM_MOVIMENTO, semMovimento, formatarMoedaCompacta } from "../../lib/crm";
 
 export default function KpiHeader({ leads }: { leads: LeadCrmResumo[] }) {
   const dados = useMemo(() => {
     const total = leads.length;
     const ativos = leads.filter((l) => !ESTAGIOS_ENCERRADOS.includes(l.estagio));
-    const semMovimento = ativos.filter((l) => diasParado(l.movimentadoEm) >= DIAS_SEM_MOVIMENTO);
+    const parados = ativos.filter((l) => semMovimento(l.movimentadoEm));
     const valorAberto = leads
       .filter((l) => l.estagio !== "negociacao_ok" && l.estagio !== "negociado")
       .reduce((soma, l) => soma + (l.valorEmAberto ? Number(l.valorEmAberto) : 0), 0);
@@ -31,7 +31,7 @@ export default function KpiHeader({ leads }: { leads: LeadCrmResumo[] }) {
     return {
       total,
       ativos: ativos.length,
-      semMovimento: semMovimento.length,
+      semMovimento: parados.length,
       valorAberto,
       valorNegociacaoOk,
       valorAguardandoPagamento,

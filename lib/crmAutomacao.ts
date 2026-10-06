@@ -5,8 +5,9 @@
 // entra o Prisma Client, que só pode rodar no servidor. A lógica pura de
 // "qual regra bate" mora em lib/crm.ts (encontrarEstagioAutomatico).
 // ============================================================================
-import { LeadCrm } from "@prisma/client";
+import { LeadCrm, type Prisma } from "@prisma/client";
 import { prisma } from "./prisma";
+import { registrarHistoricoCrm } from "./crmHistoricoServidor";
 import { encontrarEstagioAutomatico, ESTAGIOS_IDS, type RegraAutomacaoCrm } from "./crm";
 
 // Um "estagio" válido pra este usuário é um dos 11 padrão OU um grupo que
@@ -22,8 +23,9 @@ export async function estagiosValidosDoUsuario(usuarioId: string): Promise<Set<s
 // ativa bater com o status/progresso atual dele, move para o estágio
 // definido pela regra (sempre para o fim da coluna destino) e reinicia o
 // contador de "sem movimento".
-export async function aplicarAutomacoes(usuarioId: string, lead: LeadCrm): Promise<LeadCrm> {
-  const regras = await prisma.automacaoCrm.findMany({ where: { usuarioId, ativo: true }, orderBy: { ordem: "asc" } });
+export async function aplicarAutomacoes(usuarioId: string, lead: LeadCrm, tx?: Prisma.TransactionClient): Promise<LeadCrm> {
+  if (!tx) return prisma.$transaction(db => aplicarAutomacoes(usuarioId, lead, db));
+  const regras = await tx.automacaoCrm.findMany({ where: { usuarioId, ativo: true }, orderBy: { ordem: "asc" } });
   if (regras.length === 0) return lead;
 
   const regrasConvertidas: RegraAutomacaoCrm[] = regras.map((r) => ({
@@ -45,8 +47,9 @@ export async function aplicarAutomacoes(usuarioId: string, lead: LeadCrm): Promi
 
   if (!novoEstagio) return lead;
 
-  const totalNaColuna = await prisma.leadCrm.count({ where: { usuarioId, estagio: novoEstagio } });
-  return prisma.leadCrm.update({
+  const totalNaColuna = await tx.leadCrm.count({ where: { usuarioId, estagio: novoEstagio } });
+  await registrarHistoricoCrm(tx, usuarioId, lead.id, "Movimentação automática", [{ campo: "estagio", antes: lead.estagio, depois: novoEstagio }]);
+  return tx.leadCrm.update({
     where: { id: lead.id },
     data: { estagio: novoEstagio, ordem: totalNaColuna, movimentadoEm: new Date() },
   });

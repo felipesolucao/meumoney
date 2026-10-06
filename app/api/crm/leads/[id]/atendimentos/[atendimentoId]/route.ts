@@ -7,6 +7,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "../../../../../../../lib/prisma";
 import { obterSessao } from "../../../../../../../lib/auth";
 
+import { registrarAtendimentoCrm } from "../../../../../../../lib/crmHistoricoServidor";
+
 // Nunca inclui "arquivoDados" (Bytes) — vira um objeto {type:"Buffer",...}
 // gigante no JSON de resposta e vaza o conteúdo do anexo numa edição de
 // texto. Baixar o anexo tem rota própria (ver .../arquivo/route.ts).
@@ -28,6 +30,7 @@ const SELECAO_SEM_ARQUIVO = {
 async function buscarAtendimento(leadId: string, atendimentoId: string, usuarioId: string) {
   return prisma.atendimentoCrm.findFirst({
     where: { id: atendimentoId, leadId, usuarioId, lead: { usuarioId } },
+    select: SELECAO_SEM_ARQUIVO,
   });
 }
 
@@ -54,10 +57,15 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     dados.dataTratativa = d;
   }
 
-  const atendimento = await prisma.atendimentoCrm.update({
-    where: { id: params.atendimentoId },
-    data: dados,
-    select: SELECAO_SEM_ARQUIVO,
+  const atendimento = await prisma.$transaction(async tx => {
+    const antes = await tx.atendimentoCrm.findUniqueOrThrow({ where: { id: params.atendimentoId }, select: SELECAO_SEM_ARQUIVO });
+    const salvo = await tx.atendimentoCrm.update({
+      where: { id: params.atendimentoId },
+      data: dados,
+      select: SELECAO_SEM_ARQUIVO,
+    });
+    await registrarAtendimentoCrm(tx, sessao.id, params.id, "Atendimento editado", antes, salvo);
+    return salvo;
   });
   return NextResponse.json(atendimento);
 }
@@ -69,6 +77,10 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
   const existente = await buscarAtendimento(params.id, params.atendimentoId, sessao.id);
   if (!existente) return NextResponse.json({ error: "Atendimento não encontrado." }, { status: 404 });
 
-  await prisma.atendimentoCrm.delete({ where: { id: params.atendimentoId } });
+  await prisma.$transaction(async tx => {
+    const removido = await tx.atendimentoCrm.delete({ where: { id: params.atendimentoId }, select: SELECAO_SEM_ARQUIVO });
+    const vazio = Object.fromEntries(Object.keys(removido).map(campo => [campo, null]));
+    await registrarAtendimentoCrm(tx, sessao.id, params.id, "Atendimento excluído", removido, vazio);
+  });
   return NextResponse.json({ ok: true });
 }

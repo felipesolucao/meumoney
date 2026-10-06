@@ -40,7 +40,7 @@ async function lerRespostaJson<T>(resposta: Response): Promise<T> {
   }
 }
 
-export default function AtendimentosHistorico({ leadId }: { leadId: string }) {
+export default function AtendimentosHistorico({ leadId, onAlterar }: { leadId: string; onAlterar: () => void }) {
   const showToast = useToast();
   const [itens, setItens] = useState<AtendimentoCrmResumo[] | null>(null);
   const [carregando, setCarregando] = useState(false);
@@ -103,6 +103,7 @@ export default function AtendimentosHistorico({ leadId }: { leadId: string }) {
       setNovoArquivo(null);
       if (inputArquivoRef.current) inputArquivoRef.current.value = "";
       if (dados.alertaEm) window.dispatchEvent(new Event("crm-alertas-atualizar"));
+      onAlterar();
       showToast("Atendimento registrado.");
     } catch (e) {
       showToast(e instanceof Error ? e.message : "Erro ao salvar atendimento.", "erro");
@@ -123,6 +124,7 @@ export default function AtendimentosHistorico({ leadId }: { leadId: string }) {
       if (!resposta.ok) throw new Error(dados.error || "Não foi possível editar.");
       setItens((prev) => (prev ?? []).map((a) => (a.id === id ? dados : a)));
       setEditandoId(null);
+      onAlterar();
     } catch (e) {
       showToast(e instanceof Error ? e.message : "Erro ao editar.", "erro");
     }
@@ -134,6 +136,7 @@ export default function AtendimentosHistorico({ leadId }: { leadId: string }) {
       const resposta = await fetch(`/api/crm/leads/${leadId}/atendimentos/${id}`, { method: "DELETE" });
       if (!resposta.ok) throw new Error("Não foi possível excluir.");
       setItens((prev) => (prev ?? []).filter((a) => a.id !== id));
+      onAlterar();
     } catch (e) {
       showToast(e instanceof Error ? e.message : "Erro ao excluir.", "erro");
     }

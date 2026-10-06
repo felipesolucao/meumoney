@@ -74,6 +74,7 @@ function servidorFixture() {
   const fakePrisma={ $transaction:async fn=>{
     const draft=globalThis.structuredClone(state);
     const tx={
+      historicoCrm: { create: async ({ data }) => data },
       importacaoDebitosCrm:{findFirst:async({where})=>draft.importacao?.id===where.id&&draft.importacao.usuarioId===where.usuarioId?draft.importacao:null,
         update:async({data})=>(draft.importacao={...draft.importacao,...data})},
       leadCrm:{findMany:async()=>draft.leads.map(dbLead),
@@ -82,7 +83,7 @@ function servidorFixture() {
     };
     const result=await fn(tx);state=draft;return result;
   }};
-  const service=load('lib/crmDebitosServidor.ts',{'node:crypto':crypto,'@prisma/client':{Prisma:{TransactionIsolationLevel:{Serializable:'Serializable'}}},'./prisma':{prisma:fakePrisma},'./crmDebitos':core});
+  const service=load('lib/crmDebitosServidor.ts',{'node:crypto':crypto,'@prisma/client':{Prisma:{TransactionIsolationLevel:{Serializable:'Serializable'}}},'./prisma':{prisma:fakePrisma},'./crmDebitos':core, './crmHistorico': load('lib/crmHistorico.ts'), './crmHistoricoServidor': load('lib/crmHistoricoServidor.ts', { './crmHistorico': load('lib/crmHistorico.ts') })});
   state.importacao={id:'import',usuarioId:'u',arquivo:'test.xlsx',criadoEm:new Date(),aplicadoEm:null,desfeitoEm:null,fingerprint:service.fingerprintLeads(state.leads),
     relatorio:{estagios:['em_negociacao'],...globalThis.structuredClone(core.conciliarDebitos([empresa({valorEmAberto:'200.00'})],state.leads))}};
   return {service,get:()=>state,set:fn=>fn(state)};

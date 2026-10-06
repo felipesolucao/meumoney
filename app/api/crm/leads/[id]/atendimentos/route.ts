@@ -11,6 +11,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "../../../../../../lib/prisma";
 import { obterSessao } from "../../../../../../lib/auth";
 
+import { registrarAtendimentoCrm } from "../../../../../../lib/crmHistoricoServidor";
+
 const TAMANHO_MAXIMO_ANEXO = 5 * 1024 * 1024; // 5MB — sem serviço de storage externo, o anexo vai pro banco.
 
 const SELECAO_SEM_ARQUIVO = {
@@ -88,24 +90,23 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     };
   }
 
-  const atendimento = await prisma.atendimentoCrm.create({
-    data: {
-      observacao: String(observacao).trim(),
-      tentativaNumero: tentativaNumero !== null && tentativaNumero !== "" ? Number(tentativaNumero) : null,
-      dataTratativa: dataFinal,
-      alertaEm: dataAlerta,
-      leadId: params.id,
-      usuarioId: sessao.id,
-      ...dadosAnexo,
-    },
-    select: SELECAO_SEM_ARQUIVO,
-  });
+  const atendimento = await prisma.$transaction(async tx => {
+    const criado = await tx.atendimentoCrm.create({
+      data: {
+        observacao: String(observacao).trim(),
+        tentativaNumero: tentativaNumero !== null && tentativaNumero !== "" ? Number(tentativaNumero) : null,
+        dataTratativa: dataFinal,
+        alertaEm: dataAlerta,
+        leadId: params.id,
+        usuarioId: sessao.id,
+        ...dadosAnexo,
+      },
+      select: SELECAO_SEM_ARQUIVO,
+    });
 
-  // Mantém "dataUltimoContato" do lead sempre igual à tratativa mais recente
-  // registrada — é o que aparece no card e alimenta filtros/automação futura.
-  if (!lead.dataUltimoContato || dataFinal > lead.dataUltimoContato) {
-    await prisma.leadCrm.update({ where: { id: lead.id }, data: { dataUltimoContato: dataFinal } });
-  }
+    await registrarAtendimentoCrm(tx, sessao.id, params.id, "Atendimento registrado", {}, criado);
+    return criado;
+  });
 
   return NextResponse.json(atendimento, { status: 201 });
 }

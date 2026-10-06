@@ -706,9 +706,7 @@ model LeadCrm {
   // precisar de uma migração de banco a cada nova coluna adicionada por ele.
   camposExtras Json?
 
-  // Reiniciado sempre que o lead muda de estágio — é o que alimenta o
-  // indicador de "sem movimento" (dias parado numa mesma etapa) no topo do
-  // quadro.
+  // Última alteração de cadastro, atendimento ou grupo da empresa.
   movimentadoEm DateTime @default(now())
 
   criadoEm    DateTime @default(now())
@@ -717,6 +715,7 @@ model LeadCrm {
   usuarioId String
   usuario   Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 
+  historico HistoricoCrm[]
   atendimentos AtendimentoCrm[]
   negociacoes NegociacaoCrm[]
 
@@ -856,4 +855,18 @@ model ImportacaoDebitosCrm {
   desfeitoEm DateTime?
   @@index([usuarioId, criadoEm])
   @@map("crm_importacoes_debitos")
+}
+
+// Auditoria imutável das alterações da empresa, independente dos atendimentos.
+model HistoricoCrm {
+  id String @id @default(cuid())
+  leadId String
+  lead LeadCrm @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  usuarioId String
+  tipo String
+  alteracoes Json
+  criadoEm DateTime @default(now())
+
+  @@index([leadId, criadoEm, id])
+  @@map("crm_historico")
 }

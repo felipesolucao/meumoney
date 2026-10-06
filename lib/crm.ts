@@ -125,9 +125,13 @@ export function mesclarEstagiosConfig(configs: EstagioConfigCrmBruto[]): Estagio
 // que chega no client component, sem precisar de cast em cada uso)
 export const ESTAGIOS_ENCERRADOS: string[] = ["cancelado", "negociado"];
 
-// A partir de quantos dias sem trocar de estágio um lead é considerado
+// Após quantos dias sem atividade uma empresa é considerada
 // "parado" (ver indicador "Sem movimento" no topo do quadro).
 export const DIAS_SEM_MOVIMENTO = 7;
+
+export function semMovimento(movimentadoEm: Date | string, agora = Date.now()): boolean {
+  return agora - new Date(movimentadoEm).getTime() > DIAS_SEM_MOVIMENTO * 86400000;
+}
 
 export function diasParado(movimentadoEm: Date | string): number {
   const data = typeof movimentadoEm === "string" ? new Date(movimentadoEm) : movimentadoEm;

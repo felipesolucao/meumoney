@@ -23,6 +23,7 @@ function contexto({ falharHistorico = false } = {}) {
   ], acordos: [], historico: [] };
   const bate = (row, where) => Object.entries(where).every(([key, value]) => row[key] === value);
   const tx = {
+    historicoCrm: { create: async ({ data }) => data },
     leadCrm: {
       findFirst: async ({ where }) => estado.leads.find(l => bate(l, where)) ?? null,
       aggregate: async ({ where }) => ({ _max: { ordem: Math.max(-1, ...estado.leads.filter(l => bate(l, where)).map(l => l.ordem)) } }),
@@ -42,7 +43,7 @@ function contexto({ falharHistorico = false } = {}) {
     const anterior = globalThis.structuredClone(estado);
     try { return await fn(tx); } catch (e) { estado = anterior; throw e; }
   } };
-  const funil = load('lib/negociacoesFunil.ts', { '@prisma/client': { Prisma }, './prisma': { prisma } });
+  const funil = load('lib/negociacoesFunil.ts', { '@prisma/client': { Prisma }, './prisma': { prisma }, './crmHistoricoServidor': load('lib/crmHistoricoServidor.ts', { './crmHistorico': load('lib/crmHistorico.ts') }) });
   return { ...funil, estado: () => estado, prisma };
 }
 test('busca aceita nome sem acentos e CNPJ com ou sem máscara', () => {

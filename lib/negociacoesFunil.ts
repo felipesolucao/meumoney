@@ -1,5 +1,6 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from './prisma';
+import { registrarHistoricoCrm } from './crmHistoricoServidor';
 import type { DadosNegociacao, ParcelaNegociacao } from './negociacoes';
 
 export class ErroNegociacaoFunil extends Error {
@@ -42,6 +43,7 @@ export async function sincronizarFunil(tx: Prisma.TransactionClient, usuarioId: 
   if (lead.estagio === estagio) return;
   const ultima = await tx.leadCrm.aggregate({ where: { usuarioId, estagio }, _max: { ordem: true } });
   await tx.leadCrm.updateMany({ where: { id: leadId, usuarioId }, data: { estagio, ordem: (ultima._max.ordem ?? -1) + 1, movimentadoEm: new Date() } });
+  await registrarHistoricoCrm(tx, usuarioId, leadId, 'Movimentação por negociação', [{ campo: 'estagio', antes: lead.estagio, depois: estagio }]);
   const motivo = !acordos.length ? 'Último vínculo de negociação removido. Empresa retornou para Em negociação.'
     : quitados ? 'Todos os acordos vinculados foram quitados. Empresa movida para Negociado.'
     : 'Negociação com saldo a receber. Empresa movida para Aguardando pagamento.';

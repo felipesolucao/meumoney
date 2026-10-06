@@ -13,6 +13,7 @@ import { useState } from "react";
 import type { LeadCrmResumo, EstagioConfigCrm } from "../../lib/crm";
 import { ESTAGIOS, faixaProgresso } from "../../lib/crm";
 import { useToast } from "../ToastProvider";
+import MovimentacoesHistorico from "./MovimentacoesHistorico";
 import AtendimentosHistorico from "./AtendimentosHistorico";
 import LeadPainelFormulario from "./LeadPainelFormulario";
 import BotaoCopiar from "./BotaoCopiar";
@@ -121,6 +122,7 @@ export default function LeadPainel({
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [excluindo, setExcluindo] = useState(false);
+  const [revisaoHistorico, setRevisaoHistorico] = useState(0);
   const editando = !!leadInicial;
   const infoAtual = estagios.find((e) => e.id === form.estagio) ?? ESTAGIOS[0];
   const faixaAtual = faixaProgresso(form.progresso);
@@ -141,7 +143,9 @@ export default function LeadPainel({
       const resposta = await fetch(url, {
         method: editando ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(montarPayload(form)),
+        body: JSON.stringify(leadInicial
+          ? Object.fromEntries(Object.entries(montarPayload(form)).filter(([chave, valor]) => valor !== montarPayload(paraFormulario(leadInicial))[chave as keyof ReturnType<typeof montarPayload>]))
+          : montarPayload(form)),
       });
       const dados = await resposta.json();
       if (!resposta.ok) throw new Error(dados.error || "Não foi possível salvar o lead.");
@@ -209,7 +213,10 @@ export default function LeadPainel({
           <LeadPainelFormulario form={form} campo={campo} erro={erro} estagios={estagios} />
 
           {leadInicial ? (
-            <AtendimentosHistorico leadId={leadInicial.id} />
+            <div style={{ minWidth: 0 }}>
+              <AtendimentosHistorico leadId={leadInicial.id} onAlterar={() => { setRevisaoHistorico(r => r + 1); onSalvar(); }} />
+              <MovimentacoesHistorico key={`${leadInicial.id}-${revisaoHistorico}`} leadId={leadInicial.id} estagios={estagios} />
+            </div>
           ) : (
             <div className="crm-painel-secao">
               <div className="crm-painel-secao-titulo">Histórico de atendimentos</div>

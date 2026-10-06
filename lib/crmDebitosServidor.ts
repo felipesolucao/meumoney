@@ -1,6 +1,8 @@
 import { createHash } from 'node:crypto';
 import { Prisma, type LeadCrm } from '@prisma/client';
 import { prisma } from './prisma';
+import { compararCamposCrm } from './crmHistorico';
+import { registrarHistoricoCrm } from './crmHistoricoServidor';
 import { somenteDebito, type Debito, type LeadDebito, type RelatorioDebitos } from './crmDebitos';
 
 export function serializarLeadDebito(l: LeadCrm): LeadDebito {
@@ -39,9 +41,10 @@ export async function executarImportacao(id: string, usuarioId: string, acao: 'a
     for (const a of relatorio.atualizacoes) {
       const resultado = await tx.leadCrm.updateMany({
         where: { id: a.lead.id, usuarioId, ...(acao === 'desfazer' ? { ...dadosDebito(a.depois), atualizadoEm: new Date(a.atualizadoEmDepois ?? '') } : { atualizadoEm: new Date(a.lead.atualizadoEm) }) },
-        data: dadosDebito(acao === 'aplicar' ? a.depois : somenteDebito(a.lead)),
+        data: { ...dadosDebito(acao === 'aplicar' ? a.depois : somenteDebito(a.lead)), movimentadoEm: new Date() },
       });
       if (resultado.count !== 1) throw new ErroImportacao('Um cadastro foi alterado ou removido após a importação. Nenhuma alteração deste lote foi salva.');
+      await registrarHistoricoCrm(tx, usuarioId, a.lead.id, acao === 'aplicar' ? 'Débitos atualizados por importação' : 'Importação de débitos desfeita', compararCamposCrm(dadosDebito(acao === 'aplicar' ? somenteDebito(a.lead) : a.depois), dadosDebito(acao === 'aplicar' ? a.depois : somenteDebito(a.lead))));
       if (acao === 'aplicar') {
         const salvo = await tx.leadCrm.findUniqueOrThrow({ where: { id: a.lead.id }, select: { atualizadoEm: true } });
         a.atualizadoEmDepois = salvo.atualizadoEm.toISOString();
