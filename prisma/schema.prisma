@@ -67,6 +67,7 @@ model Usuario {
   // --- CRM (produto separado dentro do app — ver app/crm) -------------------
   negociacoesCrm         NegociacaoCrm[]
   leadsCrm               LeadCrm[]
+  importacoesDebitosCrm   ImportacaoDebitosCrm[]
   atendimentosCrm        AtendimentoCrm[]
   automacoesCrm          AutomacaoCrm[]
   estagiosCrmConfig      EstagioCrmConfig[]
@@ -840,4 +841,19 @@ model NegociacaoCrm {
   @@index([usuarioId, dataNegociacao])
   @@index([usuarioId, leadId])
   @@map("negociacoes_crm")
+}
+
+// Prévia persistida, histórico financeiro e dados necessários para desfazer.
+model ImportacaoDebitosCrm {
+  id String @id @default(cuid())
+  usuarioId String
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  arquivo String
+  fingerprint String
+  relatorio Json
+  criadoEm DateTime @default(now())
+  aplicadoEm DateTime?
+  desfeitoEm DateTime?
+  @@index([usuarioId, criadoEm])
+  @@map("crm_importacoes_debitos")
 }

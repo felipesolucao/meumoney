@@ -8,6 +8,8 @@ import { ESTAGIOS, FAIXAS_PROGRESSO, faixaProgresso, formatarMoedaCompacta } fro
 import LeadCard from "./LeadCard";
 import LeadPainel from "./LeadPainel";
 import ImportarModal from "./ImportarModal";
+import { agruparPorColuna } from "../../lib/crmQuadro";
+import AtualizarDebitosModal from "./AtualizarDebitosModal";
 import AutomacoesPainel from "./AutomacoesPainel";
 import GerenciarLeadsPainel from "./GerenciarLeadsPainel";
 import GerenciarGruposPainel from "./GerenciarGruposPainel";
@@ -24,16 +26,6 @@ import { IconPlus, IconSearch, IconDocument, IconUsers } from "../Icons";
 
 type FiltroProgresso = FaixaProgressoId | "todos";
 
-function agruparPorColuna(leads: LeadCrmResumo[]): Map<string, LeadCrmResumo[]> {
-  const mapa = new Map<string, LeadCrmResumo[]>();
-  for (const e of ESTAGIOS) mapa.set(e.id, []);
-  for (const l of leads) {
-    if (!mapa.has(l.estagio)) mapa.set(l.estagio, []);
-    mapa.get(l.estagio)?.push(l);
-  }
-  for (const lista of mapa.values()) lista.sort((a, b) => a.ordem - b.ordem);
-  return mapa;
-}
 
 function filtrarColunas(
   mapa: Map<string, LeadCrmResumo[]>,
@@ -71,6 +63,7 @@ export default function CrmBoard({
   const [modalNovoEstagio, setModalNovoEstagio] = useState<string | null>(null);
   const [leadEditando, setLeadEditando] = useState<LeadCrmResumo | null>(null);
   const [modalImportar, setModalImportar] = useState(false);
+  const [modalDebitos, setModalDebitos] = useState(false);
   const [modalAutomacoes, setModalAutomacoes] = useState(false);
   const [modalGerenciar, setModalGerenciar] = useState(false);
   const [modalGerenciarGrupos, setModalGerenciarGrupos] = useState(false);
@@ -203,6 +196,9 @@ export default function CrmBoard({
             <button type="button" className="crm-btn crm-btn-ghost" onClick={() => setModalGerenciarGrupos(true)}>
               <IconColunas /> Gerenciar grupos
             </button>
+            <button type="button" className="crm-btn crm-btn-ghost" onClick={() => setModalDebitos(true)}>
+              <IconDocument size={16} /> Atualizar débitos
+            </button>
             <button type="button" className="crm-btn crm-btn-ghost" onClick={() => setModalImportar(true)}>
               <IconDocument size={16} /> Importar planilha
             </button>
@@ -313,6 +309,11 @@ export default function CrmBoard({
         />
       )}
 
+      {modalDebitos && <AtualizarDebitosModal estagios={estagios} onFechar={() => setModalDebitos(false)} onAtualizado={recarregar} onRevisar={id => {
+        const lead = leads.find(l => l.id === id);
+        if (!lead) { showToast("Cadastro não está mais no funil. Atualize a lista.", "erro"); return; }
+        setModalDebitos(false); setLeadEditando(lead);
+      }} />}
       {modalImportar && <ImportarModal onFechar={() => setModalImportar(false)} onImportado={recarregar} />}
       {modalAutomacoes && <AutomacoesPainel estagios={estagios} onFechar={() => setModalAutomacoes(false)} />}
 
