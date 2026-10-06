@@ -1558,8 +1558,21 @@
    Responsivo
    -------------------------------------------------------------------------- */
 @media (max-width: 720px) {
+  /* Os totais podem ultrapassar a tela: permita alcançar o quadro sem
+     comprimir os grupos até altura zero. */
+  .crm-app {
+    height: 100dvh;
+    overflow-y: auto;
+  }
   .crm-topbar { padding: 14px 14px 0; }
-  .crm-board-scroll { padding: 2px 14px 14px; scroll-snap-type: x mandatory; }
+  .crm-board-scroll {
+    flex: 0 0 auto;
+    height: 70vh;
+    height: 70dvh;
+    min-height: 360px;
+    padding: 2px 14px 14px;
+    scroll-snap-type: x mandatory;
+  }
   .crm-column { flex-basis: 84vw; width: 84vw; scroll-snap-align: start; }
   .crm-field-row { grid-template-columns: 1fr; }
   .crm-modal-footer { flex-direction: column-reverse; align-items: stretch; }
