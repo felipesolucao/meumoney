@@ -23,6 +23,8 @@ export default function AppShell({ children, nome }: { children: React.ReactNode
   const parcelas = pathname === "/parcelas";
   const crm = pathname.startsWith("/crm");
 
+  if (pathname === "/jogo") return <>{children}</>;
+
   return (
     <div className={semMenu ? "" : "desktop-layout"}>
       {!semMenu && (

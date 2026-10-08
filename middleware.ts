@@ -22,6 +22,8 @@ const ROTAS_PUBLICAS = ["/login", "/cadastro", "/~offline"];
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
+  if (pathname === "/jogo") return NextResponse.next();
+
   const token = req.cookies.get("sessao")?.value;
 
   if (ROTAS_PUBLICAS.some((rota) => pathname === rota)) {
