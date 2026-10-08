@@ -1,4 +1,4 @@
-import type { Negociacao } from './negociacoes';
+import { chaveEmpresa, type Negociacao } from './negociacoes';
 
 export function resumoNegociacoesDiarias(lista: Negociacao[], mes: string) {
   const dias = new Map<string, { empresas: Set<string>; negociado: number; pago: number }>();
@@ -7,7 +7,7 @@ export function resumoNegociacoesDiarias(lista: Negociacao[], mes: string) {
   let pago = 0;
   for (const n of lista) {
     if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(mes) || !n.dataNegociacao.startsWith(`${mes}-`)) continue;
-    const empresa = n.cnpj.replace(/\D/g, '');
+    const empresa = chaveEmpresa(n);
     const recebido = n.parcelas.reduce((s, p) => s + p.pagoCentavos, 0);
     const dia = dias.get(n.dataNegociacao) ?? { empresas: new Set<string>(), negociado: 0, pago: 0 };
     dia.empresas.add(empresa);

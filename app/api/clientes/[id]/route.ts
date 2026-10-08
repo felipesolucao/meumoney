@@ -1,3 +1,4 @@
+import { sincronizarFunil, transacaoNegociacao } from "../../../../lib/negociacoesFunil";
 // ============================================================================
 // API: /api/clientes/[id]
 // GET    -> detalhe do cliente com todos os contratos e parcelas
@@ -84,7 +85,11 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
   const existente = await prisma.cliente.findFirst({ where: { id: params.id, usuarioId: sessao.id } });
   if (!existente) return NextResponse.json({ error: "Cliente não encontrado." }, { status: 404 });
 
-  await prisma.cliente.delete({ where: { id: params.id } });
+  await transacaoNegociacao(async tx => {
+    const contratos = await tx.contrato.findMany({ where: { clienteId: params.id, usuarioId: sessao.id } });
+    await tx.cliente.delete({ where: { id: params.id } });
+    for (const leadId of new Set(contratos.map(c => c.leadId))) await sincronizarFunil(tx, sessao.id, leadId);
+  });
 
   await registrarAcao(prisma, {
     usuarioId: sessao.id,

@@ -9,6 +9,9 @@ import { obterSessao } from "../../../lib/auth";
 import { calcularParcelasDoContrato, gerarCodigoContrato, TipoEmprestimo, Frequencia } from "../../../lib/calculos";
 import { registrarAcao } from "../../../lib/historico";
 
+import { transacaoNegociacao } from "../../../lib/negociacoesFunil";
+import { vincularContratoFunil } from "../../../lib/contratosNegociacoes";
+
 export async function GET() {
   const sessao = await obterSessao();
   if (!sessao) return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
@@ -123,7 +126,8 @@ export async function POST(req: NextRequest) {
   // parcelas pagas de todo contrato com essa contaDesembolsoId) e o
   // histórico abaixo (CONTRATO_CRIADO) já registra os detalhes, num
   // histórico separado do financeiro.
-  const contrato = await prisma.contrato.create({
+  const contrato = await transacaoNegociacao(async tx => {
+  const criado = await tx.contrato.create({
     data: {
       codigo,
       clienteId,
@@ -157,6 +161,10 @@ export async function POST(req: NextRequest) {
       },
     },
     include: { parcelas: true, cliente: true },
+  });
+
+  await vincularContratoFunil(tx, sessao.id, criado.id);
+  return criado;
   });
 
   await registrarAcao(prisma, {

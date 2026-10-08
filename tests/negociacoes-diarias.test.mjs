@@ -4,7 +4,9 @@ import fs from 'node:fs';
 import ts from 'typescript';
 const output = ts.transpileModule(fs.readFileSync(new URL('../lib/negociacoesDiarias.ts', import.meta.url), 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } }).outputText;
 const mod = { exports: {} };
-new Function('module', 'exports', output)(mod, mod.exports);
+const base = { exports: {} };
+new Function('module', 'exports', ts.transpileModule(fs.readFileSync(new URL('../lib/negociacoes.ts', import.meta.url), 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText)(base, base.exports);
+new Function('require', 'module', 'exports', output)(() => base.exports, mod, mod.exports);
 const { resumoNegociacoesDiarias } = mod.exports;
 const acordo = (cnpj, dataNegociacao, totalCentavos, pagoCentavos = 0) => ({ cnpj, dataNegociacao, totalCentavos, parcelas: [{ vencimento: '2027-01-01', valorCentavos: totalCentavos, pagoCentavos, dataPagamento: '2026-10-05' }] });
 test('agrupa pela negociação e inclui parcelas futuras e saldo após pagamentos parciais', () => {

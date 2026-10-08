@@ -43,9 +43,9 @@ test('indicadores deduplicam empresas, somam parciais e recuperam originais só 
 function api({ sessao = { id: 'u1' }, count = 1 } = {}) {
   const chamadas = [];
   const db = { findFirst: async () => ({ leadId: null }), findMany: async q => { chamadas.push(q); return []; }, create: async q => { chamadas.push(q); return { id: 'n1', ...q.data }; }, updateMany: async q => { chamadas.push(q); return { count }; }, deleteMany: async q => { chamadas.push(q); return { count }; } };
-  const prisma = { negociacaoCrm: db, $transaction: async fn => fn({ negociacaoCrm: db }) };
+  const prisma = { contrato: { findMany: async () => [] }, negociacaoCrm: db, $transaction: async fn => fn({ negociacaoCrm: db }) };
   const funil = load('lib/negociacoesFunil.ts', { '@prisma/client': { Prisma }, './prisma': { prisma }, './crmHistoricoServidor': load('lib/crmHistoricoServidor.ts', { './crmHistorico': load('lib/crmHistorico.ts') }) });
-  function rota(file, prefix) { return load(file, { 'next/server': { NextResponse }, [`${prefix}/auth`]: { obterSessao: async () => sessao }, [`${prefix}/prisma`]: { prisma }, [`${prefix}/negociacoes`]: lib, [`${prefix}/negociacoesFunil`]: funil }); }
+  function rota(file, prefix) { return load(file, { 'next/server': { NextResponse }, [`${prefix}/auth`]: { obterSessao: async () => sessao }, [`${prefix}/prisma`]: { prisma }, [`${prefix}/negociacoes`]: lib, [`${prefix}/negociacoesFunil`]: funil, [`${prefix}/contratosNegociacoes`]: load('lib/contratosNegociacoes.ts', { './negociacoesFunil': funil }) }); }
   return { chamadas, colecao: rota('app/api/crm/negociacoes/route.ts', '../../../../lib'), item: rota('app/api/crm/negociacoes/[id]/route.ts', '../../../../../lib') };
 }
 test('todas as operações exigem sessão antes de acessar banco', async () => {

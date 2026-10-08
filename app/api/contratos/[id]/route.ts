@@ -9,6 +9,9 @@ import { obterSessao } from "../../../../lib/auth";
 import { registrarAcao } from "../../../../lib/historico";
 import { calcularParcelasDoContrato, TipoEmprestimo, Frequencia } from "../../../../lib/calculos";
 
+import { transacaoNegociacao, sincronizarFunil, ErroNegociacaoFunil } from "../../../../lib/negociacoesFunil";
+import { atualizarStatusContrato } from "../../../../lib/contratosNegociacoes";
+
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
   const sessao = await obterSessao();
   if (!sessao) return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
@@ -97,6 +100,9 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     return NextResponse.json({ error: "Preencha todos os campos obrigatórios." }, { status: 400 });
   }
 
+  if (existente.parcelas.some(p => p.status !== "pago" && Number(p.valorPago ?? 0) > 0)) {
+    return NextResponse.json({ error: "Há parcelas com pagamento parcial. Edite as parcelas individualmente para preservar os recebimentos." }, { status: 400 });
+  }
   const pagas = existente.parcelas.filter((p) => p.status === "pago");
   const naoPagas = existente.parcelas.filter((p) => p.status !== "pago");
 
@@ -158,9 +164,14 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     };
   }
 
-  const [, contrato] = await prisma.$transaction([
-    prisma.parcela.deleteMany({ where: { id: { in: naoPagas.map((p) => p.id) } } }),
-    prisma.contrato.update({
+  let contrato;
+  try { contrato = await transacaoNegociacao(async tx => {
+    const atual = await tx.contrato.findFirst({ where: { id: params.id, usuarioId: sessao.id }, include: { parcelas: { orderBy: { numero: "asc" } } } });
+    if (!atual || JSON.stringify(atual.parcelas) !== JSON.stringify(existente.parcelas)) {
+      throw new ErroNegociacaoFunil("As parcelas foram alteradas em outra tela. Atualize o contrato antes de editar.", 409);
+    }
+    await tx.parcela.deleteMany({ where: { id: { in: naoPagas.map((p) => p.id) } } });
+    const atualizado = await tx.contrato.update({
       where: { id: params.id },
       data: {
         ...dadosContrato,
@@ -168,8 +179,13 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
         parcelas: { create: novasParcelas.map((p) => ({ numero: p.numero, valor: p.valor, vencimento: p.vencimento, status: "a_vencer" })) },
       },
       include: { parcelas: { orderBy: { numero: "asc" } }, cliente: true },
-    }),
-  ]);
+    });
+    await atualizarStatusContrato(tx, sessao.id, params.id);
+    return atualizado;
+  }); } catch (e) {
+    if (e instanceof ErroNegociacaoFunil) return NextResponse.json({ error: e.message }, { status: e.status });
+    throw e;
+  }
 
   await registrarAcao(prisma, {
     usuarioId: sessao.id,
@@ -199,7 +215,10 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
   // (ver app/api/financeiro/contas-resumo/route.ts) — então excluir o
   // contrato já tira o valor do saldo da conta sozinho, sem nada extra
   // pra limpar aqui.
-  await prisma.contrato.delete({ where: { id: params.id } });
+  await transacaoNegociacao(async tx => {
+    await tx.contrato.delete({ where: { id: params.id } });
+    await sincronizarFunil(tx, sessao.id, existente.leadId);
+  });
 
   await registrarAcao(prisma, {
     usuarioId: sessao.id,

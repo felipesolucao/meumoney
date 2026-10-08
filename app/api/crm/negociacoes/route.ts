@@ -3,10 +3,15 @@ import { obterSessao } from '../../../../lib/auth';
 import { prisma } from '../../../../lib/prisma';
 import { validarNegociacao } from '../../../../lib/negociacoes';
 import { criarNegociacao, ErroNegociacaoFunil } from '../../../../lib/negociacoesFunil';
+import { contratoComoNegociacao, contratoNegociacaoInclude } from '../../../../lib/contratosNegociacoes';
 export async function GET() {
   const sessao = await obterSessao();
   if (!sessao) return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 });
-  return NextResponse.json(await prisma.negociacaoCrm.findMany({ where: { usuarioId: sessao.id }, orderBy: [{ dataNegociacao: 'desc' }, { criadoEm: 'desc' }], include: { lead: { select: { id: true, nome: true, estagio: true } } } }));
+  const [acordos, contratos] = await Promise.all([
+    prisma.negociacaoCrm.findMany({ where: { usuarioId: sessao.id }, orderBy: [{ dataNegociacao: 'desc' }, { criadoEm: 'desc' }], include: { lead: { select: { id: true, nome: true, estagio: true } } } }),
+    prisma.contrato.findMany({ where: { usuarioId: sessao.id }, include: contratoNegociacaoInclude }),
+  ]);
+  return NextResponse.json([...acordos, ...contratos.map(contratoComoNegociacao)].sort((a, b) => b.dataNegociacao.localeCompare(a.dataNegociacao)));
 }
 export async function POST(req: NextRequest) {
   const sessao = await obterSessao();

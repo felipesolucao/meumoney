@@ -17,6 +17,8 @@
 // ============================================================================
 import { Prisma, PrismaClient } from "@prisma/client";
 import { prisma } from "./prisma";
+import { atualizarStatusContrato } from "./contratosNegociacoes";
+import { sincronizarFunil, transacaoNegociacao } from "./negociacoesFunil";
 
 export type EntidadeHistorico = "Contrato" | "Parcela" | "Cliente" | "Lancamento";
 
@@ -79,11 +81,23 @@ export async function reverterAcao(usuarioId: string, historicoId: string) {
     return { ok: false as const, erro: "Esta ação já foi revertida." };
   }
 
-  return prisma.$transaction(async (tx) => {
+  return transacaoNegociacao(async (tx) => {
     const antes = acao.dadosAntes as Record<string, unknown> | null;
     const depois = acao.dadosDepois as Record<string, unknown> | null;
 
+    const contratoAntes = acao.entidade === "Contrato" ? await tx.contrato.findFirst({ where: { id: acao.entidadeId, usuarioId } }) : null;
+    const contratosCliente = acao.entidade === "Cliente" ? await tx.contrato.findMany({ where: { clienteId: acao.entidadeId, usuarioId } }) : [];
     await aplicarReversao(tx, acao.entidade, acao.entidadeId, antes, depois);
+
+    if (acao.entidade === "Parcela") {
+      const contratoId = String(antes?.contratoId ?? depois?.contratoId ?? '');
+      if (contratoId) await atualizarStatusContrato(tx, usuarioId, contratoId);
+    }
+    if (acao.entidade === "Contrato") {
+      await atualizarStatusContrato(tx, usuarioId, acao.entidadeId);
+      await sincronizarFunil(tx, usuarioId, contratoAntes?.leadId);
+    }
+    for (const c of contratosCliente) await sincronizarFunil(tx, usuarioId, c.leadId);
 
     await tx.historicoAcao.update({
       where: { id: acao.id },
@@ -163,7 +177,7 @@ const CAMPOS_DATA_POR_ENTIDADE: Record<EntidadeHistorico, string[]> = {
 };
 
 const CAMPOS_IGNORADOS_POR_ENTIDADE: Record<EntidadeHistorico, string[]> = {
-  Contrato: ["id", "cliente", "parcelas", "usuario"],
+  Contrato: ["id", "cliente", "parcelas", "usuario", "lead"],
   Parcela: ["id", "contrato"],
   Cliente: ["id", "contratos", "usuario"],
   Lancamento: ["id", "categoria", "conta", "recorrente", "usuario"],

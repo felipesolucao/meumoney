@@ -46,6 +46,7 @@ export default function ParcelasLista({
   codigoContrato,
   contas,
   contaDesembolsoId,
+  onAtualizar,
 }: {
   parcelas: Parcela[];
   clienteNome: string;
@@ -53,6 +54,7 @@ export default function ParcelasLista({
   codigoContrato: string;
   contas: Conta[];
   contaDesembolsoId?: string | null;
+  onAtualizar?: () => Promise<void>;
 }) {
   const router = useRouter();
   const showToast = useToast();
@@ -65,12 +67,13 @@ export default function ParcelasLista({
     const res = await fetch(`/api/parcelas/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ acao: "pagar", dataRecebimento, valorRecebido, contaId }),
+      body: JSON.stringify({ acao: "pagar", dataRecebimento, valorRecebido, contaId, valorPagoEsperado: Number(parcelas.find(p => p.id === id)?.valorPago ?? 0) }),
     });
     setCarregandoId(null);
     showToast(res.ok ? "Pagamento registrado!" : "Não foi possível registrar o pagamento.", res.ok ? "sucesso" : "erro");
     if (res.ok) setParcelaRecebendo(null);
     router.refresh();
+    if (res.ok) await onAtualizar?.();
   }
 
   async function estornar(id: string) {
@@ -84,6 +87,7 @@ export default function ParcelasLista({
     showToast(res.ok ? "Pagamento estornado." : "Não foi possível estornar o pagamento.", res.ok ? "sucesso" : "erro");
     if (res.ok) setParcelaEditando(null);
     router.refresh();
+    if (res.ok) await onAtualizar?.();
   }
 
   async function renegociar(id: string, vencimentoAtual: string) {
@@ -101,6 +105,7 @@ export default function ParcelasLista({
     setCarregandoId(null);
     showToast(res.ok ? "Parcela renegociada." : "Não foi possível renegociar a parcela.", res.ok ? "sucesso" : "erro");
     router.refresh();
+    if (res.ok) await onAtualizar?.();
   }
 
   // Edição livre: corrige valor e/ou data, sem alterar o status da parcela.
@@ -116,6 +121,7 @@ export default function ParcelasLista({
     showToast(res.ok ? "Parcela atualizada." : "Não foi possível atualizar a parcela.", res.ok ? "sucesso" : "erro");
     if (res.ok) setParcelaEditando(null);
     router.refresh();
+    if (res.ok) await onAtualizar?.();
   }
 
   function cobrar(parcela: Parcela) {

@@ -1,6 +1,6 @@
 export type ParcelaNegociacao = { numero: number; valorCentavos: number; vencimento: string; pagoCentavos: number; dataPagamento: string; situacao: 'em_aberto' | 'aguardando' };
 export type DadosNegociacao = { leadId?: string | null; empresa: string; cnpj: string; tipo: 'avista' | 'parcelada'; dataNegociacao: string; debitoCentavos: number; totalCentavos: number; parcelasOriginais: number; observacoes: string; parcelas: ParcelaNegociacao[] };
-export type Negociacao = DadosNegociacao & { id: string; versao: number; lead?: { id: string; nome: string; estagio: string } | null };
+export type Negociacao = DadosNegociacao & { id: string; versao: number; contratoId?: string; codigoContrato?: string; clienteId?: string; lead?: { id: string; nome: string; estagio: string } | null };
 export const STATUS = { em_aberto: 'Em aberto', aguardando: 'Aguardando pagamento', atrasado: 'Em atraso', pago: 'Pago' };
 export function hojeBrasil() { return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date()); }
 export function moeda(c: number) { return (c / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
@@ -17,7 +17,7 @@ export function statusNegociacao(n: DadosNegociacao, hoje = hojeBrasil()): keyof
   return estados.includes('aguardando') ? 'aguardando' : 'em_aberto';
 }
 export function resumoNegociacoes(lista: DadosNegociacao[]) {
-  return { negociado: lista.reduce((s, n) => s + n.totalCentavos, 0), pago: lista.reduce((s, n) => s + n.parcelas.reduce((v, p) => v + p.pagoCentavos, 0), 0), empresas: new Set(lista.map(n => n.cnpj)).size, recuperadas: lista.filter(n => statusNegociacao(n) === 'pago').reduce((s, n) => s + n.parcelasOriginais, 0) };
+  return { negociado: lista.reduce((s, n) => s + n.totalCentavos, 0), pago: lista.reduce((s, n) => s + n.parcelas.reduce((v, p) => v + p.pagoCentavos, 0), 0), empresas: new Set(lista.map(chaveEmpresa)).size, recuperadas: lista.filter(n => statusNegociacao(n) === 'pago').reduce((s, n) => s + n.parcelasOriginais, 0) };
 }
 function dataValida(v: unknown): v is string { return typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) && Number.isFinite(Date.parse(v)) && new Date(v).toISOString().slice(0, 10) === v; }
 function inteiro(v: unknown, min: number, max = 2000000000): v is number { return typeof v === 'number' && Number.isSafeInteger(v) && v >= min && v <= max; }
@@ -64,4 +64,8 @@ export function prepararNegociacaoParaSalvar(dados: DadosNegociacao, quantidade:
     ...dados,
     parcelas: dados.parcelas.length ? dados.parcelas : gerarParcelas(dados.totalCentavos, dados.tipo === 'avista' ? 1 : quantidade, primeiroVencimento),
   });
+}
+
+export function chaveEmpresa(n: DadosNegociacao & { clienteId?: string }) {
+  return n.cnpj.replace(/\D/g, '') || n.leadId || n.clienteId || n.empresa;
 }

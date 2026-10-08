@@ -33,19 +33,30 @@ export async function sincronizarFunil(tx: Prisma.TransactionClient, usuarioId: 
   const lead = await tx.leadCrm.findFirst({ where: { id: leadId, usuarioId } });
   if (!lead) return;
   const acordos = await tx.negociacaoCrm.findMany({ where: { usuarioId, leadId }, select: { parcelas: true } });
-  const quitados = acordos.length > 0 && acordos.every(n => {
+  const contratos = await tx.contrato.findMany({ where: { usuarioId, leadId }, include: { parcelas: true } });
+  const temVinculos = acordos.length + contratos.length > 0;
+  const quitados = temVinculos && contratos.every(c => c.parcelas.length > 0 && c.parcelas.every(p => p.status === 'pago')) && acordos.every(n => {
     const parcelas = n.parcelas as unknown as ParcelaNegociacao[];
     return parcelas.length > 0 && parcelas.every(p => p.pagoCentavos >= p.valorCentavos);
   });
+  if (lead.origem === 'Contratos') {
+    const parcelas = contratos.flatMap(c => c.parcelas);
+    const total = parcelas.reduce((s, p) => s + Number(p.valor), 0);
+    const pago = parcelas.reduce((s, p) => s + Number(p.valorPago ?? (p.status === 'pago' ? p.valor : 0)), 0);
+    await tx.leadCrm.updateMany({ where: { id: leadId, usuarioId }, data: {
+      valorEmAberto: Math.max(0, total - pago), valorTotalComJuros: total, valorPago: pago,
+      quantidadeParcelas: parcelas.filter(p => p.status !== 'pago').length,
+    } });
+  }
   // Ao remover o último vínculo, devolve apenas etapas geridas pela integração.
-  if (!acordos.length && !['aguardando_pagamento', 'negociado'].includes(lead.estagio)) return;
-  const estagio = !acordos.length ? 'em_negociacao' : quitados ? 'negociado' : 'aguardando_pagamento';
+  if (!temVinculos && !['aguardando_pagamento', 'negociado'].includes(lead.estagio)) return;
+  const estagio = !temVinculos ? 'em_negociacao' : quitados ? 'negociado' : 'aguardando_pagamento';
   if (lead.estagio === estagio) return;
   const ultima = await tx.leadCrm.aggregate({ where: { usuarioId, estagio }, _max: { ordem: true } });
   await tx.leadCrm.updateMany({ where: { id: leadId, usuarioId }, data: { estagio, ordem: (ultima._max.ordem ?? -1) + 1, movimentadoEm: new Date() } });
   await registrarHistoricoCrm(tx, usuarioId, leadId, 'Movimentação por negociação', [{ campo: 'estagio', antes: lead.estagio, depois: estagio }]);
-  const motivo = !acordos.length ? 'Último vínculo de negociação removido. Empresa retornou para Em negociação.'
-    : quitados ? 'Todos os acordos vinculados foram quitados. Empresa movida para Negociado.'
+  const motivo = !temVinculos ? 'Último vínculo de negociação removido. Empresa retornou para Em negociação.'
+    : quitados ? 'Todos os contratos e acordos vinculados foram quitados. Empresa movida para Negociado.'
     : 'Negociação com saldo a receber. Empresa movida para Aguardando pagamento.';
   await tx.atendimentoCrm.create({ data: { usuarioId, leadId, observacao: motivo } });
 }

@@ -75,8 +75,7 @@ export default function ReceberPagamentoModal({
   async function confirmar() {
     if (!valorRecebido || valorRecebido <= 0) return;
     setEnviando(true);
-    await onConfirmar(data, valorRecebido, contaId);
-    setEnviando(false);
+    try { await onConfirmar(data, valorRecebido, contaId); } finally { setEnviando(false); }
   }
 
   return (
@@ -146,7 +145,7 @@ export default function ReceberPagamentoModal({
           <button
             type="button"
             onClick={confirmar}
-            disabled={enviando || !valorRecebido || valorRecebido <= 0 || !contaId}
+            disabled={enviando || !valorRecebido || valorRecebido <= 0 || valorRecebido > restante || !contaId}
             className="btn-primary flex items-center justify-center gap-2"
           >
             <IconCheck size={18} /> {enviando ? "Confirmando..." : "Confirmar recebimento"}

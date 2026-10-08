@@ -232,6 +232,8 @@ model Contrato {
   status               StatusContrato @default(em_dia)
   criadoEm             DateTime       @default(now())
 
+  leadId               String?
+  lead                 LeadCrm? @relation(fields: [leadId], references: [id], onDelete: SetNull)
   parcelas             Parcela[]
 
   usuarioId            String
@@ -249,6 +251,7 @@ model Contrato {
   contaDesembolsoId      String?
   contaDesembolso        Conta?      @relation(fields: [contaDesembolsoId], references: [id], onDelete: SetNull)
 
+  @@index([usuarioId, leadId])
   @@map("contratos")
 }
 
@@ -658,8 +661,8 @@ model HistoricoAcao {
 // ============================================================================
 // MÓDULO: CRM (produto separado, acessado em /crm)
 // ----------------------------------------------------------------------------
-// Kanban de leads/oportunidades — não tem relação com Cliente/Contrato
-// (que são o empréstimo já fechado). Cada usuário tem seu próprio funil.
+// Kanban de leads/oportunidades, vinculado aos contratos e acordos.
+// Cada usuário tem seu próprio funil.
 // ============================================================================
 
 // ----------------------------------------------------------------------------
@@ -718,6 +721,7 @@ model LeadCrm {
   historico HistoricoCrm[]
   atendimentos AtendimentoCrm[]
   negociacoes NegociacaoCrm[]
+  contratos Contrato[]
 
   @@index([usuarioId, estagio, ordem])
   @@map("crm_leads")

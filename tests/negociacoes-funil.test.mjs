@@ -23,6 +23,7 @@ function contexto({ falharHistorico = false } = {}) {
   ], acordos: [], historico: [] };
   const bate = (row, where) => Object.entries(where).every(([key, value]) => row[key] === value);
   const tx = {
+    contrato: { findMany: async () => [] },
     historicoCrm: { create: async ({ data }) => data },
     leadCrm: {
       findFirst: async ({ where }) => estado.leads.find(l => bate(l, where)) ?? null,
