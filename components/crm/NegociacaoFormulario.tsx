@@ -8,7 +8,7 @@ import type { DadosNegociacao, Negociacao, ParcelaNegociacao } from '../../lib/n
 import { centavos, gerarParcelas, hojeBrasil, moeda, STATUS, statusParcela, prepararNegociacaoParaSalvar } from '../../lib/negociacoes';
 
 export default function NegociacaoFormulario({ inicial, onSalvar, onFechar }: { inicial: Negociacao | null; onSalvar: (dados: DadosNegociacao) => Promise<void>; onFechar: () => void }) {
-  const [dados, setDados] = useState<DadosNegociacao>(() => inicial ?? { leadId: null, empresa: '', cnpj: '', tipo: 'avista', dataNegociacao: hojeBrasil(), debitoCentavos: 0, totalCentavos: 0, parcelasOriginais: 1, observacoes: '', parcelas: [] });
+  const [dados, setDados] = useState<DadosNegociacao>(() => inicial ?? { leadId: null, empresa: '', cnpj: '', telefone: '', telefone2: '', tipo: 'avista', dataNegociacao: hojeBrasil(), debitoCentavos: 0, totalCentavos: 0, parcelasOriginais: 1, observacoes: '', parcelas: [] });
   const [quantidade, setQuantidade] = useState(inicial?.parcelas.length ?? 1);
   const [primeiro, setPrimeiro] = useState(inicial?.parcelas[0]?.vencimento || hojeBrasil());
   const [empresaVinculada, setEmpresaVinculada] = useState(inicial?.lead?.nome ?? (inicial?.leadId ? inicial.empresa : ''));
@@ -78,6 +78,8 @@ export default function NegociacaoFormulario({ inicial, onSalvar, onFechar }: { 
         <div className="neg-form-grid">
           <NegociacaoEmpresaBusca valor={dados.empresa} onChange={valor => campo('empresa', valor)} onSelecionar={empresa => { setDados(d => preencherEmpresa(d, empresa)); setEmpresaVinculada(empresa.nome); }} />
           <label>CNPJ<input className="crm-input" required inputMode="numeric" maxLength={18} value={dados.cnpj} onChange={e => campo('cnpj', e.target.value)} placeholder="00.000.000/0000-00" /></label>
+          <label>Telefone 1<input className="crm-input" type="tel" maxLength={30} value={dados.telefone ?? ''} onChange={e => campo('telefone', e.target.value)} placeholder="(00) 00000-0000" /></label>
+          <label>Telefone 2<input className="crm-input" type="tel" maxLength={30} value={dados.telefone2 ?? ''} onChange={e => campo('telefone2', e.target.value)} placeholder="(00) 00000-0000" /></label>
           <label>Data da negociação<input className="crm-input" type="date" required value={dados.dataNegociacao} onChange={e => campo('dataNegociacao', e.target.value)} /></label>
           <label>Tipo<select className="crm-input" value={dados.tipo} onChange={e => { campo('tipo', e.target.value as DadosNegociacao['tipo']); setQuantidade(e.target.value === 'avista' ? 1 : 2); }}><option value="avista">À vista</option><option value="parcelada">Parcelada</option></select></label>
         </div>

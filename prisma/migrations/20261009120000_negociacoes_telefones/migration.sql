@@ -1,0 +1,3 @@
+ALTER TABLE "negociacoes_crm"
+ADD COLUMN "telefone" TEXT NOT NULL DEFAULT '',
+ADD COLUMN "telefone2" TEXT NOT NULL DEFAULT '';

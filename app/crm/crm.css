@@ -1674,4 +1674,9 @@
 .neg-painel .crm-painel-header { overflow-wrap: anywhere; }
 .neg-company-list .neg-company-cell { width: clamp(180px, 22vw, 300px); min-width: 180px; max-width: 300px; white-space: normal; overflow-wrap: anywhere; }
 .neg-company-cell strong, .neg-company-cell small { display: block; max-width: 100%; }
+.neg-company-copy { display: flex; align-items: center; gap: 6px; }
+.neg-company-copy + .neg-company-copy { margin-top: 4px; }
+.neg-company-copy > strong, .neg-company-copy > small { min-width: 0; margin-top: 0; }
+.neg-company-copy .crm-botao-copiar { width: 28px; height: 28px; }
+.neg-company-copy .crm-botao-copiar:focus-visible { outline: 2px solid var(--crm-accent); outline-offset: 2px; }
 @media (max-width: 600px) { .neg-company-list .neg-company-cell { width: 180px; max-width: 180px; } }

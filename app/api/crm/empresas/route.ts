@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
   // Normalização em memória aceita CNPJ com máscara e nomes com/sem acentos.
   const empresas = await prisma.leadCrm.findMany({
     where: { usuarioId: sessao.id }, orderBy: [{ nome: 'asc' }, { id: 'asc' }],
-    select: { id: true, nome: true, cnpj: true, valorEmAberto: true, quantidadeParcelas: true, telefone: true, email: true },
+    select: { id: true, nome: true, cnpj: true, valorEmAberto: true, quantidadeParcelas: true, telefone: true, telefone2: true, email: true },
   });
   return NextResponse.json(pesquisarEmpresas(empresas.map(e => ({ ...e, valorEmAberto: e.valorEmAberto?.toString() ?? null })), termo).slice(0, 20));
 }

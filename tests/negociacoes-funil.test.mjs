@@ -128,3 +128,12 @@ test('API de busca exige sessão, isola proprietário e limita resultados', asyn
   assert.equal((await (await rota({ id: 'u1' }).GET(req('solucao'))).json()).length, 20);
   assert.deepEqual(consultas[0].where, { usuarioId: 'u1' });
 });
+
+test('seleção copia os dois telefones e limpa contatos ao trocar para empresa sem números', () => {
+  const dados = empresaLib.preencherEmpresa(acordo(null), { ...empresa, telefone: '(62) 99999-1234', telefone2: '(62) 3333-1234' });
+  assert.equal(dados.telefone, '(62) 99999-1234');
+  assert.equal(dados.telefone2, '(62) 3333-1234');
+  const semContatos = empresaLib.preencherEmpresa(dados, { ...empresa, telefone: null, telefone2: null });
+  assert.equal(semContatos.telefone, '');
+  assert.equal(semContatos.telefone2, '');
+});

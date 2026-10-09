@@ -95,3 +95,27 @@ test('validação distingue cronograma vazio, limite e incompatibilidade com mod
   assert.throws(() => lib.prepararNegociacaoParaSalvar({ ...dados, parcelas: [] }, 1, '2026-10-02'), /pelo menos duas parcelas/);
   assert.equal(lib.prepararNegociacaoParaSalvar({ ...dados, parcelas: [] }, 360, '2026-10-02').parcelas.length, 360);
 });
+
+test('telefones opcionais são validados e podem ser removidos sem afetar clientes antigos', () => {
+  assert.equal(validarNegociacao(acordo()).telefone, undefined);
+  const dados = validarNegociacao({ ...acordo(), telefone: ' (62) 99999-1234 ', telefone2: '+55 62 3333-1234' });
+  assert.equal(dados.telefone, '(62) 99999-1234');
+  assert.equal(dados.telefone2, '+55 62 3333-1234');
+  assert.equal(validarNegociacao({ ...dados, telefone: '' }).telefone, '');
+  for (const telefone of [123, null, 'abc', '123', '1'.repeat(16), ' '.repeat(31)]) {
+    for (const campo of ['telefone', 'telefone2']) assert.throws(() => validarNegociacao({ ...acordo(), [campo]: telefone }), /Telefone/);
+  }
+});
+
+test('API encaminha ambos os telefones na criação, edição e remoção dos números', async () => {
+  const a = api();
+  const dados = { ...acordo(), telefone: '(62) 99999-1234', telefone2: '(62) 3333-1234' };
+  const criado = await a.colecao.POST({ json: async () => dados });
+  assert.equal(criado.status, 201);
+  assert.equal((await criado.json()).telefone2, dados.telefone2);
+  assert.equal(a.chamadas[0].data.telefone, dados.telefone);
+  const editado = await a.item.PUT({ json: async () => ({ ...dados, telefone: '', telefone2: '(11) 98888-1234', versao: 1 }) }, { params: { id: 'n1' } });
+  assert.equal(editado.status, 200);
+  assert.equal(a.chamadas[1].data.telefone, '');
+  assert.equal(a.chamadas[1].data.telefone2, '(11) 98888-1234');
+});

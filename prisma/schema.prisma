@@ -831,6 +831,8 @@ model NegociacaoCrm {
   usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
   empresa String
   cnpj String
+  telefone String @default("")
+  telefone2 String @default("")
   tipo String
   dataNegociacao String
   debitoCentavos Int
