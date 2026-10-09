@@ -122,16 +122,33 @@
   font-size: 13px;
   font-weight: 600;
   white-space: nowrap;
-  cursor: not-allowed;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background-color 150ms ease, color 150ms ease;
 }
 .crm-nav-aba:disabled {
+  cursor: not-allowed;
   opacity: 0.55;
+}
+.crm-nav-aba[href] {
+  color: var(--crm-text-muted);
+}
+.crm-nav-aba[href]:hover {
+  background: var(--crm-surface-3);
+  color: var(--crm-text);
+}
+.crm-nav-aba[href]:focus-visible {
+  outline: 2px solid var(--crm-accent);
+  outline-offset: -2px;
 }
 .crm-nav-aba.is-ativa {
   background: var(--crm-text);
   color: var(--crm-bg);
-  cursor: default;
   opacity: 1;
+}
+.crm-nav-aba.is-ativa:hover {
+  background: var(--crm-accent);
+  color: var(--crm-bg);
 }
 .crm-nav-acoes {
   display: flex;
