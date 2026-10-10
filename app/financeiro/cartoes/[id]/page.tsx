@@ -2,14 +2,12 @@
 // PÁGINA: Extrato do cartão de crédito
 // ----------------------------------------------------------------------------
 // Mesmo padrão da tela de detalhe de categoria (app/financeiro/categorias/[id]):
-// editar nome/ícone do cartão, MesSeletor pra navegar entre faturas (uma por
+// editar todos os dados do cartão, MesSeletor pra navegar entre faturas (uma por
 // mês/competência) e a lista de compras daquela fatura, com total e status
 // (aberta / fechada — a pagar / paga). "Fechada" e "paga" batem com o
 // Lancamento gerado automaticamente quando a fatura fecha (ver lib/cartao.ts).
 //
-// Dia de fechamento, dia de vencimento, limite e a conta que paga a fatura
-// se editam em /financeiro/contas (evita duplicar o CartaoFormulario
-// completo aqui também) — esta tela edita só nome/ícone, igual à de categoria.
+// A edição usa o mesmo CartaoFormulario completo de /financeiro/contas.
 // ============================================================================
 "use client";
 
@@ -17,7 +15,8 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { formatarMoeda, formatarData } from "../../../../lib/financeiro";
-import { EMOJIS_CATEGORIA } from "../../../../lib/emojisCategorias";
+import type { OrigemFinanceira } from "../../../../lib/financeiro";
+import CartaoFormulario from "../../../../components/CartaoFormulario";
 import BotaoVoltar from "../../../../components/BotaoVoltar";
 import MesSeletor from "../../../../components/MesSeletor";
 import Badge, { tomEStatusFatura } from "../../../../components/Badge";
@@ -29,6 +28,9 @@ type CartaoDetalhe = {
   id: string;
   nome: string;
   icone: string;
+  bandeira: string | null;
+  origem: OrigemFinanceira;
+  contaId: string;
   limite: string | null; // Decimal do Prisma chega serializado como string
   diaFechamento: number;
   diaVencimento: number;
@@ -85,6 +87,18 @@ export default function DetalheCartaoPage({ params }: { params: { id: string } }
   const [editando, setEditando] = useState(false);
   const [nomeForm, setNomeForm] = useState("");
   const [iconeForm, setIconeForm] = useState("💳");
+  const [bandeiraForm, setBandeiraForm] = useState("");
+  const [limiteForm, setLimiteForm] = useState("");
+  const [diaFechamentoForm, setDiaFechamentoForm] = useState("1");
+  const [diaVencimentoForm, setDiaVencimentoForm] = useState("10");
+  const [contaIdForm, setContaIdForm] = useState("");
+  const [origemForm, setOrigemForm] = useState<OrigemFinanceira>("pessoal");
+  const [contas, setContas] = useState<{ id: string; nome: string; icone: string }[]>([]);
+  useEffect(() => {
+    fetch("/api/financeiro/contas-resumo")
+      .then((r) => r.json())
+      .then((data: { contas: typeof contas }) => setContas(data.contas));
+  }, []);
   const [salvandoCartao, setSalvandoCartao] = useState(false);
   const [erroCartao, setErroCartao] = useState("");
   const [confirmarExclusao, setConfirmarExclusao] = useState(false);
@@ -127,6 +141,12 @@ export default function DetalheCartaoPage({ params }: { params: { id: string } }
     if (!cartao) return;
     setNomeForm(cartao.nome);
     setIconeForm(cartao.icone);
+    setBandeiraForm(cartao.bandeira ?? "");
+    setLimiteForm(cartao.limite ?? "");
+    setDiaFechamentoForm(String(cartao.diaFechamento));
+    setDiaVencimentoForm(String(cartao.diaVencimento));
+    setContaIdForm(cartao.contaId);
+    setOrigemForm(cartao.origem);
     setEditando(true);
     setErroCartao("");
   }
@@ -134,11 +154,19 @@ export default function DetalheCartaoPage({ params }: { params: { id: string } }
   async function salvarCartao() {
     if (!cartao) return;
     if (!nomeForm.trim()) return setErroCartao("Dê um nome para o cartão.");
+    if (!contaIdForm) return setErroCartao("Escolha a conta que paga a fatura.");
     setSalvandoCartao(true);
     const res = await fetch(`/api/cartoes/${cartao.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ nome: nomeForm.trim(), icone: iconeForm }),
+      body: JSON.stringify({
+        nome: nomeForm.trim(), icone: iconeForm,
+        bandeira: bandeiraForm || null,
+        limite: limiteForm ? Number(limiteForm) : null,
+        diaFechamento: Number(diaFechamentoForm),
+        diaVencimento: Number(diaVencimentoForm),
+        contaId: contaIdForm, origem: origemForm,
+      }),
     });
     setSalvandoCartao(false);
     if (!res.ok) {
@@ -303,61 +331,18 @@ export default function DetalheCartaoPage({ params }: { params: { id: string } }
               </div>
             </div>
           ) : editando ? (
-            <div className="space-y-4">
-              <div>
-                <p className="text-xs font-semibold tracking-wide text-muted mb-2">EMOJI</p>
-                <div className="flex items-center gap-3 mb-3">
-                  <span className="w-14 h-14 rounded-md bg-primary-subtle flex items-center justify-center text-2xl shrink-0">
-                    {iconeForm}
-                  </span>
-                  <input
-                    value={iconeForm}
-                    onChange={(e) => setIconeForm(e.target.value.slice(-2) || iconeForm)}
-                    className="w-20 rounded-md border border-border px-3 py-3 text-center text-xl outline-none focus:border-primary"
-                    aria-label="Emoji personalizado"
-                  />
-                </div>
-                <div className="grid grid-cols-8 gap-1.5 bg-background rounded-md p-2 max-h-40 overflow-y-auto">
-                  {EMOJIS_CATEGORIA.map((e) => (
-                    <button
-                      type="button"
-                      key={e}
-                      onClick={() => setIconeForm(e)}
-                      className={`aspect-square rounded-sm flex items-center justify-center text-lg ${
-                        iconeForm === e ? "bg-primary-subtle ring-2 ring-primary" : "hover:bg-card"
-                      }`}
-                    >
-                      {e}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <p className="text-xs font-semibold tracking-wide text-muted mb-2">NOME</p>
-                <input
-                  value={nomeForm}
-                  onChange={(e) => setNomeForm(e.target.value)}
-                  className="w-full rounded-md border border-border px-4 py-3.5 outline-none focus:border-primary"
-                  autoFocus
-                />
-              </div>
-              {erroCartao && <p className="text-error text-sm font-medium">{erroCartao}</p>}
-              <div className="grid grid-cols-2 gap-2">
-                <button type="button" onClick={() => setEditando(false)} className="btn-outline">
-                  Cancelar
-                </button>
-                <button type="button" onClick={salvarCartao} disabled={salvandoCartao} className="btn-primary flex items-center justify-center gap-2">
-                  <IconCheck size={16} /> {salvandoCartao ? "Salvando..." : "Salvar"}
-                </button>
-              </div>
-              <p className="text-xs text-muted">
-                Dia de fechamento, vencimento, limite e conta que paga se editam em{" "}
-                <Link href="/financeiro/contas" className="text-primary font-semibold">
-                  Contas
-                </Link>
-                .
-              </p>
-            </div>
+            <CartaoFormulario
+              nomeForm={nomeForm} setNomeForm={setNomeForm}
+              iconeForm={iconeForm} setIconeForm={setIconeForm}
+              bandeiraForm={bandeiraForm} setBandeiraForm={setBandeiraForm}
+              limiteForm={limiteForm} setLimiteForm={setLimiteForm}
+              diaFechamentoForm={diaFechamentoForm} setDiaFechamentoForm={setDiaFechamentoForm}
+              diaVencimentoForm={diaVencimentoForm} setDiaVencimentoForm={setDiaVencimentoForm}
+              contaIdForm={contaIdForm} setContaIdForm={setContaIdForm}
+              origemForm={origemForm} setOrigemForm={setOrigemForm}
+              contas={contas} erro={erroCartao} salvando={salvandoCartao}
+              onCancelar={() => setEditando(false)} onSalvar={salvarCartao}
+            />
           ) : (
             <div className="flex items-center gap-3">
               <span className="w-14 h-14 rounded-md bg-primary-subtle flex items-center justify-center text-2xl shrink-0">

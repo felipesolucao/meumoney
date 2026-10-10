@@ -278,6 +278,38 @@ textarea {
   font-family: inherit;
 }
 
+/* Campos escuros em todas as telas, inclusive as que usam classes próprias
+   ou estilos inline. O seletor de tema preserva os estilos do modo claro.
+   Controles de ação, seleção e cor mantêm sua aparência específica. */
+:root[data-theme="dark"] :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="hidden"]):not([type="button"]):not([type="submit"]):not([type="reset"]),
+  select,
+  textarea
+) {
+  color-scheme: dark;
+  background-color: #000 !important;
+  color: #fff !important;
+  caret-color: #fff;
+}
+
+:root[data-theme="dark"] :is(input, textarea)::placeholder {
+  color: var(--color-muted);
+  opacity: 1;
+}
+
+:root[data-theme="dark"] :is(select option, select optgroup) {
+  background-color: #000;
+  color: #fff;
+}
+
+/* O navegador pinta o autofill por cima do background do campo. */
+:root[data-theme="dark"] :is(input, textarea, select):-webkit-autofill {
+  -webkit-text-fill-color: #fff !important;
+  caret-color: #fff;
+  -webkit-box-shadow: 0 0 0 1000px #000 inset !important;
+  box-shadow: 0 0 0 1000px #000 inset !important;
+}
+
 /* Área útil central, imitando a largura de um app mobile mesmo no desktop */
 .app-shell {
   max-width: var(--shell-max-width);

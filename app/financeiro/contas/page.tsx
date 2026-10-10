@@ -234,7 +234,7 @@ export default function ContasPage() {
     setNomeCartaoForm(cartao.nome);
     setIconeCartaoForm(cartao.icone);
     setBandeiraCartaoForm(cartao.bandeira || "");
-    setLimiteCartaoForm(cartao.limite || "");
+    setLimiteCartaoForm(cartao.limite ?? "");
     setDiaFechamentoForm(String(cartao.diaFechamento));
     setDiaVencimentoForm(String(cartao.diaVencimento));
     setContaIdCartaoForm(cartao.contaId);
@@ -279,6 +279,7 @@ export default function ContasPage() {
   async function salvarEdicaoCartao() {
     if (!editandoCartaoId) return;
     if (!nomeCartaoForm.trim()) return setErroCartao("Dê um nome para o cartão.");
+    if (!contaIdCartaoForm) return setErroCartao("Escolha a conta que paga a fatura.");
     setSalvandoCartao(true);
     const res = await fetch(`/api/cartoes/${editandoCartaoId}`, {
       method: "PATCH",
