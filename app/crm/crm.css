@@ -1688,3 +1688,14 @@
 .neg-boleto-alerta { border: 1px solid #b45309; background: #b453091a; border-radius: 12px; padding: 16px; margin: 16px 0; }
 .neg-boleto-alerta ul { padding-left: 20px; margin: 8px 0 0; }
 .neg-boleto-alerta li + li { margin-top: 8px; }
+
+/* Linhas compactas: o conteúdo completo permanece no título e nos detalhes. */
+.neg-company-list td { padding-top: 9px; padding-bottom: 9px; }
+.neg-company-list .neg-company-copy > strong,
+.neg-company-list .neg-company-vinculo {
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.neg-company-list .neg-company-copy > strong { flex: 1; }
+.neg-company-list .neg-company-copy .crm-botao-copiar { flex-shrink: 0; width: 22px; height: 22px; }
+.neg-painel .neg-excluir { margin-right: auto; }
+@media (max-width: 600px) { .neg-painel .neg-excluir { margin-right: 0; } }

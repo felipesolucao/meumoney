@@ -7,7 +7,7 @@ import { preencherEmpresa } from '../../lib/negociacaoEmpresa';
 import type { DadosNegociacao, Negociacao, ParcelaNegociacao } from '../../lib/negociacoes';
 import { centavos, gerarParcelas, hojeBrasil, moeda, STATUS, statusParcela, prepararNegociacaoParaSalvar } from '../../lib/negociacoes';
 
-export default function NegociacaoFormulario({ inicial, onSalvar, onFechar }: { inicial: Negociacao | null; onSalvar: (dados: DadosNegociacao) => Promise<void>; onFechar: () => void }) {
+export default function NegociacaoFormulario({ inicial, onSalvar, onExcluir, onFechar }: { inicial: Negociacao | null; onSalvar: (dados: DadosNegociacao) => Promise<void>; onExcluir?: () => Promise<void>; onFechar: () => void }) {
   const [dados, setDados] = useState<DadosNegociacao>(() => inicial ?? { leadId: null, empresa: '', cnpj: '', telefone: '', telefone2: '', tipo: 'avista', dataNegociacao: hojeBrasil(), debitoCentavos: 0, totalCentavos: 0, parcelasOriginais: 1, observacoes: '', parcelas: [] });
   const [minutosBoleto, setMinutosBoleto] = useState(0);
   const [avisoNotificacao, setAvisoNotificacao] = useState('');
@@ -16,6 +16,8 @@ export default function NegociacaoFormulario({ inicial, onSalvar, onFechar }: { 
   const [empresaVinculada, setEmpresaVinculada] = useState(inicial?.lead?.nome ?? (inicial?.leadId ? inicial.empresa : ''));
   const [erro, setErro] = useState('');
   const [salvando, setSalvando] = useState(false);
+  const [excluindo, setExcluindo] = useState(false);
+  const ocupado = salvando || excluindo;
   const [montado, setMontado] = useState(false);
   const painelRef = useRef<HTMLFormElement>(null);
   useEffect(() => {
@@ -33,7 +35,7 @@ export default function NegociacaoFormulario({ inicial, onSalvar, onFechar }: { 
     };
   }, []);
   useEffect(() => { if (montado) painelRef.current?.focus(); }, [montado]);
-  function fechar() { if (!salvando) onFechar(); }
+  function fechar() { if (!ocupado) onFechar(); }
   function teclado(e: React.KeyboardEvent<HTMLFormElement>) {
     if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); fechar(); }
     if (e.key !== 'Tab') return;
@@ -57,6 +59,13 @@ export default function NegociacaoFormulario({ inicial, onSalvar, onFechar }: { 
     catch (e) { setErro(e instanceof Error ? e.message : 'Não foi possível salvar.'); }
     finally { setSalvando(false); }
   }
+  async function excluir() {
+    if (!onExcluir || ocupado) return;
+    setErro(''); setExcluindo(true);
+    try { await onExcluir(); }
+    catch (e) { setErro(e instanceof Error ? e.message : 'Não foi possível excluir.'); }
+    finally { setExcluindo(false); }
+  }
   async function permitirNotificacoes() {
     if (!('Notification' in window)) { setAvisoNotificacao('Este navegador não oferece notificações. O aviso aparecerá nesta página.'); return; }
     try {
@@ -77,10 +86,10 @@ export default function NegociacaoFormulario({ inicial, onSalvar, onFechar }: { 
             <span className="crm-badge">{dados.leadId ? 'Vinculada ao funil' : 'Sem vínculo'}</span>
           </div>
         </div>
-        <button type="button" className="crm-icon-btn" onClick={fechar} disabled={salvando} aria-label="Fechar"><IconClose size={16} /></button>
+        <button type="button" className="crm-icon-btn" onClick={fechar} disabled={ocupado} aria-label="Fechar"><IconClose size={16} /></button>
       </div>
       <div className="crm-painel-body neg-painel-body">
-      <fieldset disabled={salvando}>
+      <fieldset disabled={ocupado}>
         <div className="neg-painel-colunas">
         <div className="crm-painel-secao">
         <h3 className="crm-painel-secao-titulo">Dados principais</h3>
@@ -141,8 +150,9 @@ export default function NegociacaoFormulario({ inicial, onSalvar, onFechar }: { 
       </fieldset>
       </div>
       <div className="crm-painel-footer">
-        <button className="crm-btn crm-btn-ghost" type="button" onClick={fechar} disabled={salvando}>Cancelar</button>
-        <button className="crm-btn crm-btn-primary" type="submit" disabled={salvando}>{salvando ? 'Salvando…' : 'Salvar negociação'}</button>
+        {inicial && onExcluir && <button className="crm-btn crm-btn-danger neg-excluir" type="button" disabled={ocupado} onClick={() => void excluir()}>{excluindo ? 'Excluindo…' : 'Excluir negociação'}</button>}
+        <button className="crm-btn crm-btn-ghost" type="button" onClick={fechar} disabled={ocupado}>Cancelar</button>
+        <button className="crm-btn crm-btn-primary" type="submit" disabled={ocupado}>{salvando ? 'Salvando…' : 'Salvar negociação'}</button>
       </div>
     </form>
   </div>, document.body);
