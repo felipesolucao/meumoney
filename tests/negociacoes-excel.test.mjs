@@ -72,3 +72,16 @@ test('Excel mensal exclui outras competências e preserva número original da pa
   assert.equal(setembro.getWorksheet('Negociações').getCell('H3').value, '2/4');
   assert.equal(setembro.getWorksheet('Resumo dos acordos').getCell('G7').value, 30);
 });
+test('Excel mantém acréscimos recebidos, contabiliza quitação e preserva saldo das demais parcelas', () => {
+  const n = acordo();
+  n.parcelas[0].pagoCentavos = 12000;
+  const workbook = criarRelatorioNegociacoes([n], { hoje: '2026-10-13' });
+  const detalhes = workbook.getWorksheet('Negociações');
+  assert.equal(detalhes.getCell('K2').value, 120);
+  assert.equal(detalhes.getCell('I2').value, 'PAGO');
+  const resumo = workbook.getWorksheet('Resumo dos acordos');
+  assert.equal(resumo.getCell('G6').value, 125);
+  assert.equal(resumo.getCell('H6').value, 70);
+  assert.equal(resumo.getCell('I6').value, '1/4');
+  assert.equal(resumo.getCell('H7').value, 70);
+});

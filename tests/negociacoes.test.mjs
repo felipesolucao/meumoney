@@ -32,7 +32,7 @@ test('validação aceita descontos e normaliza CNPJ, rejeita parcelas e datas in
   const n = acordo();
   assert.equal(validarNegociacao(n).cnpj, '12345678000190');
   for (const mudanca of [{ totalCentavos: 9999 }, { parcelasOriginais: 0 }, { tipo: 'avista' }, { dataNegociacao: '2026-02-30' }, { totalCentavos: Infinity }, { cnpj: '' }]) assert.throws(() => validarNegociacao({ ...n, ...mudanca }));
-  for (const mudanca of [{ pagoCentavos: 99999 }, { pagoCentavos: -1 }, { pagoCentavos: 100, dataPagamento: '' }, { pagoCentavos: 100, dataPagamento: '2099-01-01' }, { vencimento: '2026-02-30' }, { vencimento: '' }]) assert.throws(() => validarNegociacao({ ...n, parcelas: n.parcelas.map((p, i) => i ? p : { ...p, ...mudanca }) }));
+  for (const mudanca of [{ pagoCentavos: Number.MAX_SAFE_INTEGER + 1 }, { pagoCentavos: -1 }, { pagoCentavos: 100, dataPagamento: '' }, { pagoCentavos: 100, dataPagamento: '2099-01-01' }, { vencimento: '2026-02-30' }, { vencimento: '' }]) assert.throws(() => validarNegociacao({ ...n, parcelas: n.parcelas.map((p, i) => i ? p : { ...p, ...mudanca }) }));
 });
 test('indicadores deduplicam empresas, somam parciais e recuperam originais só na quitação', () => {
   const n = validarNegociacao(acordo());
@@ -151,4 +151,21 @@ test('boleto: contagem usa prazo absoluto e ignora boletos enviados ou sem timer
   }
   assert.equal(textoTimerBoleto(599), '09:59');
   assert.equal(textoTimerBoleto(0), '00:00');
+});
+
+test('aceita acréscimos no pagamento sem abater outras parcelas e persiste pela API', async () => {
+  const n = acordo();
+  n.parcelas[0].pagoCentavos = 99999;
+  n.parcelas[0].dataPagamento = '2026-01-20';
+  const validado = validarNegociacao(n);
+  assert.equal(validado.parcelas[0].pagoCentavos, 99999);
+  assert.equal(statusParcela(validado.parcelas[0]), 'pago');
+  assert.equal(lib.saldoNegociacao(validado), 6666);
+  const a = api();
+  const r = await a.item.PUT({ json: async () => ({ ...n, versao: 1 }) }, { params: { id: 'n1' } });
+  assert.equal(r.status, 200);
+  assert.equal(a.chamadas[0].data.parcelas[0].pagoCentavos, 99999);
+  const quitado = { ...n, parcelas: n.parcelas.map(p => ({ ...p, pagoCentavos: p.valorCentavos + 33, dataPagamento: '2026-01-20' })) };
+  assert.equal(lib.saldoNegociacao(quitado), 0);
+  assert.equal(statusNegociacao(quitado), 'pago');
 });

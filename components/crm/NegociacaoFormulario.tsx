@@ -5,7 +5,7 @@ import { IconClose } from '../Icons';
 import NegociacaoEmpresaBusca from './NegociacaoEmpresaBusca';
 import { preencherEmpresa } from '../../lib/negociacaoEmpresa';
 import type { DadosNegociacao, Negociacao, ParcelaNegociacao } from '../../lib/negociacoes';
-import { centavos, gerarParcelas, hojeBrasil, moeda, STATUS, statusParcela, prepararNegociacaoParaSalvar } from '../../lib/negociacoes';
+import { centavos, gerarParcelas, hojeBrasil, moeda, saldoNegociacao, STATUS, statusParcela, prepararNegociacaoParaSalvar } from '../../lib/negociacoes';
 
 export default function NegociacaoFormulario({ inicial, onSalvar, onExcluir, onFechar }: { inicial: Negociacao | null; onSalvar: (dados: DadosNegociacao) => Promise<void>; onExcluir?: () => Promise<void>; onFechar: () => void }) {
   const [dados, setDados] = useState<DadosNegociacao>(() => inicial ?? { leadId: null, empresa: '', cnpj: '', telefone: '', telefone2: '', tipo: 'avista', dataNegociacao: hojeBrasil(), debitoCentavos: 0, totalCentavos: 0, parcelasOriginais: 1, observacoes: '', parcelas: [] });
@@ -118,7 +118,7 @@ export default function NegociacaoFormulario({ inicial, onSalvar, onExcluir, onF
             <div><dt>Débito original</dt><dd>{moeda(dados.debitoCentavos)}</dd></div>
             <div><dt>Total negociado</dt><dd>{moeda(dados.totalCentavos)}</dd></div>
             <div><dt>Total pago</dt><dd>{moeda(dados.parcelas.reduce((s, p) => s + p.pagoCentavos, 0))}</dd></div>
-            <div><dt>Saldo a receber</dt><dd>{moeda(dados.totalCentavos - dados.parcelas.reduce((s, p) => s + p.pagoCentavos, 0))}</dd></div>
+            <div><dt>Saldo a receber</dt><dd>{moeda(saldoNegociacao(dados))}</dd></div>
           </dl>
           <section className="neg-boleto" aria-label="Envio do boleto">
             <h3 className="crm-painel-secao-titulo">Envio do boleto</h3>
@@ -133,17 +133,17 @@ export default function NegociacaoFormulario({ inicial, onSalvar, onExcluir, onF
         </div>
         <h3 className="crm-painel-secao-titulo">Parcelas e pagamentos</h3>
         <button className="crm-btn crm-btn-ghost" type="button" onClick={gerar}>{dados.parcelas.length ? 'Refazer cronograma mensal' : 'Gerar cronograma mensal'}</button>
-        <p className="crm-hint">Se o cronograma estiver vazio, ele será gerado automaticamente ao salvar. Ajuste valores e datas abaixo. Valor pago é o total já recebido da parcela; a data corresponde ao pagamento daquela parcela e define em qual mês ela aparece, mesmo em pagamentos parciais. Pago e Em atraso são calculados automaticamente.</p>
+        <p className="crm-hint">Se o cronograma estiver vazio, ele será gerado automaticamente ao salvar. Ajuste valores e datas abaixo. Valor pago é o total já recebido da parcela, incluindo juros e multas, e pode superar o valor original; a data corresponde ao pagamento daquela parcela e define em qual mês ela aparece, mesmo em pagamentos parciais. Pago e Em atraso são calculados automaticamente.</p>
         <div className="neg-table-scroll"><table className="neg-table"><thead><tr><th>Parcela</th><th>Valor (R$)</th><th>Vencimento</th><th>Situação</th><th>Total pago (R$)</th><th>Data do pagamento</th><th>Status</th><th>Ação</th></tr></thead>
           <tbody>{dados.parcelas.map((p, i) => <tr key={p.numero}>
             <td>{p.numero}/{dados.parcelas.length}</td>
             <td><input aria-label={`Valor parcela ${p.numero}`} className="crm-input" type="number" min="0.01" step="0.01" required value={p.valorCentavos / 100} onChange={e => parcela(i, { valorCentavos: centavos(e.target.value) })} /></td>
             <td><input aria-label={`Vencimento parcela ${p.numero}`} className="crm-input" type="date" value={p.vencimento} onChange={e => parcela(i, { vencimento: e.target.value })} /></td>
             <td><select aria-label={`Situação parcela ${p.numero}`} className="crm-input" value={p.situacao} onChange={e => parcela(i, { situacao: e.target.value as ParcelaNegociacao['situacao'] })}><option value="em_aberto">Em aberto</option><option value="aguardando">Aguardando pagamento</option></select></td>
-            <td><input aria-label={`Total pago parcela ${p.numero}`} className="crm-input" type="number" min="0" max={p.valorCentavos / 100} step="0.01" required value={p.pagoCentavos / 100} onChange={e => parcela(i, { pagoCentavos: centavos(e.target.value) })} /></td>
+            <td><input aria-label={`Total pago parcela ${p.numero}`} className="crm-input" type="number" min="0" step="0.01" required value={p.pagoCentavos / 100} onChange={e => parcela(i, { pagoCentavos: centavos(e.target.value) })} /></td>
             <td><input aria-label={`Data pagamento parcela ${p.numero}`} className="crm-input" type="date" required={p.pagoCentavos > 0} max={hojeBrasil()} value={p.dataPagamento} onChange={e => parcela(i, { dataPagamento: e.target.value })} /></td>
             <td><span className={`neg-status ${statusParcela(p)}`}>{STATUS[statusParcela(p)]}</span></td>
-            <td><button type="button" className="crm-btn crm-btn-ghost" disabled={p.pagoCentavos === p.valorCentavos} onClick={() => parcela(i, { pagoCentavos: p.valorCentavos, dataPagamento: hojeBrasil() })}>Quitar hoje</button></td>
+            <td><button type="button" className="crm-btn crm-btn-ghost" disabled={p.pagoCentavos >= p.valorCentavos} onClick={() => parcela(i, { pagoCentavos: p.valorCentavos, dataPagamento: hojeBrasil() })}>Quitar hoje</button></td>
           </tr>)}</tbody></table></div>
         <p className="crm-hint">Cronograma: {dados.parcelas.length} parcela(s) • Soma: {moeda(dados.parcelas.reduce((s, p) => s + p.valorCentavos, 0))}</p>
         {erro && <p className="crm-error" role="alert">{erro}</p>}

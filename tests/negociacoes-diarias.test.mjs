@@ -24,3 +24,12 @@ test('deduplica CNPJ por dia e no mês, soma acordos distintos e ordena datas', 
 test('mês vazio, inválido ou sem acordos retorna totais zerados', () => {
   for (const mes of ['', '2026-13', '2027-01']) assert.deepEqual(resumoNegociacoesDiarias([acordo('11111111111111', '2026-10-01', 100)], mes), { empresas: 0, negociado: 0, pago: 0, aReceber: 0, dias: [] });
 });
+test('acréscimos recebidos não compensam o saldo de outros acordos no dia ou mês', () => {
+  const resumo = resumoNegociacoesDiarias([
+    acordo('11111111111111', '2026-10-02', 100, 150),
+    acordo('22222222222222', '2026-10-02', 200, 0),
+  ], '2026-10');
+  assert.equal(resumo.pago, 150);
+  assert.equal(resumo.aReceber, 200);
+  assert.equal(resumo.dias[0].aReceber, 200);
+});

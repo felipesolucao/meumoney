@@ -58,7 +58,7 @@ export function validarNegociacao(valor: unknown): DadosNegociacao {
   const parcelas = n.parcelas.map((item: unknown, i): ParcelaNegociacao => {
     if (!item || typeof item !== 'object') throw new Error('Parcela inválida.');
     const p = item as Record<string, unknown>;
-    if (!inteiro(p.valorCentavos, 1) || !inteiro(p.pagoCentavos, 0, p.valorCentavos)) throw new Error(`Valor ou pagamento inválido na parcela ${i + 1}.`);
+    if (!inteiro(p.valorCentavos, 1) || !inteiro(p.pagoCentavos, 0, Number.MAX_SAFE_INTEGER)) throw new Error(`Valor ou pagamento inválido na parcela ${i + 1}.`);
     if (p.vencimento !== '' && !dataValida(p.vencimento)) throw new Error('Vencimento inválido.');
     if (p.situacao !== 'em_aberto' && p.situacao !== 'aguardando') throw new Error('Situação inválida.');
     if (p.situacao === 'aguardando' && !p.vencimento) throw new Error('Informe o vencimento para aguardar pagamento.');
@@ -87,4 +87,9 @@ export function prepararNegociacaoParaSalvar(dados: DadosNegociacao, quantidade:
 
 export function chaveEmpresa(n: DadosNegociacao & { clienteId?: string }) {
   return n.cnpj.replace(/\D/g, '') || n.leadId || n.clienteId || n.empresa;
+}
+
+// Acréscimos recebidos em uma parcela não abatem o principal de outras parcelas.
+export function saldoNegociacao(n: Pick<DadosNegociacao, 'parcelas' | 'totalCentavos'>): number {
+  return n.parcelas.length ? n.parcelas.reduce((s, p) => s + Math.max(0, p.valorCentavos - p.pagoCentavos), 0) : n.totalCentavos;
 }

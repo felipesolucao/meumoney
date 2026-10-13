@@ -1,6 +1,6 @@
 import ExcelJS from 'exceljs';
 import { negociacoesDoMes, type NegociacaoPeriodo } from './negociacoesPeriodo';
-import { hojeBrasil, statusParcela, type Negociacao } from './negociacoes';
+import { hojeBrasil, saldoNegociacao, statusParcela, type Negociacao } from './negociacoes';
 
 const MOEDA = '"R$" #,##0.00';
 const CORES = { pago: 'FF70A64F', aguardando: 'FF4C78D0', atrasado: 'FF990F08', em_aberto: 'FFFFFFFF' };
@@ -77,19 +77,19 @@ function adicionarResumo(workbook: ExcelJS.Workbook, negociacoes: Negociacao[], 
   resumo.addRow([`Filtros: ${filtros || 'Todas as negociações'}`]);
   for (let i = 1; i <= 3; i++) resumo.mergeCells(i, 1, i, 10);
   cabecalho(resumo, ['EMPRESA', 'CNPJ', 'DATA NEGOCIAÇÃO', 'PARCELAS ORIGINAIS', 'DÉBITO ORIGINAL', 'VALOR NO PERÍODO', 'PAGO DAS PARCELAS', 'SALDO NO PERÍODO', 'PARCELAS PAGAS NO PERÍODO', 'VENCIMENTO NO PERÍODO'], [48, 22, 19, 19, 20, 20, 20, 20, 19, 23], 5);
-  const totais = { debito: 0, negociado: 0, pago: 0 };
+  const totais = { debito: 0, negociado: 0, pago: 0, saldo: 0 };
   for (const n of negociacoes) {
     const pago = n.parcelas.reduce((total, p) => total + p.pagoCentavos, 0);
     const vencimento = n.parcelas.filter(p => p.pagoCentavos < p.valorCentavos && p.vencimento).map(p => p.vencimento).sort()[0];
-    const linha = resumo.addRow([n.empresa, cnpjExcel(n.cnpj), dataExcel(n.dataNegociacao), n.parcelasOriginais, n.debitoCentavos / 100, n.totalCentavos / 100, pago / 100, (n.totalCentavos - pago) / 100, `${n.parcelas.filter(p => p.pagoCentavos === p.valorCentavos).length}/${n.parcelas.length}`, dataExcel(vencimento || '')]);
+    const linha = resumo.addRow([n.empresa, cnpjExcel(n.cnpj), dataExcel(n.dataNegociacao), n.parcelasOriginais, n.debitoCentavos / 100, n.totalCentavos / 100, pago / 100, saldoNegociacao(n) / 100, `${n.parcelas.filter(p => p.pagoCentavos >= p.valorCentavos).length}/${n.parcelas.length}`, dataExcel(vencimento || '')]);
     formatarLinha(linha);
     for (const coluna of [2, 9]) linha.getCell(coluna).numFmt = '@';
     for (const coluna of [3, 10]) linha.getCell(coluna).numFmt = 'dd/mm/yyyy';
     for (const coluna of [5, 6, 7, 8]) linha.getCell(coluna).numFmt = MOEDA;
-    totais.debito += n.debitoCentavos; totais.negociado += n.totalCentavos; totais.pago += pago;
+    totais.debito += n.debitoCentavos; totais.negociado += n.totalCentavos; totais.pago += pago; totais.saldo += saldoNegociacao(n);
   }
   resumo.autoFilter = { from: 'A5', to: `J${Math.max(5, resumo.rowCount)}` };
-  const total = resumo.addRow(['TOTAL', '', '', '', totais.debito / 100, totais.negociado / 100, totais.pago / 100, (totais.negociado - totais.pago) / 100]);
+  const total = resumo.addRow(['TOTAL', '', '', '', totais.debito / 100, totais.negociado / 100, totais.pago / 100, totais.saldo / 100]);
   total.font = { bold: true };
   for (const coluna of [5, 6, 7, 8]) total.getCell(coluna).numFmt = MOEDA;
   resumo.addRow([]);
