@@ -1,5 +1,5 @@
 export type ParcelaNegociacao = { numero: number; valorCentavos: number; vencimento: string; pagoCentavos: number; dataPagamento: string; situacao: 'em_aberto' | 'aguardando' };
-export type DadosNegociacao = { leadId?: string | null; empresa: string; cnpj: string; telefone?: string; telefone2?: string; tipo: 'avista' | 'parcelada'; dataNegociacao: string; debitoCentavos: number; totalCentavos: number; parcelasOriginais: number; observacoes: string; parcelas: ParcelaNegociacao[] };
+export type DadosNegociacao = { boletoEnviado?: boolean; boletoLembreteEm?: string | null; leadId?: string | null; empresa: string; cnpj: string; telefone?: string; telefone2?: string; tipo: 'avista' | 'parcelada'; dataNegociacao: string; debitoCentavos: number; totalCentavos: number; parcelasOriginais: number; observacoes: string; parcelas: ParcelaNegociacao[] };
 export type Negociacao = DadosNegociacao & { id: string; versao: number; contratoId?: string; codigoContrato?: string; clienteId?: string; lead?: { id: string; nome: string; estagio: string } | null };
 export const STATUS = { em_aberto: 'Em aberto', aguardando: 'Aguardando pagamento', atrasado: 'Em atraso', pago: 'Pago' };
 export function hojeBrasil() { return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date()); }
@@ -28,6 +28,16 @@ export function validarNegociacao(valor: unknown): DadosNegociacao {
   if (typeof n.empresa !== 'string' || !n.empresa.trim() || n.empresa.length > 200) throw new Error('Informe a empresa (até 200 caracteres).');
   const cnpj = typeof n.cnpj === 'string' ? n.cnpj.replace(/\D/g, '') : '';
   if (cnpj.length !== 14) throw new Error('Informe o CNPJ com 14 dígitos.');
+  const boleto: Pick<DadosNegociacao, 'boletoEnviado' | 'boletoLembreteEm'> = {};
+  if (n.boletoEnviado !== undefined) {
+    if (typeof n.boletoEnviado !== 'boolean') throw new Error('Informe se o boleto foi enviado.');
+    boleto.boletoEnviado = n.boletoEnviado;
+  }
+  if (n.boletoLembreteEm !== undefined) {
+    if (n.boletoLembreteEm !== null && (typeof n.boletoLembreteEm !== 'string' || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(n.boletoLembreteEm) || !Number.isFinite(Date.parse(n.boletoLembreteEm)) || new Date(n.boletoLembreteEm).toISOString() !== n.boletoLembreteEm)) throw new Error('Prazo do boleto inválido.');
+    boleto.boletoLembreteEm = n.boletoLembreteEm as string | null;
+  }
+  if (boleto.boletoEnviado) boleto.boletoLembreteEm = null;
   const telefones: { telefone?: string; telefone2?: string } = {};
   for (const [campo, label] of [['telefone', 'Telefone 1'], ['telefone2', 'Telefone 2']] as const) {
     if (n[campo] === undefined) continue;
@@ -57,7 +67,7 @@ export function validarNegociacao(valor: unknown): DadosNegociacao {
   });
   if (parcelas.reduce((s, p) => s + p.valorCentavos, 0) !== n.totalCentavos) throw new Error('A soma das parcelas deve ser igual ao total negociado.');
   if (typeof n.observacoes !== 'string' || n.observacoes.length > 5000) throw new Error('Observações devem ter até 5.000 caracteres.');
-  return { ...(n.leadId !== undefined ? { leadId: n.leadId as string | null } : {}), empresa: n.empresa.trim(), cnpj, ...telefones, tipo: n.tipo, dataNegociacao: n.dataNegociacao, debitoCentavos: n.debitoCentavos, totalCentavos: n.totalCentavos, parcelasOriginais: n.parcelasOriginais, observacoes: n.observacoes, parcelas };
+  return { ...(n.leadId !== undefined ? { leadId: n.leadId as string | null } : {}), empresa: n.empresa.trim(), cnpj, ...telefones, ...boleto, tipo: n.tipo, dataNegociacao: n.dataNegociacao, debitoCentavos: n.debitoCentavos, totalCentavos: n.totalCentavos, parcelasOriginais: n.parcelasOriginais, observacoes: n.observacoes, parcelas };
 }
 export function gerarParcelas(total: number, quantidade: number, primeiroVencimento: string): ParcelaNegociacao[] {
   if (!inteiro(total, 1) || !inteiro(quantidade, 1, 360) || total < quantidade || !dataValida(primeiroVencimento)) throw new Error('Informe total, quantidade e primeiro vencimento válidos.');

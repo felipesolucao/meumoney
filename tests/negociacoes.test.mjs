@@ -119,3 +119,36 @@ test('API encaminha ambos os telefones na criação, edição e remoção dos n�
   assert.equal(a.chamadas[1].data.telefone, '');
   assert.equal(a.chamadas[1].data.telefone2, '(11) 98888-1234');
 });
+
+test('boleto: opcional, valida campos e cancela lembrete ao registrar envio', () => {
+  const prazo = '2026-10-13T14:15:00.000Z';
+  assert.equal(validarNegociacao(acordo()).boletoLembreteEm, undefined);
+  assert.equal(validarNegociacao({ ...acordo(), boletoEnviado: false, boletoLembreteEm: prazo }).boletoLembreteEm, prazo);
+  assert.equal(validarNegociacao({ ...acordo(), boletoEnviado: true, boletoLembreteEm: prazo }).boletoLembreteEm, null);
+  for (const campos of [{ boletoEnviado: 'sim' }, { boletoLembreteEm: '' }, { boletoLembreteEm: 123 }, { boletoLembreteEm: '2026-02-30T14:15:00.000Z' }]) assert.throws(() => validarNegociacao({ ...acordo(), ...campos }));
+});
+test('boleto: API persiste prazo e registro de envio com controle de versão', async () => {
+  const a = api();
+  const boletoLembreteEm = '2026-10-13T14:15:00.000Z';
+  const criada = await a.colecao.POST({ json: async () => ({ ...acordo(), boletoEnviado: false, boletoLembreteEm }) });
+  assert.equal(criada.status, 201);
+  assert.equal(a.chamadas[0].data.boletoLembreteEm, boletoLembreteEm);
+  const salva = await a.item.PUT({ json: async () => ({ ...acordo(), boletoEnviado: true, boletoLembreteEm, versao: 1 }) }, { params: { id: 'n1' } });
+  assert.equal(salva.status, 200);
+  assert.equal(a.chamadas[1].data.boletoEnviado, true);
+  assert.equal(a.chamadas[1].data.boletoLembreteEm, null);
+});
+test('boleto: contagem usa prazo absoluto e ignora boletos enviados ou sem timer', () => {
+  const { segundosBoleto, textoTimerBoleto } = load('lib/boletoTimer.ts');
+  const agora = Date.parse('2026-10-13T14:00:00.000Z');
+  assert.equal(segundosBoleto({}, agora), null);
+  for (const minutos of [10, 15]) {
+    const boleto = { boletoLembreteEm: new Date(agora + minutos * 60000).toISOString() };
+    assert.equal(segundosBoleto(boleto, agora), minutos * 60);
+    assert.equal(segundosBoleto(boleto, agora + 61000), minutos * 60 - 61);
+    assert.equal(segundosBoleto(boleto, agora + 3600000), 0);
+    assert.equal(segundosBoleto({ ...boleto, boletoEnviado: true }, agora), null);
+  }
+  assert.equal(textoTimerBoleto(599), '09:59');
+  assert.equal(textoTimerBoleto(0), '00:00');
+});

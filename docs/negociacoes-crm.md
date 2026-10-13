@@ -148,3 +148,13 @@ o acordo completo. A tabela mostra os dias com negociações em ordem cronológi
 Uma empresa em vários dias conta em cada dia, mas apenas uma vez no total mensal.
 A seção **Recebíveis do mês** mantém seu recorte por pagamento/vencimento das
 parcelas; por isso seus totais podem ser diferentes do resumo de negociações.
+
+### Lembrete de envio do boleto
+
+Na nova negociação, selecione “Iniciar timer de 10 minutos ao salvar” ou “Iniciar timer de 15 minutos ao salvar”. O padrão é não iniciar. O prazo absoluto é salvo com o acordo, preservando a contagem após recarregar a página. Negociações existentes não recebem timer automaticamente.
+
+A coluna “Envio do boleto” mostra a contagem somente quando ativada. Ao vencer, um alerta identifica a empresa mesmo fora dos filtros atuais. Nos detalhes da negociação, marque “Boleto enviado” e salve para cancelar o lembrete; desmarcar não reinicia a contagem.
+
+“Ativar notificações do navegador” solicita a permissão do navegador. É necessário manter a página de negociações aberta; abas suspensas ou o computador em repouso podem atrasar o aviso até a retomada. Sem permissão ou suporte, o alerta visual continua disponível. Não há notificação push com o aplicativo fechado. O navegador registra os avisos emitidos para não repeti-los ao recarregar.
+
+A implantação requer a migration `20261013120000_negociacoes_boleto_timer` antes de executar a versão nova.

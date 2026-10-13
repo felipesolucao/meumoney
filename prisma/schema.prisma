@@ -824,6 +824,8 @@ model AutomacaoCrm {
 }
 
 model NegociacaoCrm {
+  boletoEnviado Boolean @default(false)
+  boletoLembreteEm String?
   leadId String?
   lead LeadCrm? @relation(fields: [leadId], references: [id], onDelete: SetNull)
   id String @id @default(cuid())

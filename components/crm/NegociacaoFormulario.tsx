@@ -9,6 +9,8 @@ import { centavos, gerarParcelas, hojeBrasil, moeda, STATUS, statusParcela, prep
 
 export default function NegociacaoFormulario({ inicial, onSalvar, onFechar }: { inicial: Negociacao | null; onSalvar: (dados: DadosNegociacao) => Promise<void>; onFechar: () => void }) {
   const [dados, setDados] = useState<DadosNegociacao>(() => inicial ?? { leadId: null, empresa: '', cnpj: '', telefone: '', telefone2: '', tipo: 'avista', dataNegociacao: hojeBrasil(), debitoCentavos: 0, totalCentavos: 0, parcelasOriginais: 1, observacoes: '', parcelas: [] });
+  const [minutosBoleto, setMinutosBoleto] = useState(0);
+  const [avisoNotificacao, setAvisoNotificacao] = useState('');
   const [quantidade, setQuantidade] = useState(inicial?.parcelas.length ?? 1);
   const [primeiro, setPrimeiro] = useState(inicial?.parcelas[0]?.vencimento || hojeBrasil());
   const [empresaVinculada, setEmpresaVinculada] = useState(inicial?.lead?.nome ?? (inicial?.leadId ? inicial.empresa : ''));
@@ -51,9 +53,16 @@ export default function NegociacaoFormulario({ inicial, onSalvar, onFechar }: { 
   }
   async function salvar(e: React.FormEvent) {
     e.preventDefault(); setErro(''); setSalvando(true);
-    try { await onSalvar(prepararNegociacaoParaSalvar(dados, quantidade, primeiro)); }
+    try { await onSalvar(prepararNegociacaoParaSalvar({ ...dados, ...(!inicial ? { boletoLembreteEm: minutosBoleto && !dados.boletoEnviado ? new Date(Date.now() + minutosBoleto * 60000).toISOString() : null } : {}) }, quantidade, primeiro)); }
     catch (e) { setErro(e instanceof Error ? e.message : 'Não foi possível salvar.'); }
     finally { setSalvando(false); }
+  }
+  async function permitirNotificacoes() {
+    if (!('Notification' in window)) { setAvisoNotificacao('Este navegador não oferece notificações. O aviso aparecerá nesta página.'); return; }
+    try {
+      const permissao = await Notification.requestPermission();
+      setAvisoNotificacao(permissao === 'granted' ? 'Notificações do navegador ativadas.' : 'Notificações não autorizadas. O aviso continuará aparecendo nesta página.');
+    } catch { setAvisoNotificacao('Não foi possível ativar notificações. O aviso aparecerá nesta página.'); }
   }
   if (!montado) return null;
   return createPortal(<div className="crm-app crm-painel-overlay neg-overlay" onClick={fechar}>
@@ -102,6 +111,14 @@ export default function NegociacaoFormulario({ inicial, onSalvar, onFechar }: { 
             <div><dt>Total pago</dt><dd>{moeda(dados.parcelas.reduce((s, p) => s + p.pagoCentavos, 0))}</dd></div>
             <div><dt>Saldo a receber</dt><dd>{moeda(dados.totalCentavos - dados.parcelas.reduce((s, p) => s + p.pagoCentavos, 0))}</dd></div>
           </dl>
+          <section className="neg-boleto" aria-label="Envio do boleto">
+            <h3 className="crm-painel-secao-titulo">Envio do boleto</h3>
+            <label className="neg-boleto-check"><input type="checkbox" checked={dados.boletoEnviado ?? false} onChange={e => { setDados(d => ({ ...d, boletoEnviado: e.target.checked, boletoLembreteEm: e.target.checked ? null : d.boletoLembreteEm })); if (e.target.checked) setMinutosBoleto(0); }} /> Boleto enviado</label>
+            {!inicial && !dados.boletoEnviado && <label>Lembrete para enviar o novo boleto<select className="crm-input" value={minutosBoleto} onChange={e => setMinutosBoleto(Number(e.target.value))}><option value={0}>Não iniciar timer</option><option value={10}>Iniciar timer de 10 minutos ao salvar</option><option value={15}>Iniciar timer de 15 minutos ao salvar</option></select></label>}
+            {inicial?.boletoLembreteEm && !dados.boletoEnviado && <p className="crm-hint">Lembrete programado para {new Date(inicial.boletoLembreteEm).toLocaleString('pt-BR')}. Marque o boleto como enviado e salve para encerrar o lembrete.</p>}
+            {(minutosBoleto > 0 || dados.boletoLembreteEm) && !dados.boletoEnviado && <><button type="button" className="crm-btn crm-btn-ghost" onClick={() => void permitirNotificacoes()}>Ativar notificações do navegador</button><p className="crm-hint">Mantenha a página de negociações aberta para receber o aviso. Abas suspensas podem atrasar a notificação.</p></>}
+            {avisoNotificacao && <p className="crm-hint" role="status">{avisoNotificacao}</p>}
+          </section>
           <label>Observações<textarea className="crm-input" maxLength={5000} rows={6} value={dados.observacoes} onChange={e => campo('observacoes', e.target.value)} /></label>
         </aside>
         </div>
