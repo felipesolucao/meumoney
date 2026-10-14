@@ -149,6 +149,19 @@ Uma empresa em vários dias conta em cada dia, mas apenas uma vez no total mensa
 A seção **Recebíveis do mês** mantém seu recorte por pagamento/vencimento das
 parcelas; por isso seus totais podem ser diferentes do resumo de negociações.
 
+O resumo exibe valores e percentuais de recebido (verde), a receber (amarelo)
+e em atraso (vermelho), nos cartões, por dia e no total mensal. Os percentuais
+usam o valor negociado do respectivo período; sem valor negociado, mostram 0%.
+Atraso inclui apenas o saldo não pago das parcelas vencidas antes de hoje
+(no fuso de São Paulo), e já está incluído no saldo a receber. Acréscimos
+recebidos podem fazer recebido + a receber superar 100% do negociado.
+
+Trocar de aba ou janela e voltar à tela de negociações não dispara busca nem
+substitui a tabela por “Carregando”. Os dados são buscados ao abrir a página,
+no botão “Atualizar” e após alterações. Os timers de boleto continuam ativos.
+Navegar para outra rota e reabrir negociações faz uma nova carga; a troca de
+versão do service worker também mantém seu recarregamento próprio.
+
 ### Lembrete de envio do boleto
 
 Na nova negociação, selecione “Iniciar timer de 10 minutos ao salvar” ou “Iniciar timer de 15 minutos ao salvar”. O padrão é não iniciar. O prazo absoluto é salvo com o acordo, preservando a contagem após recarregar a página. Negociações existentes não recebem timer automaticamente.

@@ -1,6 +1,6 @@
 'use client';
 import { useCallback, useEffect, useState } from 'react';
-import { resumoNegociacoesDiarias } from '../../lib/negociacoesDiarias';
+import { percentualNegociado, resumoNegociacoesDiarias } from '../../lib/negociacoesDiarias';
 import { negociacoesDoMes } from '../../lib/negociacoesPeriodo';
 import ContratoPagamentos from './ContratoPagamentos';
 import Link from 'next/link';
@@ -39,10 +39,9 @@ export default function NegociacoesPagina({ nomeUsuario }: { nomeUsuario: string
     finally { setCarregando(false); }
   }, []);
   useEffect(() => { void carregar(); const timer = window.setInterval(() => setHoje(hojeBrasil()), 60000); return () => window.clearInterval(timer); }, [carregar]);
-  useEffect(() => { const atualizar = () => { if (!document.hidden) void carregar(); }; window.addEventListener('focus', atualizar); return () => window.removeEventListener('focus', atualizar); }, [carregar]);
   const filtradas = negociacoesDoMes(lista, mes).filter(n => (!tipo || n.tipo === tipo) && (!status || statusNegociacao(n, hoje) === status) && (!busca || n.empresa.toLocaleLowerCase('pt-BR').includes(busca.toLocaleLowerCase('pt-BR')) || n.cnpj.includes(busca.replace(/\D/g, '') || busca)));
   const resumo = resumoNegociacoes(filtradas);
-  const diario = resumoNegociacoesDiarias(lista.filter(n => (!tipo || n.tipo === tipo) && (!status || statusNegociacao(n, hoje) === status) && (!busca || n.empresa.toLocaleLowerCase('pt-BR').includes(busca.toLocaleLowerCase('pt-BR')) || n.cnpj.includes(busca.replace(/\D/g, '') || busca))), mes);
+  const diario = resumoNegociacoesDiarias(lista.filter(n => (!tipo || n.tipo === tipo) && (!status || statusNegociacao(n, hoje) === status) && (!busca || n.empresa.toLocaleLowerCase('pt-BR').includes(busca.toLocaleLowerCase('pt-BR')) || n.cnpj.includes(busca.replace(/\D/g, '') || busca))), mes, hoje);
   async function exportarExcel() {
     setExportando(true); setErro('');
     try {
@@ -83,14 +82,22 @@ export default function NegociacoesPagina({ nomeUsuario }: { nomeUsuario: string
       <h2 id="neg-daily-title">Resumo diário de negociações · {mes.split('-').reverse().join('/')}</h2>
       <p className="crm-hint">Por data da negociação, com os filtros de empresa, tipo e status do acordo. Empresas únicas por documento ou cadastro; valores completos dos acordos feitos no mês, incluindo parcelas futuras. O saldo a receber considera o principal pendente de cada parcela. Acréscimos recebidos não abatem outras parcelas.</p>
       {carregando ? <p role="status">Carregando resumo diário…</p> : <>
-        <div className="neg-kpis">{[['Empresas atendidas no mês', diario.empresas], ['Valor negociado', moeda(diario.negociado)], ['Já recebido', moeda(diario.pago)], ['A receber dos acordos', moeda(diario.aReceber)]].map(([label, valor]) => <article key={label} className="neg-kpi"><span>{label}</span><strong>{valor}</strong></article>)}</div>
+        <div className="neg-kpis neg-daily-kpis">
+          <article className="neg-kpi"><span>Empresas atendidas no mês</span><strong>{diario.empresas}</strong></article>
+          <article className="neg-kpi"><span>Valor negociado</span><strong>{moeda(diario.negociado)}</strong></article>
+          {([
+            ['Já recebido', diario.pago, 'recebido'],
+            ['A receber dos acordos', diario.aReceber, 'a-receber'],
+            ['Em atraso', diario.emAtraso, 'atraso'],
+          ] as const).map(([label, valor, classe]) => <article key={classe} className={`neg-kpi neg-daily-${classe}`}><span>{label}</span><strong>{moeda(valor)}</strong><small>{percentualNegociado(valor, diario.negociado)} do negociado</small></article>)}
+        </div>
         {diario.dias.length ? <div className="neg-table-scroll neg-daily-table" role="region" aria-label="Resumo por dia da negociação" tabIndex={0}>
-          <table className="neg-table"><thead><tr><th scope="col">Dia da negociação</th><th scope="col">Empresas atendidas</th><th scope="col">Valor negociado</th><th scope="col">Já recebido</th><th scope="col">A receber</th></tr></thead>
-            <tbody>{diario.dias.map(dia => <tr key={dia.data}><th scope="row">{data(dia.data)}</th><td>{dia.empresas}</td><td>{moeda(dia.negociado)}</td><td>{moeda(dia.pago)}</td><td><strong>{moeda(dia.aReceber)}</strong></td></tr>)}</tbody>
-            <tfoot><tr><th scope="row">Total do mês (empresas únicas)</th><td>{diario.empresas}</td><td>{moeda(diario.negociado)}</td><td>{moeda(diario.pago)}</td><td>{moeda(diario.aReceber)}</td></tr></tfoot>
+          <table className="neg-table"><thead><tr><th scope="col">Dia da negociação</th><th scope="col">Empresas atendidas</th><th scope="col">Valor negociado</th><th scope="col" className="neg-daily-recebido">Já recebido · %</th><th scope="col" className="neg-daily-a-receber">A receber · %</th><th scope="col" className="neg-daily-atraso">Em atraso · %</th></tr></thead>
+            <tbody>{diario.dias.map(dia => <tr key={dia.data}><th scope="row">{data(dia.data)}</th><td>{dia.empresas}</td><td>{moeda(dia.negociado)}</td><td className="neg-daily-recebido"><strong>{moeda(dia.pago)}</strong><small>{percentualNegociado(dia.pago, dia.negociado)}</small></td><td className="neg-daily-a-receber"><strong>{moeda(dia.aReceber)}</strong><small>{percentualNegociado(dia.aReceber, dia.negociado)}</small></td><td className="neg-daily-atraso"><strong>{moeda(dia.emAtraso)}</strong><small>{percentualNegociado(dia.emAtraso, dia.negociado)}</small></td></tr>)}</tbody>
+            <tfoot><tr><th scope="row">Total do mês (empresas únicas)</th><td>{diario.empresas}</td><td>{moeda(diario.negociado)}</td><td className="neg-daily-recebido">{moeda(diario.pago)}<small>{percentualNegociado(diario.pago, diario.negociado)}</small></td><td className="neg-daily-a-receber">{moeda(diario.aReceber)}<small>{percentualNegociado(diario.aReceber, diario.negociado)}</small></td><td className="neg-daily-atraso">{moeda(diario.emAtraso)}<small>{percentualNegociado(diario.emAtraso, diario.negociado)}</small></td></tr></tfoot>
           </table>
         </div> : <p className="neg-empty">Nenhuma negociação feita no mês selecionado corresponde aos filtros.</p>}
-        <p className="crm-hint">Uma empresa pode aparecer em mais de um dia, mas é contada apenas uma vez no total do mês.</p>
+        <p className="crm-hint">Percentuais sobre o valor negociado de cada dia ou do mês. Em atraso é a parte do saldo a receber com vencimento anterior a hoje. Acréscimos recebidos podem fazer a soma dos percentuais de recebido e a receber superar 100%. Uma empresa pode aparecer em mais de um dia, mas é contada apenas uma vez no total do mês.</p>
       </>}
     </section>
     <h2>Recebíveis do mês</h2>

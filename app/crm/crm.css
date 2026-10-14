@@ -1662,6 +1662,14 @@
 .neg-vinculo { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; padding: 12px; margin-bottom: 12px; border: 1px solid var(--crm-border-strong); border-radius: 8px; }
 
 .neg-daily { margin: 24px 0; padding-bottom: 12px; border-bottom: 1px solid var(--crm-border); }
+.neg-daily-kpis { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.neg-daily .neg-daily-recebido { color: #86efac; }
+.neg-daily .neg-daily-a-receber { color: #fde047; }
+.neg-daily .neg-daily-atraso { color: #fca5a5; }
+.neg-daily-kpis small { display: block; margin-top: 8px; }
+.neg-daily-table td small { color: inherit; }
+@media (max-width: 1200px) { .neg-daily-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 600px) { .neg-daily-kpis { grid-template-columns: 1fr; } }
 .neg-daily-table { margin-top: 16px; max-height: 420px; overflow: auto; }
 .neg-daily-table thead th { position: sticky; top: 0; z-index: 1; }
 .neg-daily-table tbody th { background: transparent; color: inherit; font-size: 13px; font-weight: 400; }
