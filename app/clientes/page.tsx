@@ -10,7 +10,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
+import Link from "../../components/LinkComRetorno";
 import { iniciais } from "../../lib/calculos";
 import Badge, { tomEScore } from "../../components/Badge";
 import { IconBell } from "../../components/Icons";

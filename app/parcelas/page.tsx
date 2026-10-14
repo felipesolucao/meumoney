@@ -13,10 +13,11 @@
 
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import Link from "next/link";
+import Link from "../../components/LinkComRetorno";
 import { agruparPorDia, formatarMoeda, formatarData } from "../../lib/calculos";
 import Badge, { tomEStatusParcela } from "../../components/Badge";
-import { IconArrowLeft, IconChevronRight } from "../../components/Icons";
+import { IconChevronRight } from "../../components/Icons";
+import BotaoVoltar from "../../components/BotaoVoltar";
 import MesSeletor from "../../components/MesSeletor";
 
 type ParcelaComContrato = {
@@ -54,21 +55,27 @@ export default function Parcelas() {
 
 function ListaParcelas() {
   const searchParams = useSearchParams();
-  const [aba, setAba] = useState<Aba>("hoje");
+  const abas: Aba[] = ["hoje", "amanha", "atrasadas", "por_data", "recebidas", "pendentes"];
+  const abaParam = searchParams.get("aba") as Aba;
+  const aba = abas.includes(abaParam) ? abaParam : "hoje";
   const [parcelas, setParcelas] = useState<ParcelaComContrato[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
   const { inicio, fim } = inicioFimMes();
-  const [de, setDe] = useState(inicio);
-  const [ate, setAte] = useState(fim);
-  const [ano, setAno] = useState(new Date().getFullYear());
-  const [mes, setMes] = useState(new Date().getMonth());
+  const de = searchParams.get("de") || inicio;
+  const ate = searchParams.get("ate") || fim;
+  const anoParam = Number(searchParams.get("ano"));
+  const mesParam = Number(searchParams.get("mes"));
+  const ano = anoParam >= 1 && anoParam <= 9999 ? anoParam : new Date().getFullYear();
+  const mes = searchParams.has("mes") && mesParam >= 0 && mesParam <= 11 ? mesParam : new Date().getMonth();
   const usaFiltroMes = aba === "pendentes" || aba === "recebidas";
 
-  useEffect(() => {
-    const destino = searchParams.get("aba");
-    setAba(destino === "recebidas" || destino === "pendentes" || destino === "atrasadas" ? destino : "hoje");
-  }, [searchParams]);
+  function atualizarFiltros(valores: Record<string, string>) {
+    const query = new URLSearchParams(window.location.search);
+    for (const [chave, valor] of Object.entries(valores)) query.set(chave, valor);
+    // Atualiza a entrada atual sem criar uma etapa de voltar para cada filtro.
+    window.history.replaceState(null, "", `?${query.toString()}`);
+  }
 
   useEffect(() => {
     setCarregando(true);
@@ -112,9 +119,7 @@ function ListaParcelas() {
   return (
     <div>
       <div className="header-gradient flex items-center gap-3">
-        <Link href="/contratos" aria-label="Voltar para contratos" className="icon-btn text-foreground flex-shrink-0">
-          <IconArrowLeft size={19} />
-        </Link>
+        <BotaoVoltar href="/contratos" />
         <div>
         <h1 className="text-2xl font-bold">Parcelas</h1>
         <p className="text-muted text-sm">{parcelas.length} no total</p>
@@ -135,7 +140,7 @@ function ListaParcelas() {
           ).map((a) => (
             <button
               key={a.valor}
-              onClick={() => setAba(a.valor)}
+              onClick={() => atualizarFiltros({ aba: a.valor })}
               aria-pressed={aba === a.valor}
               className={`px-4 py-2 rounded-pill text-sm font-semibold whitespace-nowrap ${
                 aba === a.valor ? "bg-primary text-white" : "bg-card border border-border text-foreground"
@@ -151,16 +156,16 @@ function ListaParcelas() {
         <div className="parcelas-top-row space-y-4">
           {usaFiltroMes && (
             <div className="parcelas-config card">
-              <MesSeletor ano={ano} mes={mes} onMudar={(a, m) => { setAno(a); setMes(m); }} />
+              <MesSeletor ano={ano} mes={mes} onMudar={(a, m) => { atualizarFiltros({ ano: String(a), mes: String(m) }); }} />
             </div>
           )}
           {aba === "por_data" && (
             <div className="parcelas-config card grid grid-cols-1 min-[380px]:grid-cols-2 gap-3">
               <label className="min-w-0 text-xs font-semibold text-muted">De
-                <input type="date" value={de} max={ate} onChange={(e) => setDe(e.target.value)} className="mt-1 block w-full min-w-0 rounded-md border border-border p-2 text-sm text-foreground outline-none" />
+                <input type="date" value={de} max={ate} onChange={(e) => atualizarFiltros({ de: e.target.value })} className="mt-1 block w-full min-w-0 rounded-md border border-border p-2 text-sm text-foreground outline-none" />
               </label>
               <label className="min-w-0 text-xs font-semibold text-muted">Até
-                <input type="date" value={ate} min={de} onChange={(e) => setAte(e.target.value)} className="mt-1 block w-full min-w-0 rounded-md border border-border p-2 text-sm text-foreground outline-none" />
+                <input type="date" value={ate} min={de} onChange={(e) => atualizarFiltros({ ate: e.target.value })} className="mt-1 block w-full min-w-0 rounded-md border border-border p-2 text-sm text-foreground outline-none" />
               </label>
             </div>
           )}

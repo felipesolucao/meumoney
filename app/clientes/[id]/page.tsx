@@ -5,7 +5,7 @@
 // internas e todos os contratos vinculados a ele, com o progresso de
 // pagamento de cada um.
 // ============================================================================
-import Link from "next/link";
+import Link from "../../../components/LinkComRetorno";
 import { notFound } from "next/navigation";
 import { prisma } from "../../../lib/prisma";
 import { formatarMoeda, formatarData, iniciais, statusDoContrato } from "../../../lib/calculos";

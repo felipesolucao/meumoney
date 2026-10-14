@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { percentualNegociado, resumoNegociacoesDiarias } from '../../lib/negociacoesDiarias';
 import { negociacoesDoMes } from '../../lib/negociacoesPeriodo';
 import ContratoPagamentos from './ContratoPagamentos';
-import Link from 'next/link';
+import Link from "../LinkComRetorno";
 import CrmTopNav from './CrmTopNav';
 import BotaoCopiar from './BotaoCopiar';
 import { useRouter } from 'next/navigation';

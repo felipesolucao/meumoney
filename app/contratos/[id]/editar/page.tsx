@@ -20,6 +20,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatarMoeda, Frequencia, TipoEmprestimo } from "../../../../lib/calculos";
 import { isoHoje } from "../../../../lib/periodo";
+import { caminhoRetorno } from "../../../../lib/navegacao";
 import BotaoVoltar from "../../../../components/BotaoVoltar";
 import CampoMoeda, { valorFormatadoParaNumero, numeroParaValorFormatado } from "../../../../components/CampoMoeda";
 
@@ -108,7 +109,7 @@ export default function EditarContratoPage({ params }: { params: { id: string } 
     });
     setSalvando(false);
     if (res.ok) {
-      router.push(`/contratos/${params.id}`);
+      router.replace(caminhoRetorno(new URLSearchParams(window.location.search).get("voltar"), `/contratos/${params.id}`));
     } else {
       const data = await res.json();
       setErro(data.error || "Não foi possível salvar as alterações.");

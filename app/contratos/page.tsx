@@ -16,7 +16,7 @@
 
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import Link from "next/link";
+import Link from "../../components/LinkComRetorno";
 import { formatarMoeda, statusDaParcela, statusDoContrato, formatarData } from "../../lib/calculos";
 import { calcularIntervaloPeriodo, isoHoje } from "../../lib/periodo";
 import Badge, { tomEStatusContrato } from "../../components/Badge";

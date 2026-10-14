@@ -10,6 +10,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { caminhoRetorno } from "../../../../lib/navegacao";
 import BotaoVoltar from "../../../../components/BotaoVoltar";
 import { useToast } from "../../../../components/ToastProvider";
 import { IconTrash } from "../../../../components/Icons";
@@ -94,7 +95,7 @@ export default function EditarClientePage() {
     setSalvando(false);
     if (res.ok) {
       showToast("Cliente atualizado com sucesso!");
-      router.push(`/clientes/${params.id}`);
+      router.replace(caminhoRetorno(new URLSearchParams(window.location.search).get("voltar"), `/clientes/${params.id}`));
     } else {
       const data = await res.json();
       setErro(data.error || "Não foi possível salvar as alterações.");

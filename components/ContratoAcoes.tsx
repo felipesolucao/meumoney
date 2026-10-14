@@ -3,7 +3,7 @@
 // ============================================================================
 "use client";
 
-import Link from "next/link";
+import Link from "./LinkComRetorno";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Frequencia, TipoEmprestimo } from "../lib/calculos";
