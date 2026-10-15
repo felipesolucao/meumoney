@@ -16,3 +16,10 @@ export function negociacoesDoMes(negociacoes: NegociacaoPeriodo[], mes: string):
       totalCentavos: parcelas.reduce((total, p) => total + p.valorCentavos, 0) }];
   });
 }
+
+// null seleciona explicitamente todo o histórico, inclusive registros sem datas de parcelas.
+export function negociacoesDoPeriodo(negociacoes: NegociacaoPeriodo[], mes: string | null): NegociacaoPeriodo[] {
+  return mes === null
+    ? negociacoes.map(n => ({ ...n, totalParcelasAcordo: n.totalParcelasAcordo ?? n.parcelas.length }))
+    : negociacoesDoMes(negociacoes, mes);
+}

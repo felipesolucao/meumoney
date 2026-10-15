@@ -105,11 +105,12 @@ visíveis após os filtros por empresa/CNPJ, mês de vencimento, tipo e status.
 A exportação usa os dados já salvos; alterações abertas no formulário precisam
 ser salvas antes. O botão fica indisponível enquanto carrega ou sem resultados.
 
-A aba **Negociações** segue o modelo de 12 colunas: Ordem, Situação, Empresa,
+A aba **Negociações** segue o modelo de 13 colunas: Ordem, Situação, Empresa,
 CNPJ, Parcelas em atraso, Data negociação, Débito, Negociação, Status,
-Data pgto, Valor pago e Obs. Há uma linha por parcela, numerada `1/3`, `2/3`
+Data pgto, Valor pago, Valor a receber e Obs. Há uma linha por parcela, numerada `1/3`, `2/3`
 etc. Status e cores são da parcela: verde para pago, azul para aguardando,
-vermelho para atrasada e branco para em aberto. O valor pago é o efetivamente
+vermelho para atrasada e branco para em aberto. O valor a receber é o saldo de cada parcela (valor original menos pagamentos,
+com mínimo zero), incluindo atrasadas e aguardando pagamento. O valor pago é o efetivamente
 recebido; a data é a do último pagamento registrado. Datas e moedas são células
 nativas do Excel; CNPJ e numeração da parcela são texto. Cabeçalho congelado,
 filtros e impressão horizontal estão configurados.
@@ -171,3 +172,21 @@ A coluna “Envio do boleto” mostra a contagem somente quando ativada. Ao venc
 “Ativar notificações do navegador” solicita a permissão do navegador. É necessário manter a página de negociações aberta; abas suspensas ou o computador em repouso podem atrasar o aviso até a retomada. Sem permissão ou suporte, o alerta visual continua disponível. Não há notificação push com o aplicativo fechado. O navegador registra os avisos emitidos para não repeti-los ao recarregar.
 
 A implantação requer a migration `20261013120000_negociacoes_boleto_timer` antes de executar a versão nova.
+
+
+## Histórico completo de negociações e contratos
+
+A consulta agora abre em **Todo o histórico**, incluindo contratos quitados,
+negociações antigas e parcelas sem datas. Os indicadores somam o valor total,
+o recebido acumulado e o saldo dos registros filtrados. A tabela identifica as
+datas e os valores acumulados recebidos por parcela. Não representa um extrato
+de cada pagamento parcial: o cadastro mantém a data do último pagamento.
+
+Escolha **Mês específico** para consultar o recorte mensal existente, por data
+do pagamento (quando houver valor pago e data) ou vencimento. O resumo diário
+por data de negociação só aparece nessa modalidade e não deve ser confundido
+com recebimentos de contratos antigos no mês. Limpar filtros retorna ao histórico
+completo. O Excel acompanha a seleção e identifica quando abrange todo o histórico.
+
+Esta alteração não modifica registros nem exige migração. A presença dos contratos
+reais relatados pelo usuário precisa ser conferida no ambiente de produção.

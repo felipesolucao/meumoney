@@ -58,3 +58,21 @@ test('remover pagamento devolve parcela ao mês do vencimento', () => {
   assert.deepEqual(negociacoesDoMes([{ ...n, parcelas: [parcela] }], '2026-09'), []);
   assert.deepEqual(negociacoesDoMes([{ ...n, parcelas: [parcela] }], '2026-11')[0].parcelas, [parcela]);
 });
+
+test('histórico completo preserva contratos quitados, acordos antigos e parcelas sem data', () => {
+  const contrato = { ...n, id: 'contrato:c1', contratoId: 'c1', parcelas: [
+    { numero: 1, vencimento: '2026-09-10', valorCentavos: 2500, pagoCentavos: 2500, dataPagamento: '2026-10-01' },
+  ], totalCentavos: 2500 };
+  const entrada = [n, contrato];
+  const antes = JSON.stringify(entrada);
+  const resultado = mod.exports.negociacoesDoPeriodo(entrada, null);
+  assert.equal(resultado.length, 2);
+  assert.equal(resultado.reduce((s, item) => s + item.totalCentavos, 0), 12500);
+  assert.equal(resultado.reduce((s, item) => s + item.parcelas.reduce((t, p) => t + p.pagoCentavos, 0), 0), 4000);
+  assert.equal(resultado[0].parcelas.length, 4);
+  assert.equal(resultado[1].totalParcelasAcordo, 1);
+  assert.equal(JSON.stringify(entrada), antes);
+  const mensal = mod.exports.negociacoesDoPeriodo(entrada, '2026-10');
+  assert.equal(mensal.length, 2);
+  assert.equal(mensal[1].parcelas[0].dataPagamento, '2026-10-01');
+});
