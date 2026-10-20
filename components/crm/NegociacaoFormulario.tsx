@@ -54,10 +54,24 @@ export default function NegociacaoFormulario({ inicial, onSalvar, onExcluir, onF
     catch (e) { setErro(e instanceof Error ? e.message : 'Não foi possível gerar parcelas.'); }
   }
   async function salvar(e: React.FormEvent) {
-    e.preventDefault(); setErro(''); setSalvando(true);
-    try { await onSalvar(prepararNegociacaoParaSalvar({ ...dados, ...(!inicial ? { boletoLembreteEm: minutosBoleto && !dados.boletoEnviado ? new Date(Date.now() + minutosBoleto * 60000).toISOString() : null } : {}) }, quantidade, primeiro)); }
+    e.preventDefault();
+    await salvarDados(dados);
+  }
+  async function salvarDados(proximos: DadosNegociacao) {
+    if (ocupado) return;
+    setErro(''); setSalvando(true);
+    try { await onSalvar(prepararNegociacaoParaSalvar({ ...proximos, ...(!inicial ? { boletoLembreteEm: minutosBoleto && !dados.boletoEnviado ? new Date(Date.now() + minutosBoleto * 60000).toISOString() : null } : {}) }, quantidade, primeiro)); }
     catch (e) { setErro(e instanceof Error ? e.message : 'Não foi possível salvar.'); }
     finally { setSalvando(false); }
+  }
+  async function pagarCombinado(i: number) {
+    const p = dados.parcelas[i];
+    if (!p.vencimento || p.vencimento > hojeBrasil()) {
+      setErro('Para usar Pago, informe um vencimento até hoje. Se recebeu em outra data, preencha o total pago e a data do pagamento e salve.');
+      return;
+    }
+    const proximos = { ...dados, parcelas: dados.parcelas.map((item, j) => j === i ? { ...item, pagoCentavos: item.valorCentavos, dataPagamento: item.vencimento } : item) };
+    await salvarDados(proximos);
   }
   async function excluir() {
     if (!onExcluir || ocupado) return;
@@ -134,17 +148,20 @@ export default function NegociacaoFormulario({ inicial, onSalvar, onExcluir, onF
         <h3 className="crm-painel-secao-titulo">Parcelas e pagamentos</h3>
         <button className="crm-btn crm-btn-ghost" type="button" onClick={gerar}>{dados.parcelas.length ? 'Refazer cronograma mensal' : 'Gerar cronograma mensal'}</button>
         <p className="crm-hint">Se o cronograma estiver vazio, ele será gerado automaticamente ao salvar. Ajuste valores e datas abaixo. Valor pago é o total já recebido da parcela, incluindo juros e multas, e pode superar o valor original; a data corresponde ao pagamento daquela parcela e define em qual mês ela aparece, mesmo em pagamentos parciais. Pago e Em atraso são calculados automaticamente.</p>
-        <div className="neg-table-scroll"><table className="neg-table"><thead><tr><th>Parcela</th><th>Valor (R$)</th><th>Vencimento</th><th>Situação</th><th>Total pago (R$)</th><th>Data do pagamento</th><th>Status</th><th>Ação</th></tr></thead>
-          <tbody>{dados.parcelas.map((p, i) => <tr key={p.numero}>
-            <td>{p.numero}/{dados.parcelas.length}</td>
-            <td><input aria-label={`Valor parcela ${p.numero}`} className="crm-input" type="number" min="0.01" step="0.01" required value={p.valorCentavos / 100} onChange={e => parcela(i, { valorCentavos: centavos(e.target.value) })} /></td>
-            <td><input aria-label={`Vencimento parcela ${p.numero}`} className="crm-input" type="date" value={p.vencimento} onChange={e => parcela(i, { vencimento: e.target.value })} /></td>
-            <td><select aria-label={`Situação parcela ${p.numero}`} className="crm-input" value={p.situacao} onChange={e => parcela(i, { situacao: e.target.value as ParcelaNegociacao['situacao'] })}><option value="em_aberto">Em aberto</option><option value="aguardando">Aguardando pagamento</option></select></td>
-            <td><input aria-label={`Total pago parcela ${p.numero}`} className="crm-input" type="number" min="0" step="0.01" required value={p.pagoCentavos / 100} onChange={e => parcela(i, { pagoCentavos: centavos(e.target.value) })} /></td>
-            <td><input aria-label={`Data pagamento parcela ${p.numero}`} className="crm-input" type="date" required={p.pagoCentavos > 0} max={hojeBrasil()} value={p.dataPagamento} onChange={e => parcela(i, { dataPagamento: e.target.value })} /></td>
-            <td><span className={`neg-status ${statusParcela(p)}`}>{STATUS[statusParcela(p)]}</span></td>
-            <td><button type="button" className="crm-btn crm-btn-ghost" disabled={p.pagoCentavos >= p.valorCentavos} onClick={() => parcela(i, { pagoCentavos: p.valorCentavos, dataPagamento: hojeBrasil() })}>Quitar hoje</button></td>
-          </tr>)}</tbody></table></div>
+        <div className="neg-parcelas">
+          {dados.parcelas.map((p, i) => <section className="neg-parcela" key={p.numero} aria-label={`Parcela ${p.numero}`}>
+            <div className="neg-parcela-cabecalho"><h4>Parcela {p.numero}/{dados.parcelas.length}</h4><span className={`neg-status ${statusParcela(p)}`}>{STATUS[statusParcela(p)]}</span></div>
+            <label>Valor combinado (R$)<input aria-label={`Valor parcela ${p.numero}`} className="crm-input" type="number" min="0.01" step="0.01" required value={p.valorCentavos / 100} onChange={e => parcela(i, { valorCentavos: centavos(e.target.value) })} /></label>
+            <label>Vencimento combinado<input aria-label={`Vencimento parcela ${p.numero}`} className="crm-input" type="date" value={p.vencimento} onChange={e => parcela(i, { vencimento: e.target.value })} /></label>
+            <label>Situação<select aria-label={`Situação parcela ${p.numero}`} className="crm-input" value={p.situacao} onChange={e => parcela(i, { situacao: e.target.value as ParcelaNegociacao['situacao'] })}><option value="em_aberto">Em aberto</option><option value="aguardando">Aguardando pagamento</option></select></label>
+            <label>Total pago (R$)<input aria-label={`Total pago parcela ${p.numero}`} className="crm-input" type="number" min="0" step="0.01" required value={p.pagoCentavos / 100} onChange={e => parcela(i, { pagoCentavos: centavos(e.target.value) })} /></label>
+            <label>Data do pagamento<input aria-label={`Data pagamento parcela ${p.numero}`} className="crm-input" type="date" required={p.pagoCentavos > 0} max={hojeBrasil()} value={p.dataPagamento} onChange={e => parcela(i, { dataPagamento: e.target.value })} /></label>
+            {dados.tipo === 'avista' ? <>
+              <p className="crm-hint">“Pago” salva a negociação com o valor integral e o vencimento combinado como data do pagamento. Para outro valor ou data, edite os campos e use “Salvar negociação”.</p>
+              <button type="button" className="crm-btn crm-btn-primary" disabled={ocupado || p.pagoCentavos >= p.valorCentavos} onClick={() => void pagarCombinado(i)}>{salvando ? 'Salvando…' : 'Pago'}</button>
+            </> : <button type="button" className="crm-btn crm-btn-ghost" disabled={p.pagoCentavos >= p.valorCentavos} onClick={() => parcela(i, { pagoCentavos: p.valorCentavos, dataPagamento: hojeBrasil() })}>Quitar hoje</button>}
+          </section>)}
+        </div>
         <p className="crm-hint">Cronograma: {dados.parcelas.length} parcela(s) • Soma: {moeda(dados.parcelas.reduce((s, p) => s + p.valorCentavos, 0))}</p>
         {erro && <p className="crm-error" role="alert">{erro}</p>}
       </fieldset>
