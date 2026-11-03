@@ -76,3 +76,25 @@ test('histórico completo preserva contratos quitados, acordos antigos e parcela
   assert.equal(mensal.length, 2);
   assert.equal(mensal[1].parcelas[0].dataPagamento, '2026-10-01');
 });
+
+
+test('recebimentos usa exclusivamente pagamento e inclui parciais de contratos antigos', () => {
+  const entrada = [{ ...n, contratoId: 'c1', parcelas: [
+    { numero: 1, valorCentavos: 1000, pagoCentavos: 400, vencimento: '2026-09-01', dataPagamento: '2026-10-31' },
+    { numero: 2, valorCentavos: 1000, pagoCentavos: 1000, vencimento: '2026-10-10', dataPagamento: '2026-09-30' },
+    { numero: 3, valorCentavos: 1000, pagoCentavos: 0, vencimento: '2026-10-01', dataPagamento: '' },
+    { numero: 4, valorCentavos: 1000, pagoCentavos: 1000, vencimento: '2026-10-01', dataPagamento: '' },
+  ] }];
+  const resultado = mod.exports.negociacoesDoPeriodo(entrada, '2026-10', 'recebimentos');
+  assert.deepEqual(resultado[0].parcelas.map(p => p.numero), [1]);
+  assert.equal(resultado[0].parcelas[0].pagoCentavos, 400);
+  assert.equal(resultado[0].totalParcelasAcordo, 4);
+  assert.deepEqual(negociacoesDoMes(resultado, '2026-10', 'recebimentos'), resultado);
+});
+
+test('busca localiza nome com acentos, nome do funil, documento formatado e contrato', () => {
+  const acordo = { ...n, empresa: 'Soluções Águia', cnpj: '00123456000199', lead: { nome: 'Nome comercial' }, codigoContrato: '#C-123' };
+  for (const busca of ['solucoes aguia', '  ÁGUIA ', 'nome comercial', '00.123.456/0001-99', '#C-123', ''])
+    assert.equal(mod.exports.correspondeBuscaNegociacao(acordo, busca), true, busca);
+  assert.equal(mod.exports.correspondeBuscaNegociacao(acordo, 'outra empresa'), false);
+});

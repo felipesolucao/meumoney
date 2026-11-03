@@ -127,3 +127,16 @@ test('dados completos preservam situação global e acordos sem parcelas no mês
   n.parcelas[0].pagoCentavos = n.parcelas[0].valorCentavos;
   assert.equal(criarRelatorioNegociacoes([n]).getWorksheet('Acordos completos').getCell('G2').value, 'PAGO');
 });
+
+
+test('Excel de recebimentos soma somente pagamentos do mês, inclusive contrato parcial', async () => {
+  const n = acordo(); n.contratoId = 'c1';
+  const workbook = criarRelatorioNegociacoes([n], { hoje: '2026-10-02', mes: '2026-09', criterio: 'recebimentos' });
+  const loaded = new ExcelJS.Workbook(); await loaded.xlsx.load(await workbook.xlsx.writeBuffer());
+  const sheet = loaded.getWorksheet('Negociações');
+  assert.equal(sheet.rowCount, 3);
+  assert.equal(sheet.getCell('H3').value, '2/4');
+  assert.equal(sheet.getCell('J3').value.toISOString().slice(0, 10), '2026-09-30');
+  assert.equal(loaded.getWorksheet('Resumo dos acordos').getCell('G7').value, 30);
+  assert.equal(criarRelatorioNegociacoes([n], { mes: '2026-10', criterio: 'recebimentos' }).getWorksheet('Negociações').rowCount, 1);
+});

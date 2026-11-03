@@ -1,7 +1,7 @@
 'use client';
 import { useCallback, useEffect, useState } from 'react';
 import { percentualNegociado, resumoNegociacoesDiarias } from '../../lib/negociacoesDiarias';
-import { negociacoesDoPeriodo } from '../../lib/negociacoesPeriodo';
+import { correspondeBuscaNegociacao, negociacoesDoPeriodo } from '../../lib/negociacoesPeriodo';
 import ContratoPagamentos from './ContratoPagamentos';
 import Link from "../LinkComRetorno";
 import CrmTopNav from './CrmTopNav';
@@ -26,6 +26,8 @@ export default function NegociacoesPagina({ nomeUsuario }: { nomeUsuario: string
   const [editor, setEditor] = useState<Negociacao | 'novo' | null>(null);
   const [contratoAberto, setContratoAberto] = useState<string | null>(null);
   const [busca, setBusca] = useState(''); const [mes, setMes] = useState(() => hojeBrasil().slice(0, 7));
+  const [criterio, setCriterio] = useState<'recebimentos' | 'recebiveis'>('recebimentos');
+  const [origem, setOrigem] = useState('');
   const [todoHistorico, setTodoHistorico] = useState(true);
   const [tipo, setTipo] = useState(''); const [status, setStatus] = useState('');
   const [hoje, setHoje] = useState(hojeBrasil());
@@ -40,16 +42,16 @@ export default function NegociacoesPagina({ nomeUsuario }: { nomeUsuario: string
     finally { setCarregando(false); }
   }, []);
   useEffect(() => { void carregar(); const timer = window.setInterval(() => setHoje(hojeBrasil()), 60000); return () => window.clearInterval(timer); }, [carregar]);
-  const filtradas = negociacoesDoPeriodo(lista, todoHistorico ? null : mes).filter(n => (!tipo || n.tipo === tipo) && (!status || statusNegociacao(n, hoje) === status) && (!busca || n.empresa.toLocaleLowerCase('pt-BR').includes(busca.toLocaleLowerCase('pt-BR')) || n.cnpj.includes(busca.replace(/\D/g, '') || busca)));
+  const filtradas = negociacoesDoPeriodo(lista, todoHistorico ? null : mes, criterio).filter(n => (!tipo || n.tipo === tipo) && (!status || statusNegociacao(n, hoje) === status) && correspondeBuscaNegociacao(n, busca) && (!origem || (origem === 'contratos' ? !!n.contratoId : !n.contratoId)));
   const resumo = resumoNegociacoes(filtradas);
-  const acordosParaExportar = lista.filter(n => (!tipo || n.tipo === tipo) && (!status || statusNegociacao(n, hoje) === status) && (!busca || n.empresa.toLocaleLowerCase('pt-BR').includes(busca.toLocaleLowerCase('pt-BR')) || n.cnpj.includes(busca.replace(/\D/g, '') || busca)));
+  const acordosParaExportar = lista.filter(n => (!tipo || n.tipo === tipo) && (!status || statusNegociacao(n, hoje) === status) && correspondeBuscaNegociacao(n, busca) && (!origem || (origem === 'contratos' ? !!n.contratoId : !n.contratoId)));
   const diario = resumoNegociacoesDiarias(acordosParaExportar, mes, hoje);
   async function exportarExcel() {
     setExportando(true); setErro('');
     try {
       const { baixarRelatorioNegociacoes } = await import('../../lib/negociacoesExcel');
-      const filtros = [busca && `Empresa/CNPJ: ${busca}`, todoHistorico ? 'Todo o histórico' : `Mês dos recebíveis: ${mes}`, tipo && `Tipo: ${tipo === 'avista' ? 'À vista' : 'Parcelada'}`, status && `Status: ${STATUS[status as keyof typeof STATUS]}`].filter(Boolean).join(' · ');
-      await baixarRelatorioNegociacoes(filtradas, { hoje, mes: todoHistorico ? undefined : mes, filtros, acordosCompletos: acordosParaExportar });
+      const filtros = [origem && `Origem: ${origem}`, busca && `Empresa/CNPJ: ${busca}`, todoHistorico ? 'Todo o histórico' : `${criterio === 'recebimentos' ? 'Mês dos pagamentos' : 'Mês dos recebíveis'}: ${mes}`, tipo && `Tipo: ${tipo === 'avista' ? 'À vista' : 'Parcelada'}`, status && `Status: ${STATUS[status as keyof typeof STATUS]}`].filter(Boolean).join(' · ');
+      await baixarRelatorioNegociacoes(filtradas, { hoje, mes: todoHistorico ? undefined : mes, filtros, criterio, acordosCompletos: acordosParaExportar });
       setAviso('Excel gerado com parcelas do período, acordos e resumo em abas separadas.');
     } catch { setErro('Não foi possível gerar o Excel. Tente novamente.'); }
     finally { setExportando(false); }
@@ -77,9 +79,11 @@ export default function NegociacoesPagina({ nomeUsuario }: { nomeUsuario: string
       <label>Empresa ou CPF/CNPJ<input className="crm-input" type="search" value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar negociação" /></label>
       <label>Período<select className="crm-input" value={todoHistorico ? 'todos' : 'mes'} onChange={e => setTodoHistorico(e.target.value === 'todos')}><option value="todos">Todo o histórico</option><option value="mes">Mês específico</option></select></label>
       {!todoHistorico && <label>Mês de referência<input className="crm-input" type="month" value={mes} required onChange={e => setMes(e.target.value || hojeBrasil().slice(0, 7))} /></label>}
+      {!todoHistorico && <label>Consultar<select className="crm-input" value={criterio} onChange={e => setCriterio(e.target.value as 'recebimentos' | 'recebiveis')}><option value="recebimentos">Recebimentos pela data do pagamento</option><option value="recebiveis">Recebíveis: pagamentos e pendências</option></select></label>}
+      <label>Origem<select className="crm-input" value={origem} onChange={e => setOrigem(e.target.value)}><option value="">Contratos e negociações CRM</option><option value="contratos">Somente contratos</option><option value="crm">Somente negociações CRM</option></select></label>
       <label>Tipo<select className="crm-input" value={tipo} onChange={e => setTipo(e.target.value)}><option value="">Todos</option><option value="avista">À vista</option><option value="parcelada">Parcelada</option></select></label>
       <label>Status<select className="crm-input" value={status} onChange={e => setStatus(e.target.value)}><option value="">Todos</option>{Object.entries(STATUS).map(([v, label]) => <option key={v} value={v}>{label}</option>)}</select></label>
-      <button className="crm-btn crm-btn-ghost" onClick={() => { setBusca(''); setTodoHistorico(true); setMes(hojeBrasil().slice(0, 7)); setTipo(''); setStatus(''); }}>Limpar filtros</button>
+      <button className="crm-btn crm-btn-ghost" onClick={() => { setBusca(''); setOrigem(''); setCriterio('recebimentos'); setTodoHistorico(true); setMes(hojeBrasil().slice(0, 7)); setTipo(''); setStatus(''); }}>Limpar filtros</button>
     </div>
     {!todoHistorico && <section className="neg-daily" aria-labelledby="neg-daily-title" aria-busy={carregando}>
       <h2 id="neg-daily-title">Resumo diário de negociações · {mes.split('-').reverse().join('/')}</h2>
@@ -103,9 +107,9 @@ export default function NegociacoesPagina({ nomeUsuario }: { nomeUsuario: string
         <p className="crm-hint">Percentuais sobre o valor negociado de cada dia ou do mês. Em atraso é a parte do saldo a receber com vencimento anterior a hoje. Acréscimos recebidos podem fazer a soma dos percentuais de recebido e a receber superar 100%. Uma empresa pode aparecer em mais de um dia, mas é contada apenas uma vez no total do mês.</p>
       </>}
     </section>}
-    <h2>{todoHistorico ? 'Histórico de negociações e contratos' : 'Recebíveis do mês'}</h2>
-    <div className="neg-kpis">{[[todoHistorico ? 'Valor total negociado e contratado' : 'Recebíveis do mês', moeda(resumo.negociado)], [todoHistorico ? 'Total recebido' : 'Pago das parcelas do mês', moeda(resumo.pago)], ['Empresas negociadas', resumo.empresas], [todoHistorico ? 'Total de parcelas' : 'Parcelas do mês', filtradas.reduce((total, n) => total + n.parcelas.length, 0)]].map(([label, valor]) => <article key={label} className="neg-kpi"><span>{label}</span><strong>{carregando ? '…' : valor}</strong></article>)}</div>
-    {todoHistorico ? <p className="crm-hint">Todos os contratos e negociações cadastrados, incluindo quitados, antigos e parcelas sem data. Os totais e o Excel seguem os filtros de empresa, tipo e status. Valores recebidos são os pagamentos acumulados registrados nas parcelas.</p> : <p className="crm-hint">Exibindo parcelas do mês de {mes.split('-').reverse().join('/')}, inclusive de acordos anteriores. Totais, status e Excel consideram apenas essas parcelas. Parcelas com valor pago entram no mês da data do pagamento; as demais entram no mês do vencimento. Pagamentos parciais também transferem a parcela inteira. Parcelas sem essas datas não entram no filtro mensal.</p>}
+    <h2>{todoHistorico ? 'Histórico de negociações e contratos' : criterio === 'recebimentos' ? 'Recebimentos do mês' : 'Recebíveis do mês'}</h2>
+    <div className="neg-kpis">{[[todoHistorico ? 'Valor total negociado e contratado' : criterio === 'recebimentos' ? 'Total recebido no mês' : 'Recebíveis do mês', moeda(!todoHistorico && criterio === 'recebimentos' ? resumo.pago : resumo.negociado)], [!todoHistorico && criterio === 'recebimentos' ? 'Valor nominal das parcelas recebidas' : 'Total recebido', moeda(!todoHistorico && criterio === 'recebimentos' ? resumo.negociado : resumo.pago)], ['Empresas negociadas', resumo.empresas], [todoHistorico ? 'Total de parcelas' : 'Parcelas do mês', filtradas.reduce((total, n) => total + n.parcelas.length, 0)]].map(([label, valor]) => <article key={label} className="neg-kpi"><span>{label}</span><strong>{carregando ? '…' : valor}</strong></article>)}</div>
+    {todoHistorico ? <p className="crm-hint">Todos os contratos e negociações cadastrados, incluindo quitados, antigos e parcelas sem data. Os totais e o Excel seguem os filtros de empresa, tipo e status. Valores recebidos são os pagamentos acumulados registrados nas parcelas.</p> : <p className="crm-hint">{criterio === 'recebimentos' ? 'Somente parcelas com valor recebido e data de pagamento no mês, incluindo pagamentos parciais e contratos antigos. Para comparar com Parcelas → Recebidas, selecione Somente contratos e Status Todos. ' : ''}Exibindo parcelas do mês de {mes.split('-').reverse().join('/')}, inclusive de acordos anteriores. Totais, status e Excel consideram apenas essas parcelas. Parcelas com valor pago entram no mês da data do pagamento; no modo Recebíveis, as demais entram no mês do vencimento. Pagamentos parciais também transferem a parcela inteira. Parcelas sem essas datas não entram no filtro mensal.</p>}
     <div className="neg-totals"><span>Saldo a receber: <strong>{moeda(filtradas.reduce((s, n) => s + saldoNegociacao(n), 0))}</strong></span><span>Em atraso: <strong>{moeda(atraso)}</strong></span><span>À vista: <strong>{moeda(filtradas.filter(n => n.tipo === 'avista').reduce((s, n) => s + n.totalCentavos, 0))}</strong></span><span>Parcelado: <strong>{moeda(filtradas.filter(n => n.tipo === 'parcelada').reduce((s, n) => s + n.totalCentavos, 0))}</strong></span></div>
     {carregando ? <p role="status">Carregando negociações…</p> : <><p className="crm-hint">{filtradas.length} negociação(ões)</p><section className="neg-company-cards" aria-label="Empresas negociadas">
       {filtradas.map(n => { const segundos = segundosBoleto(n, agora); const pago = n.parcelas.reduce((s, p) => s + p.pagoCentavos, 0); const estado = statusNegociacao(n, hoje); const vencimento = n.parcelas.filter(p => p.pagoCentavos < p.valorCentavos && p.vencimento).map(p => p.vencimento).sort()[0]; return <article className="neg-company-card" key={n.id} aria-label={`Negociação de ${n.empresa}`}><dl className="neg-company-details">

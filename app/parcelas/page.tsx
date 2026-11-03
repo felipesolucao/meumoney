@@ -25,6 +25,7 @@ type ParcelaComContrato = {
   numero: number;
   valor: string;
   valorPago: string | null;
+  pagoEm: string | null;
   vencimento: string;
   status: string;
   contrato: { id: string; codigo: string; cliente: { nome: string; telefone: string | null } };
@@ -111,10 +112,11 @@ function ListaParcelas() {
     [parcelas]
   );
   const pendentes = parcelas.filter((p) => p.status !== "pago");
+  const dataAgrupamento = (p: ParcelaComContrato) => aba === "recebidas" ? p.pagoEm ?? p.vencimento : p.vencimento;
   const grupos = useMemo(() => agruparPorDia(
-    [...parcelas].sort((a, b) => a.vencimento.localeCompare(b.vencimento)),
-    (p) => p.vencimento
-  ), [parcelas]);
+    [...parcelas].sort((a, b) => dataAgrupamento(a).localeCompare(dataAgrupamento(b))),
+    (p) => dataAgrupamento(p)
+  ), [parcelas, aba]);
 
   return (
     <div>
@@ -185,7 +187,7 @@ function ListaParcelas() {
 
         <div className="parcelas-groups space-y-6">
           {!carregando && !erro && grupos.map((grupo) => (
-            <GrupoParcelas key={grupo.itens[0].vencimento.slice(0, 10)} parcelas={grupo.itens} />
+            <GrupoParcelas key={dataAgrupamento(grupo.itens[0]).slice(0, 10)} parcelas={grupo.itens} recebidas={aba === "recebidas"} />
           ))}
         </div>
       </div>
@@ -194,13 +196,13 @@ function ListaParcelas() {
 }
 
 
-function GrupoParcelas({ parcelas }: { parcelas: ParcelaComContrato[] }) {
-  const data = parcelas[0].vencimento.slice(0, 10);
+function GrupoParcelas({ parcelas, recebidas }: { parcelas: ParcelaComContrato[]; recebidas: boolean }) {
+  const data = (recebidas ? parcelas[0].pagoEm ?? parcelas[0].vencimento : parcelas[0].vencimento).slice(0, 10);
   const dia = new Date(`${data}T00:00:00Z`);
   const semana = dia.toLocaleDateString("pt-BR", { weekday: "long", timeZone: "UTC" });
   const mesNome = dia.toLocaleDateString("pt-BR", { month: "long", timeZone: "UTC" });
   const rotulo = `${semana}, ${data.slice(8, 10)} de ${mesNome}, ${data.slice(0, 4)}`;
-  const totalDia = parcelas.reduce((s, p) => s + Math.round(Number(p.status === "pago" ? p.valorPago ?? p.valor : p.valor) * 100), 0) / 100;
+  const totalDia = parcelas.reduce((s, p) => s + Math.round(Number((recebidas || p.status === "pago") ? p.valorPago ?? p.valor : p.valor) * 100), 0) / 100;
   const dias = Math.round((dia.getTime() - new Date(`${isoHoje()}T00:00:00Z`).getTime()) / 86400000);
   const prazo = dias === 0 ? "Vence hoje" : dias === 1 ? "Falta 1 dia" : dias > 1 ? `Faltam ${dias} dias` : `Há ${Math.abs(dias)} ${dias === -1 ? "dia" : "dias"} em atraso`;
   return (
@@ -235,12 +237,13 @@ function GrupoParcelas({ parcelas }: { parcelas: ParcelaComContrato[] }) {
                 <IconChevronRight size={16} className="text-muted flex-shrink-0 mt-3" />
               </div>
               <div className="flex flex-wrap items-center justify-between gap-2 mt-4">
-                <p className="text-xl font-bold text-primary tabular-nums">{formatarMoeda(p.status === "pago" ? p.valorPago ?? p.valor : p.valor)}</p>
-                <Badge tom={tom}>{texto}</Badge>
+                <p className="text-xl font-bold text-primary tabular-nums">{formatarMoeda((recebidas || p.status === "pago") ? p.valorPago ?? p.valor : p.valor)}</p>
+                <Badge tom={tom}>{recebidas && p.status !== "pago" ? "Pagamento parcial" : texto}</Badge>
               </div>
               <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 mt-2 text-xs">
                 <p className="text-muted">Vence {formatarData(p.vencimento)}</p>
-                {p.status !== "pago" && <p className={`font-semibold ${dias < 0 ? "text-error" : "text-muted"}`}>{prazo}</p>}
+                {recebidas && p.pagoEm && <p className="text-muted">Recebido em {formatarData(p.pagoEm)}</p>}
+                {!recebidas && p.status !== "pago" && <p className={`font-semibold ${dias < 0 ? "text-error" : "text-muted"}`}>{prazo}</p>}
               </div>
             </Link>
           );

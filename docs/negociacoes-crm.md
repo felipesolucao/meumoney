@@ -213,3 +213,25 @@ A aba Negociações mantém a numeração original (por exemplo, 3/12), data do
 com valor e data de pagamento entra no mês desse pagamento; sem pagamento,
 entra no mês do vencimento. O cadastro não mantém um extrato de cada pagamento
 parcial, portanto o Excel não distribui o acumulado entre meses anteriores.
+
+
+### Recebimentos por data de pagamento
+
+No CRM, Mês específico abre em **Recebimentos pela data do pagamento**:
+seleciona somente parcelas com valor recebido positivo e pagamento no mês,
+inclusive parciais, contratos antigos e pagamentos antecipados ou atrasados.
+O Excel usa exatamente esse recorte. A alternativa **Recebíveis** preserva
+pagamentos e pendências do comportamento anterior. Busca ignora acentos e
+procura também nome do funil, documento sem máscara e código do contrato.
+
+**Parcelas → Recebidas** passa a usar `pagoEm`, incluindo o último dia inteiro
+do mês e pagamentos parciais. Antes, usava vencimento e somente quitações.
+Os grupos e cartões agora mostram a data do recebimento. Para comparar no CRM,
+selecione origem **Somente contratos**, Status **Todos**, o mesmo mês e limpe
+empresa/tipo. Negociações cadastradas diretamente no CRM não existem na tela
+Parcelas e são uma origem adicional, identificada pelo filtro Origem.
+
+O armazenamento ainda mantém o acumulado e a última data de pagamento por
+parcela; pagamentos parciais em meses diferentes não são um extrato mensal.
+Parcelas pagas sem data precisam ser corrigidas na origem e não têm mês inferido
+pelo vencimento no modo Recebimentos. Nenhuma migração é necessária.

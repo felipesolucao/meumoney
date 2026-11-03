@@ -5,7 +5,7 @@ import { hojeBrasil, saldoNegociacao, statusNegociacao, statusParcela, type Nego
 const MOEDA = '"R$" #,##0.00';
 const CORES = { pago: 'FF70A64F', aguardando: 'FF4C78D0', atrasado: 'FF990F08', em_aberto: 'FFFFFFFF' };
 const ROTULOS = { pago: 'PAGO', aguardando: 'AGUARD. PGT', atrasado: 'ATRASADA', em_aberto: 'EM ABERTO' };
-export type OpcoesRelatorioNegociacoes = { hoje?: string; mes?: string; filtros?: string; acordosCompletos?: Negociacao[] };
+export type OpcoesRelatorioNegociacoes = { hoje?: string; mes?: string; filtros?: string; criterio?: 'recebimentos' | 'recebiveis'; acordosCompletos?: Negociacao[] };
 const dataExcel = (data: string) => data ? new Date(`${data}T00:00:00.000Z`) : null;
 const modalidade = (n: Negociacao) => n.tipo === 'avista' ? 'À VISTA' : 'PARCELADA';
 const situacaoAcordo = (n: Negociacao, hoje: string) => {
@@ -51,7 +51,7 @@ export function criarRelatorioNegociacoes(negociacoes: Negociacao[], opcoes: Opc
   workbook.creator = 'MeuMoney CRM';
   const planilha = workbook.addWorksheet('Negociações');
   cabecalho(planilha, ['ORDEM', 'SITUAÇÃO', 'EMPRESA', 'CNPJ', 'PARCELAS EM ATRASO', 'DATA NEGOCIAÇÃO', 'DÉBITO', 'Negociação', 'STATUS', 'DATA PGTO', 'VALOR PAGO', 'VALOR A RECEBER', 'OBS', 'MODALIDADE', 'VENCIMENTO', 'SITUAÇÃO DO ACORDO', 'ID DO ACORDO'], [9, 27, 48, 22, 15, 18, 18, 13, 19, 16, 18, 20, 60, 16, 18, 28, 30]);
-  const ordenadas = (opcoes.mes ? negociacoesDoMes(negociacoes, referencia) : [...negociacoes] as NegociacaoPeriodo[]).sort((a, b) => a.dataNegociacao.localeCompare(b.dataNegociacao) || a.empresa.localeCompare(b.empresa, 'pt-BR') || a.id.localeCompare(b.id));
+  const ordenadas = (opcoes.mes ? negociacoesDoMes(negociacoes, referencia, opcoes.criterio) : [...negociacoes] as NegociacaoPeriodo[]).sort((a, b) => a.dataNegociacao.localeCompare(b.dataNegociacao) || a.empresa.localeCompare(b.empresa, 'pt-BR') || a.id.localeCompare(b.id));
   const completos = opcoes.acordosCompletos ?? negociacoes;
   const porId = new Map(completos.map(n => [n.id, n]));
   let ordem = 0;
