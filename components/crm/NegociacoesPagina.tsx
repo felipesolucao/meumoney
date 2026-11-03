@@ -42,14 +42,15 @@ export default function NegociacoesPagina({ nomeUsuario }: { nomeUsuario: string
   useEffect(() => { void carregar(); const timer = window.setInterval(() => setHoje(hojeBrasil()), 60000); return () => window.clearInterval(timer); }, [carregar]);
   const filtradas = negociacoesDoPeriodo(lista, todoHistorico ? null : mes).filter(n => (!tipo || n.tipo === tipo) && (!status || statusNegociacao(n, hoje) === status) && (!busca || n.empresa.toLocaleLowerCase('pt-BR').includes(busca.toLocaleLowerCase('pt-BR')) || n.cnpj.includes(busca.replace(/\D/g, '') || busca)));
   const resumo = resumoNegociacoes(filtradas);
-  const diario = resumoNegociacoesDiarias(lista.filter(n => (!tipo || n.tipo === tipo) && (!status || statusNegociacao(n, hoje) === status) && (!busca || n.empresa.toLocaleLowerCase('pt-BR').includes(busca.toLocaleLowerCase('pt-BR')) || n.cnpj.includes(busca.replace(/\D/g, '') || busca))), mes, hoje);
+  const acordosParaExportar = lista.filter(n => (!tipo || n.tipo === tipo) && (!status || statusNegociacao(n, hoje) === status) && (!busca || n.empresa.toLocaleLowerCase('pt-BR').includes(busca.toLocaleLowerCase('pt-BR')) || n.cnpj.includes(busca.replace(/\D/g, '') || busca)));
+  const diario = resumoNegociacoesDiarias(acordosParaExportar, mes, hoje);
   async function exportarExcel() {
     setExportando(true); setErro('');
     try {
       const { baixarRelatorioNegociacoes } = await import('../../lib/negociacoesExcel');
       const filtros = [busca && `Empresa/CNPJ: ${busca}`, todoHistorico ? 'Todo o histórico' : `Mês dos recebíveis: ${mes}`, tipo && `Tipo: ${tipo === 'avista' ? 'À vista' : 'Parcelada'}`, status && `Status: ${STATUS[status as keyof typeof STATUS]}`].filter(Boolean).join(' · ');
-      await baixarRelatorioNegociacoes(filtradas, { hoje, mes: todoHistorico ? undefined : mes, filtros });
-      setAviso('Relatório Excel gerado com as negociações filtradas, uma linha por parcela.');
+      await baixarRelatorioNegociacoes(filtradas, { hoje, mes: todoHistorico ? undefined : mes, filtros, acordosCompletos: acordosParaExportar });
+      setAviso('Excel gerado com parcelas do período, acordos e resumo em abas separadas.');
     } catch { setErro('Não foi possível gerar o Excel. Tente novamente.'); }
     finally { setExportando(false); }
   }
@@ -67,7 +68,7 @@ export default function NegociacoesPagina({ nomeUsuario }: { nomeUsuario: string
   }
   const atraso = filtradas.reduce((s, n) => s + n.parcelas.filter(p => statusParcela(p, hoje) === 'atrasado').reduce((t, p) => t + p.valorCentavos - p.pagoCentavos, 0), 0);
   return <div className="crm-app neg-app"><CrmTopNav nomeUsuario={nomeUsuario} /><main className="neg-page">
-    <div className="neg-heading"><div><h1>Negociações</h1><p className="crm-hint">Empresas, contratos e acordos com pagamentos integrados ao funil.</p></div><div className="neg-actions"><button className="crm-btn crm-btn-ghost" disabled={carregando || exportando || filtradas.length === 0} onClick={() => void exportarExcel()}>{exportando ? 'Gerando Excel…' : 'Exportar Excel'}</button><button className="crm-btn crm-btn-ghost" disabled={carregando} onClick={() => void carregar()}>Atualizar</button><button className="crm-btn crm-btn-primary" disabled={editor !== null} onClick={() => { setEditor('novo'); setAviso(''); }}>Nova negociação</button></div></div>
+    <div className="neg-heading"><div><h1>Negociações</h1><p className="crm-hint">Empresas, contratos e acordos com pagamentos integrados ao funil.</p></div><div className="neg-actions"><button className="crm-btn crm-btn-ghost" disabled={carregando || exportando || (filtradas.length === 0 && !acordosParaExportar.some(n => todoHistorico || n.dataNegociacao.startsWith(`${mes}-`)))} onClick={() => void exportarExcel()}>{exportando ? 'Gerando Excel…' : 'Exportar Excel'}</button><button className="crm-btn crm-btn-ghost" disabled={carregando} onClick={() => void carregar()}>Atualizar</button><button className="crm-btn crm-btn-primary" disabled={editor !== null} onClick={() => { setEditor('novo'); setAviso(''); }}>Nova negociação</button></div></div>
     {erro && <p className="crm-error" role="alert">{erro}</p>}{aviso && <p role="status">{aviso}</p>}
     {vencidos.length > 0 && <div className="neg-boleto-alerta" role="alert"><strong>Hora de enviar o boleto</strong><ul>{vencidos.map(n => <li key={n.id}>{n.empresa} — prazo encerrado. <button className="crm-btn crm-btn-ghost" disabled={editor !== null} onClick={() => setEditor(n)}>Registrar envio</button></li>)}</ul></div>}
     {contratoAberto && <ContratoPagamentos key={contratoAberto} contratoId={contratoAberto} onFechar={() => setContratoAberto(null)} onAtualizar={carregar} />}

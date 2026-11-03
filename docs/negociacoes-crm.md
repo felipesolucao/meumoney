@@ -190,3 +190,26 @@ completo. O Excel acompanha a seleção e identifica quando abrange todo o hist�
 
 Esta alteração não modifica registros nem exige migração. A presença dos contratos
 reais relatados pelo usuário precisa ser conferida no ambiente de produção.
+
+
+### Modalidade e acordos no Excel
+
+O Excel inclui modalidade (À vista/Parcelada), vencimento, ID e situação do
+acordo completo em cada linha da aba Negociações. A situação geral considera
+todas as parcelas na data de emissão: Pago, Em atraso, Em dia ou Sem vencimento
+definido. Uma parcela fora do mês também pode deixar o acordo em atraso.
+
+Em Mês específico, a aba **Negociadas no mês** lista uma linha por acordo
+firmado naquele mês, inclusive quando a primeira parcela vence em outro mês.
+Os filtros de empresa e modalidade são respeitados; o filtro de status nessa
+aba considera o acordo completo. A aba detalhada mantém o filtro de status das
+parcelas do período. No histórico, a nova aba chama-se **Acordos completos**.
+Ela mostra valores integrais, modalidade, quantidade de parcelas e números das
+parcelas atualmente em atraso. Os totais do resumo continuam limitados ao recorte
+de recebíveis e podem diferir dos acordos firmados no mês.
+
+A aba Negociações mantém a numeração original (por exemplo, 3/12), data do
+último pagamento e valor acumulado recebido. No recorte mensal, uma parcela
+com valor e data de pagamento entra no mês desse pagamento; sem pagamento,
+entra no mês do vencimento. O cadastro não mantém um extrato de cada pagamento
+parcial, portanto o Excel não distribui o acumulado entre meses anteriores.

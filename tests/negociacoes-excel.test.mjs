@@ -17,11 +17,11 @@ const acordo = () => ({ id: 'n1', versao: 1, empresa: 'Empresa Á & Cia', cnpj: 
   { numero: 3, valorCentavos: 2500, pagoCentavos: 0, dataPagamento: '', vencimento: '2026-10-02', situacao: 'aguardando' },
   { numero: 4, valorCentavos: 2500, pagoCentavos: 0, dataPagamento: '', vencimento: '', situacao: 'em_aberto' },
 ] });
-test('Excel reproduz 13 colunas, cores por parcela, datas, CNPJ e pagamentos reais', async () => {
+test('Excel reproduz colunas, cores por parcela, datas, CNPJ e pagamentos reais', async () => {
   const workbook = criarRelatorioNegociacoes([acordo()], { hoje: '2026-10-02', filtros: 'Tipo: Parcelada' });
   const loaded = new ExcelJS.Workbook(); await loaded.xlsx.load(await workbook.xlsx.writeBuffer());
   const sheet = loaded.getWorksheet('Negociações');
-  assert.deepEqual(sheet.getRow(1).values.slice(1), ['ORDEM', 'SITUAÇÃO', 'EMPRESA', 'CNPJ', 'PARCELAS EM ATRASO', 'DATA NEGOCIAÇÃO', 'DÉBITO', 'Negociação', 'STATUS', 'DATA PGTO', 'VALOR PAGO', 'VALOR A RECEBER', 'OBS']);
+  assert.deepEqual(sheet.getRow(1).values.slice(1), ['ORDEM', 'SITUAÇÃO', 'EMPRESA', 'CNPJ', 'PARCELAS EM ATRASO', 'DATA NEGOCIAÇÃO', 'DÉBITO', 'Negociação', 'STATUS', 'DATA PGTO', 'VALOR PAGO', 'VALOR A RECEBER', 'OBS', 'MODALIDADE', 'VENCIMENTO', 'SITUAÇÃO DO ACORDO', 'ID DO ACORDO']);
   assert.equal(sheet.rowCount, 5);
   assert.equal(sheet.getCell('D2').value, '00.123.456/0001-99');
   assert.equal(sheet.getCell('H2').value, '1/4'); assert.equal(sheet.getCell('H5').value, '4/4');
@@ -35,7 +35,7 @@ test('Excel reproduz 13 colunas, cores por parcela, datas, CNPJ e pagamentos rea
   assert.equal(sheet.getCell('L3').numFmt, '"R$" #,##0.00');
   assert.equal(sheet.getCell('G2').value, 150); assert.equal(sheet.getCell('G2').numFmt, '"R$" #,##0.00');
   assert.equal(sheet.getCell('B2').value, 'NEGOC. ANTERIOR');
-  assert.equal(sheet.autoFilter, 'A1:M5'); assert.equal(sheet.views[0].ySplit, 1);
+  assert.equal(sheet.autoFilter, 'A1:Q5'); assert.equal(sheet.views[0].ySplit, 1);
 });
 test('resumo soma cada acordo uma única vez e não duplica débito por parcela', () => {
   const workbook = criarRelatorioNegociacoes([acordo()], { hoje: '2026-10-02', filtros: 'Empresa/CNPJ: Empresa' });
@@ -88,4 +88,42 @@ test('Excel mantém acréscimos recebidos, contabiliza quitação e preserva sal
   assert.equal(resumo.getCell('H6').value, 70);
   assert.equal(resumo.getCell('I6').value, '1/4');
   assert.equal(resumo.getCell('H7').value, 70);
+});
+
+
+test('separa acordos feitos no mês mesmo sem recebível e avalia atraso no acordo completo', async () => {
+  const antigo = acordo();
+  const novo = { ...acordo(), id: 'novo', tipo: 'avista', dataNegociacao: '2026-10-01', totalCentavos: 2500,
+    parcelas: [{ ...acordo().parcelas[2], numero: 1, vencimento: '2026-11-10' }] };
+  const anteriores = JSON.stringify([antigo, novo]);
+  const workbook = criarRelatorioNegociacoes([antigo, novo], { hoje: '2026-10-02', mes: '2026-10' });
+  const loaded = new ExcelJS.Workbook(); await loaded.xlsx.load(await workbook.xlsx.writeBuffer());
+  const detalhes = loaded.getWorksheet('Negociações');
+  assert.equal(detalhes.rowCount, 2);
+  assert.equal(detalhes.getCell('H2').value, '3/4');
+  assert.equal(detalhes.getCell('N2').value, 'PARCELADA');
+  assert.equal(detalhes.getCell('O2').value.toISOString(), '2026-10-02T00:00:00.000Z');
+  assert.equal(detalhes.getCell('P2').value, 'EM ATRASO');
+  const sheet = loaded.getWorksheet('Negociadas no mês');
+  assert.equal(sheet.rowCount, 2);
+  assert.equal(sheet.getCell('A2').value, 'novo');
+  assert.equal(sheet.getCell('D2').value, 'À VISTA');
+  assert.equal(sheet.getCell('F2').value, 'NEGOC. DENTRO DO MÊS');
+  assert.equal(sheet.getCell('G2').value, 'EM DIA');
+  assert.equal(sheet.getCell('I2').value, 25);
+  assert.equal(JSON.stringify([antigo, novo]), anteriores);
+});
+
+test('dados completos preservam situação global e acordos sem parcelas no mês', () => {
+  const n = acordo();
+  const projetadas = load('lib/negociacoesPeriodo.ts').negociacoesDoMes([n], '2026-10');
+  const workbook = criarRelatorioNegociacoes(projetadas, { hoje: '2026-10-02', mes: '2026-10', acordosCompletos: [n] });
+  assert.equal(workbook.getWorksheet('Negociações').getCell('P2').value, 'EM ATRASO');
+  const completos = criarRelatorioNegociacoes([n], { hoje: '2026-10-02' }).getWorksheet('Acordos completos');
+  assert.equal(completos.getCell('L2').value, '2/4');
+  assert.equal(completos.getCell('H2').value, 4);
+  n.parcelas = [n.parcelas[3]];
+  assert.equal(criarRelatorioNegociacoes([n]).getWorksheet('Acordos completos').getCell('G2').value, 'SEM VENCIMENTO DEFINIDO');
+  n.parcelas[0].pagoCentavos = n.parcelas[0].valorCentavos;
+  assert.equal(criarRelatorioNegociacoes([n]).getWorksheet('Acordos completos').getCell('G2').value, 'PAGO');
 });
