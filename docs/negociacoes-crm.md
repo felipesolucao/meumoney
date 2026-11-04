@@ -235,3 +235,10 @@ O armazenamento ainda mantém o acumulado e a última data de pagamento por
 parcela; pagamentos parciais em meses diferentes não são um extrato mensal.
 Parcelas pagas sem data precisam ser corrigidas na origem e não têm mês inferido
 pelo vencimento no modo Recebimentos. Nenhuma migração é necessária.
+
+
+O período **Mês específico** usa por padrão **Negociações pela data do acordo**.
+Assim, um acordo de novembro aparece em novembro mesmo sem pagamento e com
+vencimento em dezembro. Esse critério preserva todas as parcelas e o valor total
+do acordo na tela e no Excel. Os critérios de recebimentos por pagamento e de
+recebíveis por pagamento/vencimento continuam disponíveis em **Consultar**.

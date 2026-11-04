@@ -98,3 +98,23 @@ test('busca localiza nome com acentos, nome do funil, documento formatado e cont
     assert.equal(mod.exports.correspondeBuscaNegociacao(acordo, busca), true, busca);
   assert.equal(mod.exports.correspondeBuscaNegociacao(acordo, 'outra empresa'), false);
 });
+
+test('novas negociações de novembro aparecem pela data do acordo antes de qualquer pagamento', () => {
+  const nova = { ...n, dataNegociacao: '2026-11-04', parcelas: [
+    { numero: 1, vencimento: '2026-12-10', valorCentavos: 10000, pagoCentavos: 0, dataPagamento: '' },
+  ] };
+  const antes = JSON.stringify(nova);
+  const resultado = mod.exports.negociacoesDoPeriodo([nova], '2026-11', 'negociacoes');
+  assert.equal(resultado.length, 1); assert.equal(resultado[0].totalCentavos, 10000);
+  assert.deepEqual(resultado[0].parcelas, nova.parcelas);
+  assert.deepEqual(mod.exports.negociacoesDoPeriodo([nova], '2026-11', 'recebimentos'), []);
+  assert.deepEqual(mod.exports.negociacoesDoPeriodo([nova], '2026-12', 'negociacoes'), []);
+  assert.equal(JSON.stringify(nova), antes);
+});
+test('mês do acordo inclui negociações sem vencimento e mantém o cronograma completo', () => {
+  const acordo = { ...n, dataNegociacao: '2026-11-30' };
+  const resultado = negociacoesDoMes([acordo], '2026-11', 'negociacoes');
+  assert.equal(resultado[0].parcelas.length, 4); assert.equal(resultado[0].totalParcelasAcordo, 4);
+  assert.deepEqual(negociacoesDoMes(resultado, '2026-11', 'negociacoes'), resultado);
+  assert.deepEqual(negociacoesDoMes([acordo], '2027-11', 'negociacoes'), []);
+});

@@ -140,3 +140,14 @@ test('Excel de recebimentos soma somente pagamentos do mês, inclusive contrato 
   assert.equal(loaded.getWorksheet('Resumo dos acordos').getCell('G7').value, 30);
   assert.equal(criarRelatorioNegociacoes([n], { mes: '2026-10', criterio: 'recebimentos' }).getWorksheet('Negociações').rowCount, 1);
 });
+
+test('Excel por mês da negociação inclui acordo novo sem pagamento com parcelas futuras', () => {
+  const novo = { ...acordo(), dataNegociacao: '2026-11-04', totalCentavos: 10000, parcelas: [
+    { numero: 1, valorCentavos: 10000, pagoCentavos: 0, vencimento: '2026-12-10', dataPagamento: '', situacao: 'em_aberto' },
+  ] };
+  const workbook = criarRelatorioNegociacoes([novo], { mes: '2026-11', criterio: 'negociacoes', hoje: '2026-11-04' });
+  const sheet = workbook.getWorksheet('Negociações');
+  assert.equal(sheet.getCell('C2').value, novo.empresa);
+  assert.equal(sheet.getCell('L2').value, 100);
+  assert.equal(sheet.getCell('O2').value.toISOString(), '2026-12-10T00:00:00.000Z');
+});

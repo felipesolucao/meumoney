@@ -1,10 +1,15 @@
 import type { Negociacao } from './negociacoes';
 
+export type CriterioPeriodo = 'negociacoes' | 'recebiveis' | 'recebimentos';
+
 export type NegociacaoPeriodo = Negociacao & { totalParcelasAcordo?: number };
 
 // Projeção só para consulta/exportação. Edições devem usar o acordo original.
-export function negociacoesDoMes(negociacoes: NegociacaoPeriodo[], mes: string, criterio: 'recebiveis' | 'recebimentos' = 'recebiveis'): NegociacaoPeriodo[] {
+export function negociacoesDoMes(negociacoes: NegociacaoPeriodo[], mes: string, criterio: CriterioPeriodo = 'recebiveis'): NegociacaoPeriodo[] {
   if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(mes)) return [];
+  if (criterio === 'negociacoes') return negociacoes
+    .filter(n => n.dataNegociacao.startsWith(`${mes}-`))
+    .map(n => ({ ...n, totalParcelasAcordo: n.totalParcelasAcordo ?? n.parcelas.length }));
   return negociacoes.flatMap(n => {
     // Um pagamento transfere a parcela inteira para sua competência, preservando o vencimento original.
     const parcelas = n.parcelas.filter(p => {
@@ -19,7 +24,7 @@ export function negociacoesDoMes(negociacoes: NegociacaoPeriodo[], mes: string, 
 }
 
 // null seleciona explicitamente todo o histórico, inclusive registros sem datas de parcelas.
-export function negociacoesDoPeriodo(negociacoes: NegociacaoPeriodo[], mes: string | null, criterio: 'recebiveis' | 'recebimentos' = 'recebiveis'): NegociacaoPeriodo[] {
+export function negociacoesDoPeriodo(negociacoes: NegociacaoPeriodo[], mes: string | null, criterio: CriterioPeriodo = 'recebiveis'): NegociacaoPeriodo[] {
   return mes === null
     ? negociacoes.map(n => ({ ...n, totalParcelasAcordo: n.totalParcelasAcordo ?? n.parcelas.length }))
     : negociacoesDoMes(negociacoes, mes, criterio);

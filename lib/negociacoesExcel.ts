@@ -1,11 +1,11 @@
 import ExcelJS from 'exceljs';
-import { negociacoesDoMes, type NegociacaoPeriodo } from './negociacoesPeriodo';
+import { negociacoesDoMes, type CriterioPeriodo, type NegociacaoPeriodo } from './negociacoesPeriodo';
 import { hojeBrasil, saldoNegociacao, statusNegociacao, statusParcela, type Negociacao } from './negociacoes';
 
 const MOEDA = '"R$" #,##0.00';
 const CORES = { pago: 'FF70A64F', aguardando: 'FF4C78D0', atrasado: 'FF990F08', em_aberto: 'FFFFFFFF' };
 const ROTULOS = { pago: 'PAGO', aguardando: 'AGUARD. PGT', atrasado: 'ATRASADA', em_aberto: 'EM ABERTO' };
-export type OpcoesRelatorioNegociacoes = { hoje?: string; mes?: string; filtros?: string; criterio?: 'recebimentos' | 'recebiveis'; acordosCompletos?: Negociacao[] };
+export type OpcoesRelatorioNegociacoes = { hoje?: string; mes?: string; filtros?: string; criterio?: CriterioPeriodo; acordosCompletos?: Negociacao[] };
 const dataExcel = (data: string) => data ? new Date(`${data}T00:00:00.000Z`) : null;
 const modalidade = (n: Negociacao) => n.tipo === 'avista' ? 'À VISTA' : 'PARCELADA';
 const situacaoAcordo = (n: Negociacao, hoje: string) => {
