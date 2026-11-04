@@ -78,7 +78,7 @@ function servidorFixture() {
       importacaoDebitosCrm:{findFirst:async({where})=>draft.importacao?.id===where.id&&draft.importacao.usuarioId===where.usuarioId?draft.importacao:null,
         update:async({data})=>(draft.importacao={...draft.importacao,...data})},
       leadCrm:{findMany:async()=>draft.leads.map(dbLead),
-        updateMany:async({where,data})=>{const l=draft.leads.find(l=>l.id===where.id);if(!l || (where.atualizadoEm && l.atualizadoEm!==where.atualizadoEm.toISOString()))return {count:0};Object.assign(l,data,{atualizadoEm:new Date(Date.parse(l.atualizadoEm)+1000).toISOString()});return {count:1};},
+        updateMany:async({where,data})=>{const l=draft.leads.find(l=>l.id===where.id);const db=l&&dbLead(l);if(!l || (where.atualizadoEm && l.atualizadoEm!==where.atualizadoEm.toISOString()) || ['valorEmAberto','quantidadeParcelas','parcelaMaisAntiga','parcelaMaisRecente'].some(k=>k in where && String(db[k] instanceof Date?db[k].toISOString():k==='valorEmAberto'?l[k]:db[k])!==String(where[k] instanceof Date?where[k].toISOString():where[k])))return {count:0};Object.assign(l,data,{atualizadoEm:new Date(Date.parse(l.atualizadoEm)+1000).toISOString()});return {count:1};},
         findUniqueOrThrow:async({where})=>({atualizadoEm:new Date(draft.leads.find(l=>l.id===where.id).atualizadoEm)})}
     };
     const result=await fn(tx);state=draft;return result;
@@ -98,8 +98,8 @@ test('impede acesso entre usuários e prévia desatualizada',async()=>{
   f.set(s=>s.leads[0].nome='Alterado');await assert.rejects(f.service.executarImportacao('import','u','aplicar'),/funil mudou/);assert.equal(f.get().leads[0].valorEmAberto,'100.00');
 });
 test('reversão não sobrescreve edição posterior',async()=>{
-  const f=servidorFixture();await f.service.executarImportacao('import','u','aplicar');f.set(s=>s.leads[0].atualizadoEm='2030-01-01T00:00:00.000Z');
-  await assert.rejects(f.service.executarImportacao('import','u','desfazer'),/alterado ou removido/);assert.equal(f.get().leads[0].valorEmAberto,'200.00');assert.equal(f.get().importacao.desfeitoEm,null);
+  const f=servidorFixture();await f.service.executarImportacao('import','u','aplicar');f.set(s=>{s.leads[0].atualizadoEm='2030-01-01T00:00:00.000Z';s.leads[0].valorEmAberto='250.00';});
+  await assert.rejects(f.service.executarImportacao('import','u','desfazer'),/alterado ou removido/);assert.equal(f.get().leads[0].valorEmAberto,'250.00');assert.equal(f.get().importacao.desfeitoEm,null);
 });
 test('erro no segundo cadastro reverte a transação inteira',async()=>{
   const f=servidorFixture();f.set(s=>s.importacao.relatorio.atualizacoes.push({...s.importacao.relatorio.atualizacoes[0],lead:lead({id:'inexistente'})}));
@@ -145,4 +145,66 @@ test('upload multipart funciona sem global File e rejeita campos que não são a
   } finally {
     if (descriptor) Object.defineProperty(globalThis, 'File', descriptor);
   }
+});
+
+test('editar nome ou grupo após importar não bloqueia desfazer os débitos intactos', async () => {
+  const f = servidorFixture(); await f.service.executarImportacao('import', 'u', 'aplicar');
+  f.set(s => { s.leads[0].nome = 'Nome atualizado'; s.leads[0].estagio = 'negociado'; s.leads[0].atualizadoEm = '2030-01-01T00:00:00.000Z'; });
+  await f.service.executarImportacao('import', 'u', 'desfazer');
+  assert.equal(f.get().leads[0].valorEmAberto, '100.00');
+  assert.equal(f.get().leads[0].nome, 'Nome atualizado'); assert.equal(f.get().leads[0].estagio, 'negociado');
+});
+test('restauração explícita recupera valores anteriores e guarda backup dos débitos substituídos', async () => {
+  const f = servidorFixture(); await f.service.executarImportacao('import', 'u', 'aplicar');
+  f.set(s => { s.leads[0].valorEmAberto = '450.00'; s.leads[0].atualizadoEm = '2030-01-01T00:00:00.000Z'; });
+  const previa = await f.service.analisarRestauracaoDebitos('import', 'u');
+  assert.equal(previa.registros[0].atual.valorEmAberto, '450.00'); assert.equal(previa.registros[0].anterior.valorEmAberto, '100.00');
+  assert.equal((await f.service.restaurarDebitosAnteriores('import', 'u', previa.token)).restaurados, 1);
+  assert.equal(f.get().leads[0].valorEmAberto, '100.00');
+  assert.equal(f.get().importacao.relatorio.restauracao.backup[0].atual.valorEmAberto, '450.00');
+  assert.ok(f.get().importacao.desfeitoEm);
+  await assert.rejects(f.service.restaurarDebitosAnteriores('import', 'u', previa.token), /já foi desfeita/);
+});
+test('restauração recusa alterações desde a conferência, empresas ausentes e outro usuário', async () => {
+  const f = servidorFixture(); await f.service.executarImportacao('import', 'u', 'aplicar');
+  await assert.rejects(f.service.analisarRestauracaoDebitos('import', 'outro'), /não encontrada/);
+  const previa = await f.service.analisarRestauracaoDebitos('import', 'u');
+  f.set(s => { s.leads[0].valorEmAberto = '500.00'; });
+  await assert.rejects(f.service.restaurarDebitosAnteriores('import', 'u', previa.token), /mudaram/);
+  assert.equal(f.get().leads[0].valorEmAberto, '500.00');
+  f.set(s => { s.leads = []; });
+  const ausente = await f.service.analisarRestauracaoDebitos('import', 'u'); assert.equal(ausente.ausentes.length, 1);
+  await assert.rejects(f.service.restaurarDebitosAnteriores('import', 'u', ausente.token), /não existem mais/);
+  assert.equal(f.get().importacao.desfeitoEm, null);
+});
+test('restauração de múltiplas empresas não deixa alterações parciais', async () => {
+  const f = servidorFixture(); await f.service.executarImportacao('import', 'u', 'aplicar');
+  f.set(s => { s.importacao.relatorio.atualizacoes.push({ ...s.importacao.relatorio.atualizacoes[0], lead: lead({ id: 'ausente' }) }); });
+  const previa = await f.service.analisarRestauracaoDebitos('import', 'u');
+  await assert.rejects(f.service.restaurarDebitosAnteriores('import', 'u', previa.token), /não existem mais/);
+  assert.equal(f.get().leads[0].valorEmAberto, '200.00'); assert.equal(f.get().importacao.desfeitoEm, null);
+});
+
+test('API de restauração exige sessão e token de conferência e mantém o isolamento por usuário', async () => {
+  let sessao = { id: 'u' }, chamadas = [];
+  const rota = load('app/api/crm/debitos/[id]/route.ts', {
+    'next/server': { NextResponse: { json: (data, init) => Response.json(data, init) } },
+    '@prisma/client': { Prisma: { PrismaClientKnownRequestError: class extends Error {} } },
+    '../../../../../lib/auth': { obterSessao: async () => sessao },
+    '../../../../../lib/prisma': { prisma: {} },
+    '../../../../../lib/crmDebitosServidor': {
+      ErroImportacao: class extends Error {},
+      analisarRestauracaoDebitos: async (...args) => { chamadas.push(args); return { token: 'a'.repeat(64) }; },
+      restaurarDebitosAnteriores: async (...args) => { chamadas.push(args); return { ok: true, restaurados: 2 }; },
+    },
+  });
+  const params = { params: { id: 'lote' } };
+  assert.equal((await rota.GET({ nextUrl: new URL('http://localhost?restaurar=1') }, params)).status, 200);
+  assert.deepEqual(chamadas[0], ['lote', 'u']);
+  assert.equal((await rota.POST({ json: async () => ({ acao: 'restaurar' }) }, params)).status, 400);
+  const resposta = await rota.POST({ json: async () => ({ acao: 'restaurar', token: 'a'.repeat(64) }) }, params);
+  assert.equal((await resposta.json()).restaurados, 2); assert.deepEqual(chamadas[1], ['lote', 'u', 'a'.repeat(64)]);
+  sessao = null;
+  assert.equal((await rota.POST({ json: async () => ({ acao: 'restaurar', token: 'a'.repeat(64) }) }, params)).status, 401);
+  assert.equal(chamadas.length, 2);
 });

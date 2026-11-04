@@ -9,12 +9,12 @@ export default function HistoricoGeralPainel({ estagios, onFechar, onAbrirLead, 
   estagios: EstagioConfigCrm[];
   onFechar: () => void;
   onAbrirLead: (id: string) => void;
-  onAtualizado: () => void;
+  onAtualizado: () => void | Promise<void>;
 }) {
   const [versao, setVersao] = useState(0);
   return <PopupCentral titulo="Histórico geral do CRM" onFechar={onFechar} className="crm-alertas-dialog">
     <p className="crm-alertas-intro">Importações, atualizações de débitos, movimentações e edições da sua conta.</p>
-    <ImportacoesHistorico onAtualizado={() => { setVersao(v => v + 1); onAtualizado(); }} />
+    <ImportacoesHistorico onAtualizado={async () => { setVersao(v => v + 1); await onAtualizado(); }} />
     <MovimentacoesHistorico key={versao} estagios={estagios} onAbrirLead={onAbrirLead} />
   </PopupCentral>;
 }

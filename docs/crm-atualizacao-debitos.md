@@ -75,3 +75,20 @@ Resultado desta execução: 67 testes passaram (14 novos), TypeScript e lint dos
 arquivos alterados passaram. O build de produção foi interrompido no download da
 fonte Inter via `next/font`, indisponível na rede do ambiente. Não houve publicação
 nem alteração no banco de produção; a autenticação GitHub disponível não foi aceita.
+
+
+### Recuperar os valores anteriores com alterações posteriores
+
+Desfazer compara os quatro campos de débito com o resultado importado. Editar nome,
+telefone ou grupo não impede desfazer quando os débitos continuam iguais.
+
+Quando os próprios débitos foram alterados depois, o histórico oferece
+**Restaurar valores anteriores quando o desfazer estiver bloqueado**. A conferência
+mostra os valores atuais e os anteriores à planilha. Confirmar substitui somente
+valor em aberto, quantidade de parcelas e as duas datas de vencimento, preservando
+os demais dados. Os valores substituídos ficam em `relatorio.restauracao.backup`,
+na mesma transação da restauração e dos registros de histórico. A confirmação
+contém um token do estado conferido e recusa alterações concorrentes. Se houver
+empresa removida, a restauração é bloqueada sem alterar parcialmente o lote.
+Este recurso restaura débitos de IDs registrados; não exclui empresas duplicadas
+criadas por outra importação e não substitui um backup completo do sistema.

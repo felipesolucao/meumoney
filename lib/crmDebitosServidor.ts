@@ -40,7 +40,7 @@ export async function executarImportacao(id: string, usuarioId: string, acao: 'a
     }
     for (const a of relatorio.atualizacoes) {
       const resultado = await tx.leadCrm.updateMany({
-        where: { id: a.lead.id, usuarioId, ...(acao === 'desfazer' ? { ...dadosDebito(a.depois), atualizadoEm: new Date(a.atualizadoEmDepois ?? '') } : { atualizadoEm: new Date(a.lead.atualizadoEm) }) },
+        where: { id: a.lead.id, usuarioId, ...(acao === 'desfazer' ? { ...dadosDebito(a.depois) } : { atualizadoEm: new Date(a.lead.atualizadoEm) }) },
         data: { ...dadosDebito(acao === 'aplicar' ? a.depois : somenteDebito(a.lead)), movimentadoEm: new Date() },
       });
       if (resultado.count !== 1) throw new ErroImportacao('Um cadastro foi alterado ou removido após a importação. Nenhuma alteração deste lote foi salva.');
@@ -51,5 +51,55 @@ export async function executarImportacao(id: string, usuarioId: string, acao: 'a
       }
     }
     return tx.importacaoDebitosCrm.update({ where: { id }, data: acao === 'aplicar' ? { aplicadoEm: new Date(), relatorio: relatorio as unknown as Prisma.InputJsonValue } : { desfeitoEm: new Date() } });
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 60000 });
+}
+
+// Restauração explícita: a prévia vincula a confirmação ao estado conferido.
+// O backup fica no mesmo relatório e é salvo atomicamente com a restauração.
+type RegistroRestauracao = { id: string; nome: string; atual: Debito; anterior: Debito; atualizadoEm: string };
+async function prepararRestauracao(tx: Prisma.TransactionClient, id: string, usuarioId: string) {
+  const importacao = await tx.importacaoDebitosCrm.findFirst({ where: { id, usuarioId } });
+  if (!importacao) throw new ErroImportacao('Importação não encontrada.', 404);
+  if (!importacao.aplicadoEm) throw new ErroImportacao('Esta atualização ainda não foi aplicada.');
+  if (importacao.desfeitoEm) throw new ErroImportacao('Esta atualização já foi desfeita. Nenhum dado foi alterado.');
+  const relatorio = importacao.relatorio as unknown as RelatorioDebitos;
+  if (!relatorio.atualizacoes.length) throw new ErroImportacao('Este lote não contém débitos para restaurar.');
+  const ids = relatorio.atualizacoes.map(a => a.lead.id);
+  if (new Set(ids).size !== ids.length) throw new ErroImportacao('O lote contém cadastros repetidos. A restauração precisa ser revisada.');
+  const leads = await tx.leadCrm.findMany({ where: { usuarioId, id: { in: ids } } });
+  const porId = new Map(leads.map(l => [l.id, l]));
+  const ausentes = relatorio.atualizacoes.filter(a => !porId.has(a.lead.id)).map(a => ({ id: a.lead.id, nome: a.lead.nome }));
+  const registros: RegistroRestauracao[] = relatorio.atualizacoes.flatMap(a => {
+    const lead = porId.get(a.lead.id);
+    return lead ? [{ id: lead.id, nome: lead.nome, atual: somenteDebito(serializarLeadDebito(lead)), anterior: somenteDebito(a.lead), atualizadoEm: lead.atualizadoEm.toISOString() }] : [];
+  });
+  const token = createHash('sha256').update(JSON.stringify({ id, aplicadoEm: importacao.aplicadoEm, registros, ausentes })).digest('hex');
+  return { importacao, registros, ausentes, token };
+}
+export async function analisarRestauracaoDebitos(id: string, usuarioId: string) {
+  return prisma.$transaction(async tx => {
+    const p = await prepararRestauracao(tx, id, usuarioId);
+    return { arquivo: p.importacao.arquivo, registros: p.registros, ausentes: p.ausentes, token: p.token };
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 60000 });
+}
+export async function restaurarDebitosAnteriores(id: string, usuarioId: string, token: string) {
+  return prisma.$transaction(async tx => {
+    const p = await prepararRestauracao(tx, id, usuarioId);
+    if (p.token !== token) throw new ErroImportacao('Os dados mudaram desde a conferência. Consulte os valores novamente antes de restaurar.');
+    if (p.ausentes.length) throw new ErroImportacao(`${p.ausentes.length} empresa(s) do lote não existem mais. Nenhum valor foi restaurado. A recuperação desses cadastros exige um backup anterior.`);
+    for (const r of p.registros) {
+      const salvo = await tx.leadCrm.updateMany({
+        where: { id: r.id, usuarioId, atualizadoEm: new Date(r.atualizadoEm), ...dadosDebito(r.atual) },
+        data: { ...dadosDebito(r.anterior), movimentadoEm: new Date() },
+      });
+      if (salvo.count !== 1) throw new ErroImportacao('Um cadastro mudou durante a restauração. Nenhum valor foi restaurado. Atualize a conferência.');
+      await registrarHistoricoCrm(tx, usuarioId, r.id, 'Débitos restaurados ao estado anterior à planilha', compararCamposCrm(dadosDebito(r.atual), dadosDebito(r.anterior)));
+    }
+    const agora = new Date();
+    const relatorio = { ...(p.importacao.relatorio as Prisma.JsonObject), restauracao: {
+      em: agora.toISOString(), token: p.token, backup: p.registros,
+    } };
+    await tx.importacaoDebitosCrm.update({ where: { id }, data: { desfeitoEm: agora, relatorio: relatorio as unknown as Prisma.InputJsonValue } });
+    return { ok: true, restaurados: p.registros.length, arquivo: p.importacao.arquivo };
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 60000 });
 }

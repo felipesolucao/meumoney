@@ -1,4 +1,5 @@
 'use client';
+import RestaurarDebitos from './RestaurarDebitos';
 import { useEffect, useState } from 'react';
 
 type Lote = { id: string; tipo: 'leads' | 'debitos'; arquivo: string; quantidade?: number; criadoEm: string; aplicadoEm: string | null; desfeitoEm: string | null };
@@ -6,7 +7,7 @@ type Duplicata = { id: string; nome: string; codigo: string | null; cnpj: string
 function dataLocal(d: Date) {
   return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
 }
-export default function ImportacoesHistorico({ onAtualizado }: { onAtualizado: () => void }) {
+export default function ImportacoesHistorico({ onAtualizado }: { onAtualizado: () => void | Promise<void> }) {
   const [itens, setItens] = useState<Lote[]>([]);
   const [pagina, setPagina] = useState(0);
   const [temMais, setTemMais] = useState(false);
@@ -37,7 +38,7 @@ export default function ImportacoesHistorico({ onAtualizado }: { onAtualizado: (
       const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       const dados = await r.json();
       if (!r.ok) throw new Error(dados.error || 'Não foi possível concluir.');
-      setMensagem(sucesso); setPagina(0); setVersao(v => v + 1); setDuplicatas(null); setSelecionadas([]); onAtualizado();
+      setMensagem(sucesso); setPagina(0); setVersao(v => v + 1); setDuplicatas(null); setSelecionadas([]); await onAtualizado();
     } catch (e) { setErro(e instanceof Error ? e.message : 'Falha de conexão. Consulte o histórico antes de repetir.'); }
     finally { setOcupado(false); }
   }
@@ -67,6 +68,7 @@ export default function ImportacoesHistorico({ onAtualizado }: { onAtualizado: (
         const confirmacao = item.tipo === 'leads' ? `Remover as ${item.quantidade} empresas criadas por “${item.arquivo}”? Os cadastros anteriores serão preservados. A exclusão será bloqueada se houver alterações ou registros vinculados posteriores.` : `Restaurar os valores de débito anteriores à atualização “${item.arquivo}”?`;
         if (window.confirm(confirmacao)) void executar(`/api/crm/${item.tipo === 'leads' ? 'importacoes' : 'debitos'}/${item.id}`, { acao: 'desfazer' }, 'Ação desfeita. O quadro foi atualizado.');
       }}>Desfazer {item.tipo === 'leads' ? 'importação' : 'atualização de débitos'}</button>}
+      {item.tipo === 'debitos' && item.aplicadoEm && !item.desfeitoEm && <RestaurarDebitos id={item.id} onAtualizado={async () => { setPagina(0); setVersao(v => v + 1); await onAtualizado(); }} />}
     </article>)}
     {carregando && <p>Carregando importações…</p>}
     {!carregando && !itens.length && <p>Nenhuma importação registrada.</p>}

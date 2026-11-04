@@ -114,7 +114,7 @@ export default function CrmBoard({
 
   async function recarregar() {
     try {
-      const resposta = await fetch("/api/crm/leads");
+      const resposta = await fetch("/api/crm/leads", { cache: "no-store" });
       const dados = await resposta.json();
       if (resposta.ok) setLeads(dados);
     } catch {
