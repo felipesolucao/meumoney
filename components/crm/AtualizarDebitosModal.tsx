@@ -63,6 +63,15 @@ export default function AtualizarDebitosModal({ estagios, onFechar, onAtualizado
         </option>)}</select>
         {!registro ? <>
           <p>Importe a listagem completa de débitos em aberto. O sistema atualizará valor, quantidade de parcelas e vencimentos mais antigo e mais recente dos cadastros encontrados.</p>
+          <details style={{ margin: '16px 0' }}>
+            <summary style={{ cursor: 'pointer' }}>Ver exemplo das colunas do Excel</summary>
+            <p>Escolha um dos modelos abaixo. Copie o conteúdo para a célula A1 do Excel, substitua os dados fictícios e salve como .xlsx. Os títulos devem ficar na primeira linha.</p>
+            <label className="crm-label" htmlFor="debitos-modelo-detalhe">Detalhe — uma linha por parcela em aberto</label>
+            <textarea id="debitos-modelo-detalhe" className="crm-textarea" readOnly rows={3} wrap="off" onFocus={e => e.target.select()} value={'Cod\tRazão Social\tCNPJ/CPF\tDt Venc.\tVr. Doc.\n001\tEmpresa Exemplo\t00.123.456/0001-99\t10/01/2026\t150,00\n001\tEmpresa Exemplo\t00.123.456/0001-99\t10/02/2026\t150,00'} />
+            <label className="crm-label" htmlFor="debitos-modelo-resumo">Resumo — uma linha por empresa</label>
+            <textarea id="debitos-modelo-resumo" className="crm-textarea" readOnly rows={3} wrap="off" onFocus={e => e.target.select()} value={'Cod\tRazão Social\tCNPJ/CPF\tQtd. Parcelas\tValor Total em Aberto\tVenc. Mais Antigo\tVenc. Mais Recente\n001\tEmpresa Exemplo\t00.123.456/0001-99\t2\t300,00\t10/01/2026\t10/02/2026'} />
+            <p className="crm-hint">Razão Social e pelo menos um identificador (Cod ou CNPJ/CPF) são obrigatórios. Formate as colunas de código e documento como Texto antes de colar, preservando zeros iniciais. Use datas dd/mm/aaaa e valores como 150,00. Em Detalhe, inclua somente parcelas em aberto, sem pagamentos ou baixas. Se enviar os dois modelos em abas separadas, o Detalhe terá prioridade.</p>
+          </details>
           <label className="crm-label" htmlFor="debitos-arquivo">Planilha Excel (.xlsx, até 10 MB)</label>
           <input id="debitos-arquivo" type="file" accept=".xlsx" disabled={ocupado} onChange={e => { setArquivo(e.target.files?.[0] ?? null); setCompleta(false); }} />
           <p className="crm-hint">Aceita as abas Detalhe e Resumo do seu modelo. Havendo detalhes, os valores são calculados pelas parcelas, sem somar novamente o resumo. Nenhum novo lead será criado.</p>

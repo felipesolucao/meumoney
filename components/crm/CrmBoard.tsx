@@ -316,7 +316,7 @@ export default function CrmBoard({
         <GerenciarGruposPainel estagios={estagios} onFechar={() => setModalGerenciarGrupos(false)} onAtualizar={setEstagios} />
       )}
 
-      {modalHistorico && <HistoricoGeralPainel estagios={estagios} onFechar={() => setModalHistorico(false)} onAbrirLead={id => {
+      {modalHistorico && <HistoricoGeralPainel estagios={estagios} onAtualizado={recarregar} onFechar={() => setModalHistorico(false)} onAbrirLead={id => {
         const lead = leads.find(item => item.id === id);
         if (!lead) { showToast("Empresa indisponível. Atualize o quadro.", "erro"); return; }
         setModalHistorico(false);

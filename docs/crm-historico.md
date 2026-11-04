@@ -10,6 +10,28 @@ O formulário envia somente os campos editados. Assim, salvar o cadastro depois 
 
 ## Banco e publicação
 
+A seção **Importações e atualizações de débitos** lista os envios da conta,
+com arquivo, data, quantidade de empresas (novos cadastros) e estado. As análises
+de débitos aparecem sem botão de reversão até serem aplicadas. Os botões
+**Desfazer importação** e **Desfazer atualização de débitos** pedem confirmação e
+recarregam o quadro. Os lotes de importação permanecem no histórico após a exclusão
+das empresas criadas. A reversão de débitos usa o controle de concorrência já existente.
+
+A migração `20261104170000_importacoes_leads_crm` cria a tabela de lotes de novos
+cadastros. A importação CSV grava empresas, automações e lote na mesma transação.
+Desfazer remove somente os IDs do lote, bloqueia alterações posteriores e empresas
+com atendimentos, negociações ou contratos. Uma falha reverte toda a exclusão.
+
+Para envios anteriores, abra **Recuperar duplicatas de uma importação anterior ao
+histórico**, informe um intervalo de criação de até sete dias e confira as empresas
+selecionadas. A consulta procura nome normalizado e código ou documento coincidentes
+com um cadastro mais antigo, sem identificadores conflitantes. Isso é uma indicação
+de duplicidade, não comprovação da origem do cadastro. Nenhuma linha vem selecionada.
+O cadastro anterior precisa permanecer fora da seleção; empresas com vínculos ficam
+bloqueadas. A remoção exige nova confirmação e confere os dados novamente em uma
+transação serializável. A recuperação é registrada como ação desfeita no histórico.
+Essa ferramenta não reconstrói o lote original e pode não encontrar todos os casos.
+
 Aplicar `npx prisma migrate deploy` e gerar o cliente com `npx prisma generate` antes de disponibilizar a versão. A migração `20261006190000_crm_historico` adiciona uma tabela e um índice, sem alterar os cadastros existentes ou suas datas de movimentação. Os scripts existentes de build/start já executam essas etapas.
 
 O histórico começa na implantação; eventos anteriores não podem ser reconstruídos. Os registros acompanham a empresa e são removidos se a própria empresa for excluída. A API de leitura exige sessão e propriedade da empresa, oferece páginas de 50 eventos e não expõe edição ou exclusão de logs.

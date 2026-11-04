@@ -10,11 +10,15 @@
 // automações do usuário (ver lib/crmAutomacao.ts) — útil pra planilha já vir
 // com uma coluna "STATUS" que deve empurrar o lead pra uma etapa específica.
 // ============================================================================
+import { Prisma } from "@prisma/client";
+import { snapshotImportado } from "../../../../../lib/crmImportacoesServidor";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "../../../../../lib/prisma";
 import { obterSessao } from "../../../../../lib/auth";
 import { CAMPOS_IMPORTACAO, ESTAGIOS_IDS, mesclarEstagiosConfig, normalizarTexto, type EstagioConfigCrm } from "../../../../../lib/crm";
 import { aplicarAutomacoes } from "../../../../../lib/crmAutomacao";
+
+export const maxDuration = 60;
 
 // Aceita CSV separado por vírgula ou por ponto-e-vírgula (padrão do Excel
 // em português), com campos entre aspas quando o valor tem o separador.
@@ -128,7 +132,7 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json().catch(() => null);
   const conteudo: string | undefined = body?.csv;
-  if (!conteudo || !conteudo.trim()) {
+  if (typeof conteudo !== 'string' || !conteudo.trim()) {
     return NextResponse.json({ error: "Envie o conteúdo do CSV." }, { status: 400 });
   }
 
@@ -148,74 +152,85 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'A planilha precisa de uma coluna "Nome" (ou "Associado").' }, { status: 400 });
   }
 
-  const estagiosConfig = await prisma.estagioCrmConfig.findMany({ where: { usuarioId: sessao.id } });
-  const estagios = mesclarEstagiosConfig(estagiosConfig);
+  try {
+    const resultado = await prisma.$transaction(async tx => {
+      const estagiosConfig = await tx.estagioCrmConfig.findMany({ where: { usuarioId: sessao.id } });
+      const estagios = mesclarEstagiosConfig(estagiosConfig);
 
-  const contadorPorEstagio = new Map<string, number>();
-  for (const info of ESTAGIOS_IDS) {
-    const atual = await prisma.leadCrm.count({ where: { usuarioId: sessao.id, estagio: info } });
-    contadorPorEstagio.set(info, atual);
+      const contadorPorEstagio = new Map<string, number>();
+      for (const info of ESTAGIOS_IDS) {
+        const atual = await tx.leadCrm.count({ where: { usuarioId: sessao.id, estagio: info } });
+        contadorPorEstagio.set(info, atual);
+      }
+
+      const linhasDeDados = linhas.slice(1);
+      let importados = 0;
+      const registros: ReturnType<typeof snapshotImportado>[] = [];
+
+      for (const linha of linhasDeDados) {
+        const pega = (chave: string) => {
+          const indice = indicePorChave.get(chave);
+          return indice !== undefined ? linha[indice]?.trim() : undefined;
+        };
+        const nome = pega("nome");
+        if (!nome) continue;
+
+        const estagio = paraEstagio(pega("estagioLabel"), pega("statusPlanilha"), estagios);
+        const ordem = contadorPorEstagio.get(estagio) ?? 0;
+        contadorPorEstagio.set(estagio, ordem + 1);
+
+        // Colunas extras da planilha (não mapeadas) viram camposExtras, para o
+        // usuário complementar o modelo aos poucos sem perder dado nenhum.
+        const camposExtras: Record<string, string> = {};
+        cabecalho.forEach((coluna, indice) => {
+          const campo = CAMPOS_IMPORTACAO.find((c) => c.aliases.includes(coluna));
+          if (!campo && linha[indice]?.trim()) camposExtras[linhas[0][indice].trim()] = linha[indice].trim();
+        });
+
+        const textoParcelas = pega("quantidadeParcelas");
+        const textoColaboradores = pega("quantidadeColaboradores");
+
+        let lead = await tx.leadCrm.create({
+          data: {
+            nome,
+            estagio,
+            ordem,
+            codigo: pega("codigo") || null,
+            valorEmAberto: paraNumero(pega("valorEmAberto") ?? ""),
+            valorPago: paraNumero(pega("valorPago") ?? ""),
+            quantidadeParcelas: textoParcelas ? parseInt(textoParcelas, 10) || null : null,
+            quantidadeColaboradores: textoColaboradores ? parseInt(textoColaboradores, 10) || null : null,
+            cnpj: pega("cnpj") || null,
+            telefone: pega("telefone") || null,
+            telefone2: pega("telefone2") || null,
+            email: pega("email") || null,
+            sindicatoPatronal: pega("sindicatoPatronal") || null,
+            origem: pega("origem") || null,
+            observacoes: pega("observacoes") || null,
+            parcelaMaisAntiga: paraData(pega("parcelaMaisAntiga")),
+            parcelaMaisRecente: paraData(pega("parcelaMaisRecente")),
+            dataUltimoContato: paraData(pega("dataUltimoContato")),
+            statusPlanilha: pega("statusPlanilha") || null,
+            camposExtras: Object.keys(camposExtras).length > 0 ? camposExtras : undefined,
+            usuarioId: sessao.id,
+          },
+        });
+
+        lead = await aplicarAutomacoes(sessao.id, lead, tx);
+        registros.push(snapshotImportado(lead));
+        importados++;
+      }
+
+      if (importados === 0) throw new Error("Nenhuma linha válida encontrada (verifique a coluna Nome/Associado).");
+      const lote = await tx.importacaoLeadsCrm.create({ data: {
+        usuarioId: sessao.id, arquivo: typeof body.arquivo === 'string' ? body.arquivo.slice(0, 255) : 'Conteúdo CSV colado',
+        registros, quantidade: importados,
+      } });
+      return { ok: true, importados, importacaoId: lote.id };
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 60000 });
+    return NextResponse.json(resultado);
+  } catch (e) {
+    if (e instanceof Error && e.message.startsWith('Nenhuma linha válida')) return NextResponse.json({ error: e.message }, { status: 400 });
+    return NextResponse.json({ error: "Não foi possível importar. Nenhuma empresa deste lote foi salva. Tente novamente." }, { status: 409 });
   }
-
-  const linhasDeDados = linhas.slice(1);
-  let importados = 0;
-
-  for (const linha of linhasDeDados) {
-    const pega = (chave: string) => {
-      const indice = indicePorChave.get(chave);
-      return indice !== undefined ? linha[indice]?.trim() : undefined;
-    };
-    const nome = pega("nome");
-    if (!nome) continue;
-
-    const estagio = paraEstagio(pega("estagioLabel"), pega("statusPlanilha"), estagios);
-    const ordem = contadorPorEstagio.get(estagio) ?? 0;
-    contadorPorEstagio.set(estagio, ordem + 1);
-
-    // Colunas extras da planilha (não mapeadas) viram camposExtras, para o
-    // usuário complementar o modelo aos poucos sem perder dado nenhum.
-    const camposExtras: Record<string, string> = {};
-    cabecalho.forEach((coluna, indice) => {
-      const campo = CAMPOS_IMPORTACAO.find((c) => c.aliases.includes(coluna));
-      if (!campo && linha[indice]?.trim()) camposExtras[linhas[0][indice].trim()] = linha[indice].trim();
-    });
-
-    const textoParcelas = pega("quantidadeParcelas");
-    const textoColaboradores = pega("quantidadeColaboradores");
-
-    let lead = await prisma.leadCrm.create({
-      data: {
-        nome,
-        estagio,
-        ordem,
-        codigo: pega("codigo") || null,
-        valorEmAberto: paraNumero(pega("valorEmAberto") ?? ""),
-        valorPago: paraNumero(pega("valorPago") ?? ""),
-        quantidadeParcelas: textoParcelas ? parseInt(textoParcelas, 10) || null : null,
-        quantidadeColaboradores: textoColaboradores ? parseInt(textoColaboradores, 10) || null : null,
-        cnpj: pega("cnpj") || null,
-        telefone: pega("telefone") || null,
-        telefone2: pega("telefone2") || null,
-        email: pega("email") || null,
-        sindicatoPatronal: pega("sindicatoPatronal") || null,
-        origem: pega("origem") || null,
-        observacoes: pega("observacoes") || null,
-        parcelaMaisAntiga: paraData(pega("parcelaMaisAntiga")),
-        parcelaMaisRecente: paraData(pega("parcelaMaisRecente")),
-        dataUltimoContato: paraData(pega("dataUltimoContato")),
-        statusPlanilha: pega("statusPlanilha") || null,
-        camposExtras: Object.keys(camposExtras).length > 0 ? camposExtras : undefined,
-        usuarioId: sessao.id,
-      },
-    });
-
-    lead = await aplicarAutomacoes(sessao.id, lead);
-    importados++;
-  }
-
-  if (importados === 0) {
-    return NextResponse.json({ error: "Nenhuma linha válida encontrada (verifique a coluna Nome/Associado)." }, { status: 400 });
-  }
-
-  return NextResponse.json({ ok: true, importados });
 }

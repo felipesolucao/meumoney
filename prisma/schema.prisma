@@ -68,6 +68,7 @@ model Usuario {
   negociacoesCrm         NegociacaoCrm[]
   leadsCrm               LeadCrm[]
   importacoesDebitosCrm   ImportacaoDebitosCrm[]
+  importacoesLeadsCrm     ImportacaoLeadsCrm[]
   atendimentosCrm        AtendimentoCrm[]
   automacoesCrm          AutomacaoCrm[]
   estagiosCrmConfig      EstagioCrmConfig[]
@@ -848,6 +849,20 @@ model NegociacaoCrm {
   @@index([usuarioId, dataNegociacao])
   @@index([usuarioId, leadId])
   @@map("negociacoes_crm")
+}
+
+// Lotes de novos cadastros, mantidos mesmo depois de desfazer a importação.
+model ImportacaoLeadsCrm {
+  id String @id @default(cuid())
+  usuarioId String
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  arquivo String
+  registros Json
+  quantidade Int
+  criadoEm DateTime @default(now())
+  desfeitoEm DateTime?
+  @@index([usuarioId, criadoEm])
+  @@map("crm_importacoes_leads")
 }
 
 // Prévia persistida, histórico financeiro e dados necessários para desfazer.

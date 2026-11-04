@@ -17,6 +17,10 @@ os grupos selecionados no modal, sempre da conta autenticada.
 
 ## Modelo do arquivo
 
+No modal, abra **Ver exemplo das colunas do Excel**. Os exemplos de Detalhe e
+Resumo podem ser selecionados e copiados diretamente para a célula A1 do Excel.
+Formate código e documento como Texto antes de colar e substitua os dados fictícios.
+
 - Detalhes: `Cod`, `Razão Social`, `CNPJ/CPF`, `Dt Venc.`, `Vr. Doc.`.
 - Resumo: `Cod`, `Razão Social`, `CNPJ/CPF`, `Qtd. Parcelas`,
   `Valor Total em Aberto`, `Venc. Mais Antigo`, `Venc. Mais Recente`.

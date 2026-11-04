@@ -23,12 +23,14 @@ function preverLinhas(csv: string): string[][] {
 export default function ImportarModal({ onFechar, onImportado }: { onFechar: () => void; onImportado: () => void }) {
   const showToast = useToast();
   const [csv, setCsv] = useState("");
+  const [nomeArquivo, setNomeArquivo] = useState("Conteúdo CSV colado");
   const [arrastando, setArrastando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
   const inputArquivoRef = useRef<HTMLInputElement>(null);
 
   function lerArquivo(arquivo: File) {
+    setNomeArquivo(arquivo.name);
     const leitor = new FileReader();
     leitor.onload = () => setCsv(String(leitor.result || ""));
     leitor.readAsText(arquivo, "utf-8");
@@ -45,7 +47,7 @@ export default function ImportarModal({ onFechar, onImportado }: { onFechar: () 
       const resposta = await fetch("/api/crm/leads/importar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ csv }),
+        body: JSON.stringify({ csv, arquivo: nomeArquivo }),
       });
       const dados = await resposta.json();
       if (!resposta.ok) throw new Error(dados.error || "Não foi possível importar a planilha.");
@@ -74,6 +76,7 @@ export default function ImportarModal({ onFechar, onImportado }: { onFechar: () 
         <div className="crm-modal-body">
           {erro && <div className="crm-error">{erro}</div>}
 
+          <p className="crm-hint">Esta opção cria novas empresas e pode gerar duplicatas. Para atualizar valores de empresas existentes, use Atualizar débitos. Você poderá desfazer este envio no Histórico geral.</p>
           <div
             className={`crm-drop-zone${arrastando ? " is-active" : ""}`}
             onClick={() => inputArquivoRef.current?.click()}
@@ -108,7 +111,7 @@ export default function ImportarModal({ onFechar, onImportado }: { onFechar: () 
               className="crm-textarea"
               style={{ minHeight: 110, fontFamily: "inherit", fontSize: 12.5 }}
               value={csv}
-              onChange={(e) => setCsv(e.target.value)}
+              onChange={(e) => { setCsv(e.target.value); setNomeArquivo("Conteúdo CSV colado"); }}
               placeholder="Código,Associado,CNPJ,Valor em aberto,Qtd parcelas,Nº func. ativos,Status,Sindicato patronal"
             />
             <p className="crm-hint">
