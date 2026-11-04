@@ -51,7 +51,7 @@ export default function ImportarModal({ onFechar, onImportado }: { onFechar: () 
       });
       const dados = await resposta.json();
       if (!resposta.ok) throw new Error(dados.error || "Não foi possível importar a planilha.");
-      showToast(`${dados.importados} lead(s) importado(s).`);
+      showToast(`${dados.importados} lead(s) importado(s). ${dados.ignorados ?? 0} repetido(s) ignorado(s).`);
       onImportado();
       onFechar();
     } catch (e) {

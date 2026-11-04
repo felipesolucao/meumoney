@@ -9,6 +9,7 @@
 // ============================================================================
 "use client";
 
+import { chavesEmpresa } from "../../lib/crmIdentidade";
 import { useMemo, useState } from "react";
 import type { LeadCrmResumo } from "../../lib/crm";
 import { infoEstagio, formatarMoedaCompacta } from "../../lib/crm";
@@ -28,7 +29,13 @@ export default function GerenciarLeadsPainel({
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
   const [excluindo, setExcluindo] = useState(false);
 
-  const leadsOrdenados = useMemo(() => [...leads].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")), [leads]);
+  const [somenteDuplicados, setSomenteDuplicados] = useState(false);
+  const duplicados = useMemo(() => {
+    const contagem = new Map<string, number>();
+    leads.forEach(l => chavesEmpresa(l).forEach(c => contagem.set(c, (contagem.get(c) ?? 0) + 1)));
+    return new Set(leads.filter(l => chavesEmpresa(l).some(c => (contagem.get(c) ?? 0) > 1)).map(l => l.id));
+  }, [leads]);
+  const leadsOrdenados = useMemo(() => leads.filter(l => !somenteDuplicados || duplicados.has(l.id)).sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")), [leads, somenteDuplicados, duplicados]);
   const todosSelecionados = leadsOrdenados.length > 0 && selecionados.size === leadsOrdenados.length;
 
   function alternarSelecao(id: string) {
@@ -103,6 +110,11 @@ export default function GerenciarLeadsPainel({
           </button>
         </div>
 
+        <label className="crm-gerenciar-checkbox-label">
+          <input type="checkbox" checked={somenteDuplicados} onChange={e => { setSomenteDuplicados(e.target.checked); setSelecionados(new Set()); }} />
+          Mostrar possíveis duplicatas ({duplicados.size})
+        </label>
+        <p className="crm-hint">Confira cada cadastro e preserve a empresa com seus atendimentos e acordos. Código ou documento repetido indica possível duplicação; nomes são usados apenas quando ambos estão ausentes.</p>
         <div className="crm-gerenciar-toolbar">
           <label className="crm-gerenciar-checkbox-label">
             <input type="checkbox" checked={todosSelecionados} onChange={alternarTodos} disabled={leadsOrdenados.length === 0} />
@@ -121,7 +133,7 @@ export default function GerenciarLeadsPainel({
               type="button"
               className="crm-btn crm-btn-danger crm-btn-sm"
               onClick={excluirTodos}
-              disabled={excluindo || leadsOrdenados.length === 0}
+              disabled={excluindo || leadsOrdenados.length === 0 || somenteDuplicados}
             >
               <IconTrash size={14} /> Excluir todos
             </button>

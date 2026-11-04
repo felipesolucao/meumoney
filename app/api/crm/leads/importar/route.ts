@@ -11,6 +11,7 @@
 // com uma coluna "STATUS" que deve empurrar o lead pra uma etapa específica.
 // ============================================================================
 import { Prisma } from "@prisma/client";
+import { criarIndiceEmpresas } from "../../../../../lib/crmIdentidade";
 import { snapshotImportado } from "../../../../../lib/crmImportacoesServidor";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "../../../../../lib/prisma";
@@ -154,6 +155,9 @@ export async function POST(req: NextRequest) {
 
   try {
     const resultado = await prisma.$transaction(async tx => {
+      const existentes = await tx.leadCrm.findMany({ where: { usuarioId: sessao.id }, select: { nome: true, codigo: true, cnpj: true } });
+      const indice = criarIndiceEmpresas(existentes);
+      let ignorados = 0;
       const estagiosConfig = await tx.estagioCrmConfig.findMany({ where: { usuarioId: sessao.id } });
       const estagios = mesclarEstagiosConfig(estagiosConfig);
 
@@ -174,6 +178,10 @@ export async function POST(req: NextRequest) {
         };
         const nome = pega("nome");
         if (!nome) continue;
+
+        const identidade = { nome, codigo: pega("codigo"), cnpj: pega("cnpj") };
+        if (indice.contem(identidade)) { ignorados++; continue; }
+        indice.adicionar(identidade);
 
         const estagio = paraEstagio(pega("estagioLabel"), pega("statusPlanilha"), estagios);
         const ordem = contadorPorEstagio.get(estagio) ?? 0;
@@ -221,12 +229,12 @@ export async function POST(req: NextRequest) {
         importados++;
       }
 
-      if (importados === 0) throw new Error("Nenhuma linha válida encontrada (verifique a coluna Nome/Associado).");
-      const lote = await tx.importacaoLeadsCrm.create({ data: {
+      if (importados === 0 && ignorados === 0) throw new Error("Nenhuma linha válida encontrada (verifique a coluna Nome/Associado).");
+      const lote = importados ? await tx.importacaoLeadsCrm.create({ data: {
         usuarioId: sessao.id, arquivo: typeof body.arquivo === 'string' ? body.arquivo.slice(0, 255) : 'Conteúdo CSV colado',
         registros, quantidade: importados,
-      } });
-      return { ok: true, importados, importacaoId: lote.id };
+      } }) : null;
+      return { ok: true, importados, ignorados, importacaoId: lote?.id };
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 60000 });
     return NextResponse.json(resultado);
   } catch (e) {

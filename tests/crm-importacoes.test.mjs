@@ -86,7 +86,7 @@ function importacaoFixture({ falhar = false, sessao = true } = {}) {
   let salvos = [], lotes = [];
   const tx = {
     estagioCrmConfig: { findMany: async () => [] },
-    leadCrm: { count: async () => salvos.length, create: async ({ data }) => { const l = lead(`novo-${salvos.length}`, data); salvos.push(l); return l; } },
+    leadCrm: { findMany: async () => salvos, count: async () => salvos.length, create: async ({ data }) => { const l = lead(`novo-${salvos.length}`, data); salvos.push(l); return l; } },
     importacaoLeadsCrm: { create: async ({ data }) => { if (falhar) throw new Error('Falha ao gravar lote'); const l = { ...data, id: 'lote' }; lotes.push(l); return l; } },
   };
   const { POST } = load('app/api/crm/leads/importar/route.ts', {
@@ -95,6 +95,7 @@ function importacaoFixture({ falhar = false, sessao = true } = {}) {
     '../../../../../lib/auth': { obterSessao: async () => sessao ? { id: 'u1' } : null },
     '../../../../../lib/crm': { CAMPOS_IMPORTACAO: [{ chave: 'nome', aliases: ['nome'] }], ESTAGIOS_IDS: ['inicio'], mesclarEstagiosConfig: () => [{ id: 'inicio', label: 'Início', labelPadrao: 'Início' }], normalizarTexto: s => s.toLowerCase() },
     '../../../../../lib/crmAutomacao': { aplicarAutomacoes: async (_u, l, db) => { assert.equal(db, tx); l.estagio = 'automatico'; return l; } },
+    '../../../../../lib/crmIdentidade': load('lib/crmIdentidade.ts', { './crmDebitos': core }),
     '../../../../../lib/crmImportacoesServidor': { snapshotImportado: l => ({ id: l.id, atualizadoEm: l.atualizadoEm.toISOString(), fingerprint: l.estagio }) },
     '../../../../../lib/prisma': { prisma: { $transaction: async fn => { const backup = globalThis.structuredClone({ salvos, lotes }); try { return await fn(tx); } catch (e) { salvos = backup.salvos; lotes = backup.lotes; throw e; } } } },
   });
@@ -102,7 +103,7 @@ function importacaoFixture({ falhar = false, sessao = true } = {}) {
 }
 test('importação CSV registra o arquivo e todos os IDs depois das automações na mesma transação', async () => {
   const f = importacaoFixture(); const r = await f.post({ csv: 'Nome\nEmpresa A\nEmpresa B', arquivo: 'carteira.csv' });
-  assert.equal(r.status, 200); assert.deepEqual(await r.json(), { ok: true, importados: 2, importacaoId: 'lote' });
+  assert.equal(r.status, 200); assert.deepEqual(await r.json(), { ok: true, importados: 2, ignorados: 0, importacaoId: 'lote' });
   const [lote] = f.estado().lotes; assert.equal(lote.arquivo, 'carteira.csv');
   assert.deepEqual(lote.registros.map(r => r.id), ['novo-0', 'novo-1']); assert.ok(lote.registros.every(r => r.fingerprint === 'automatico'));
 });
@@ -127,4 +128,13 @@ test('histórico de lotes reúne planilhas e débitos sem expor snapshots ou out
   const r = await GET({ nextUrl: new URL('http://localhost/api/crm/importacoes') });
   const dados = await r.json(); assert.deepEqual(dados.itens.map(i => i.tipo), ['debitos', 'leads']); assert.equal(dados.temMais, false);
   assert.equal((await GET({ nextUrl: new URL('http://localhost/api/crm/importacoes?pagina=-1') })).status, 400);
+});
+
+test('CSV repetido no próprio lote e em reenvio não cria empresas nem lotes adicionais', async () => {
+  const f = importacaoFixture();
+  const primeira = await f.post({ csv: 'Nome\nEmpresa A\nEmpresa A' });
+  assert.deepEqual(await primeira.json(), { ok: true, importados: 1, ignorados: 1, importacaoId: 'lote' });
+  const segunda = await f.post({ csv: 'Nome\nEmpresa A' });
+  assert.deepEqual(await segunda.json(), { ok: true, importados: 0, ignorados: 1 });
+  assert.equal(f.estado().salvos.length, 1); assert.equal(f.estado().lotes.length, 1);
 });
