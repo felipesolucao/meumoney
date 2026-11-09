@@ -6,6 +6,7 @@ import { useMemo, useState } from "react";
 import type { LeadCrmResumo, FaixaProgressoId, EstagioConfigCrm } from "../../lib/crm";
 import { ESTAGIOS, FAIXAS_PROGRESSO, formatarMoedaCompacta } from "../../lib/crm";
 import LeadCard from "./LeadCard";
+import ExportarGrupoBotao from "./ExportarGrupoBotao";
 import LeadPainel from "./LeadPainel";
 import ImportarModal from "./ImportarModal";
 import { agruparPorColuna, filtrarColunas, FILTRO_COLUNA_VAZIO, aplicarFiltroColuna, type ColunaFiltroState } from "../../lib/crmQuadro";
@@ -236,6 +237,8 @@ export default function CrmBoard({
               <button type="button" className="crm-btn crm-btn-ghost crm-btn-sm crm-column-add" onClick={() => setModalNovoEstagio(estagio.id)}>
                 <IconPlus size={13} /> Adicionar
               </button>
+
+              <ExportarGrupoBotao leads={leads} grupo={estagio} />
 
               <ColunaFiltros filtro={filtroColuna} onMudar={(novo) => atualizarFiltroColuna(estagio.id, novo)} />
 

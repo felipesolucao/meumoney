@@ -1,0 +1,35 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import ts from 'typescript';
+import ExcelJS from 'exceljs';
+const output = ts.transpileModule(fs.readFileSync(new URL('../lib/crmGrupoExcel.ts', import.meta.url), 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, esModuleInterop: true } }).outputText;
+const mod = { exports: {} };
+new Function('require', 'module', 'exports', output)(() => ExcelJS, mod, mod.exports);
+const { criarRelatorioGrupo } = mod.exports;
+const lead = { nome: '=1+1', estagio: 'custom', ordem: 0, cnpj: '00123456000100', codigo: '0001', telefone: '01199999999', observacoes: 'Linha 1\nLinha 2', quantidadeParcelas: 0, valorTotalComJuros: '1234.56', valorEmAberto: null, valorPago: '0', camposExtras: { detalhe: { formula: '1+1' } }, parcelaMaisAntiga: '2026-01-02T00:00:00.000Z' };
+test('XLSX mantém somente o grupo, textos, zeros, valores e datas após leitura', async () => {
+  const original = criarRelatorioGrupo([{ ...lead, estagio: 'outro' }, lead], { id: 'custom', label: 'Grupo personalizado' });
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(await original.xlsx.writeBuffer());
+  const sheet = workbook.worksheets[0];
+  assert.equal(sheet.rowCount, 2);
+  const row = sheet.getRow(2);
+  assert.equal(row.getCell(1).value, '=1+1');
+  assert.equal(row.getCell(2).value, '00123456000100');
+  assert.equal(row.getCell(3).value, '0001');
+  assert.equal(row.getCell(5).value, 'Linha 1\nLinha 2');
+  assert.equal(row.getCell(6).value, 0);
+  assert.equal(row.getCell(7).value, 1234.56);
+  assert.equal(row.getCell(8).value, null);
+  assert.equal(row.getCell(9).value, 0);
+  assert.equal(row.getCell(10).value, 'Grupo personalizado');
+  assert.equal(row.getCell(16).value.toISOString(), lead.parcelaMaisAntiga);
+  assert.equal(row.getCell(24).value, '{"formula":"1+1"}');
+});
+test('grupo vazio gera cabeçalhos e empresas seguem ordem do grupo', () => {
+  assert.equal(criarRelatorioGrupo([lead], { id: 'vazio', label: 'Vazio' }).worksheets[0].rowCount, 1);
+  const sheet = criarRelatorioGrupo([{ ...lead, nome: 'B', ordem: 2 }, { ...lead, nome: 'A', ordem: 1 }], { id: 'custom', label: 'Grupo' }).worksheets[0];
+  assert.equal(sheet.getCell('A2').value, 'A');
+  assert.equal(sheet.getCell('A3').value, 'B');
+});
