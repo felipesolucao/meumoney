@@ -55,11 +55,11 @@ test('normaliza código, documento e nome sem aproximação perigosa', () => {
   const nome = core.conciliarDebitos([empresa({ codigo:'',cnpj:'',nome:' empresa a ' })],[lead()]); assert.equal(nome.atualizacoes.length,1);
   assert.equal(core.conciliarDebitos([empresa({codigo:'',cnpj:'',nome:'Empresa'})],[lead()]).atualizacoes.length,0);
 });
-test('conflitos de código/CNPJ e cadastros duplicados nunca atualizam nem viram ausentes', () => {
+test('conflitos de identidade bloqueiam e duplicatas compatíveis são unificadas', () => {
   const leads = [lead(),lead({id:'b',codigo:'2',cnpj:'99123456000199',nome:'Outra'})];
   const r=core.conciliarDebitos([empresa({cnpj:'99123456000199'})],leads);
   assert.equal(r.atualizacoes.length,0); assert.equal(r.pendencias.length,1); assert.equal(r.ausentes.length,0);
-  const duplicado=core.conciliarDebitos([empresa()],[lead(),lead({id:'b'})]); assert.equal(duplicado.atualizacoes.length,0);assert.equal(duplicado.ausentes.length,0);
+  const duplicado=core.conciliarDebitos([empresa()],[lead(),lead({id:'b'})]); assert.equal(duplicado.atualizacoes.length,1);assert.equal(duplicado.atualizacoes[0].duplicados.length,1);assert.equal(duplicado.ausentes.length,0);
 });
 test('identificador forte divergente bloqueia correspondência apenas por nome', () => {
   const r=core.conciliarDebitos([empresa({codigo:'2',cnpj:'99123456000199'})],[lead()]);assert.equal(r.atualizacoes.length,0);assert.equal(r.ausentes.length,0);
@@ -70,25 +70,30 @@ test('lista apenas ausentes reais e impede duas empresas atualizando o mesmo cad
 });
 
 function servidorFixture() {
-  let state={leads:[lead()],importacao:null};
+  let state={leads:[lead()],importacao:null, atendimentos:[], negociacoes:[], contratos:[], historico:[]};
   const fakePrisma={ $transaction:async fn=>{
     const draft=globalThis.structuredClone(state);
+    const tabela = nome => ({
+      findMany: async ({where}) => draft[nome].filter(r => r.usuarioId === where.usuarioId && r.leadId === where.leadId && (!where.id || where.id.in.includes(r.id))),
+      updateMany: async ({where,data}) => { const rs = draft[nome].filter(r => r.usuarioId === where.usuarioId && r.leadId === where.leadId && (!where.id || where.id.in.includes(r.id))); rs.forEach(r => Object.assign(r,data)); return {count:rs.length}; },
+    });
     const tx={
-      historicoCrm: { create: async ({ data }) => data },
+      atendimentoCrm: tabela('atendimentos'), negociacaoCrm: tabela('negociacoes'), contrato: tabela('contratos'),
+      historicoCrm: { ...tabela('historico'), create: async ({ data }) => data },
       importacaoDebitosCrm:{findFirst:async({where})=>draft.importacao?.id===where.id&&draft.importacao.usuarioId===where.usuarioId?draft.importacao:null,
         update:async({data})=>(draft.importacao={...draft.importacao,...data})},
-      leadCrm:{findMany:async()=>draft.leads.map(dbLead),
+      leadCrm:{delete:async({where})=>{draft.leads=draft.leads.filter(l=>l.id!==where.id);}, create:async({data})=>{draft.leads.push({...data});return data;}, findMany:async()=>draft.leads.map(dbLead),
         updateMany:async({where,data})=>{const l=draft.leads.find(l=>l.id===where.id);const db=l&&dbLead(l);if(!l || (where.atualizadoEm && l.atualizadoEm!==where.atualizadoEm.toISOString()) || ['valorEmAberto','quantidadeParcelas','parcelaMaisAntiga','parcelaMaisRecente'].some(k=>k in where && String(db[k] instanceof Date?db[k].toISOString():k==='valorEmAberto'?l[k]:db[k])!==String(where[k] instanceof Date?where[k].toISOString():where[k])))return {count:0};Object.assign(l,data,{atualizadoEm:new Date(Date.parse(l.atualizadoEm)+1000).toISOString()});return {count:1};},
-        findUniqueOrThrow:async({where})=>({atualizadoEm:new Date(draft.leads.find(l=>l.id===where.id).atualizadoEm)})}
+        findUniqueOrThrow:async({where})=>dbLead(draft.leads.find(l=>l.id===where.id))}
     };
     const result=await fn(tx);state=draft;return result;
   }};
-  const service=load('lib/crmDebitosServidor.ts',{'node:crypto':crypto,'@prisma/client':{Prisma:{TransactionIsolationLevel:{Serializable:'Serializable'}}},'./prisma':{prisma:fakePrisma},'./crmDebitos':core, './crmHistorico': load('lib/crmHistorico.ts'), './crmHistoricoServidor': load('lib/crmHistoricoServidor.ts', { './crmHistorico': load('lib/crmHistorico.ts') })});
+  const service=load('lib/crmDebitosServidor.ts',{'node:crypto':crypto,'@prisma/client':{Prisma:{TransactionIsolationLevel:{Serializable:'Serializable'}}},'./prisma':{prisma:fakePrisma},'./crmDebitos':core, './crmDebitosUnificacao':load('lib/crmDebitosUnificacao.ts', {'node:crypto':crypto, '@prisma/client':{Prisma:{DbNull:null}}}), './crmHistorico': load('lib/crmHistorico.ts'), './crmHistoricoServidor': load('lib/crmHistoricoServidor.ts', { './crmHistorico': load('lib/crmHistorico.ts') })});
   state.importacao={id:'import',usuarioId:'u',arquivo:'test.xlsx',criadoEm:new Date(),aplicadoEm:null,desfeitoEm:null,fingerprint:service.fingerprintLeads(state.leads),
     relatorio:{estagios:['em_negociacao'],...globalThis.structuredClone(core.conciliarDebitos([empresa({valorEmAberto:'200.00'})],state.leads))}};
   return {service,get:()=>state,set:fn=>fn(state)};
 }
-function dbLead(l) {return {...l,atualizadoEm:new Date(l.atualizadoEm),valorEmAberto:l.valorEmAberto===null?null:{toFixed:()=>l.valorEmAberto},parcelaMaisAntiga:l.parcelaMaisAntiga?new Date(l.parcelaMaisAntiga):null,parcelaMaisRecente:l.parcelaMaisRecente?new Date(l.parcelaMaisRecente):null};}
+function dbLead(l) {return {...l,atualizadoEm:new Date(l.atualizadoEm),valorEmAberto:l.valorEmAberto===null?null:{toFixed:()=>l.valorEmAberto,toJSON:()=>l.valorEmAberto},parcelaMaisAntiga:l.parcelaMaisAntiga?new Date(l.parcelaMaisAntiga):null,parcelaMaisRecente:l.parcelaMaisRecente?new Date(l.parcelaMaisRecente):null};}
 test('aplica, reenvia de forma idempotente e desfaz sem mudar estágio',async()=>{
   const f=servidorFixture();await f.service.executarImportacao('import','u','aplicar');assert.equal(f.get().leads[0].valorEmAberto,'200.00');assert.equal(f.get().leads[0].estagio,'em_negociacao');
   await f.service.executarImportacao('import','u','aplicar');await f.service.executarImportacao('import','u','desfazer');assert.equal(f.get().leads[0].valorEmAberto,'100.00');assert.ok(f.get().importacao.desfeitoEm);
@@ -207,4 +212,55 @@ test('API de restauração exige sessão e token de conferência e mantém o iso
   sessao = null;
   assert.equal((await rota.POST({ json: async () => ({ acao: 'restaurar', token: 'a'.repeat(64) }) }, params)).status, 401);
   assert.equal(chamadas.length, 2);
+});
+
+test('resumo mínimo dispensa datas, elimina totais repetidos e recusa totais divergentes', async () => {
+  const gerar = async (valor) => {
+    const w = new ExcelJS.Workbook(), s = w.addWorksheet('Geral');
+    s.addRow(['Código','Razão Social','Valor em Aberto','Quantidade de Parcelas']);
+    s.addRow(['1','Empresa Á',100,2]); s.addRow(['001','Empresa Á',valor,2]);
+    return Buffer.from(await w.xlsx.writeBuffer());
+  };
+  const r = await lerPlanilhaDebitos(await gerar(100));
+  assert.equal(r.empresas.length,1); assert.equal(r.empresas[0].valorEmAberto,'100.00');
+  assert.equal(r.empresas[0].quantidadeParcelas,2); assert.equal(r.empresas[0].parcelaMaisAntiga,null);
+  const a = core.conciliarDebitos(r.empresas,[lead()]).atualizacoes[0];
+  assert.equal(a.depois.parcelaMaisAntiga,lead().parcelaMaisAntiga);
+  await assert.rejects(lerPlanilhaDebitos(await gerar(200)),/totais diferentes/);
+});
+test('duplicatas em etapas diferentes ou só por nome exigem revisão', () => {
+  for (const estagio of ['ja_negociada','em_aberto','a_cancelar']) {
+    const r=core.conciliarDebitos([empresa()],[lead(),lead({id:'b',estagio})]);
+    assert.equal(r.atualizacoes.length,0);assert.equal(r.pendencias.length,1);assert.equal(r.ausentes.length,0);
+  }
+  assert.equal(core.conciliarDebitos([empresa({codigo:'',cnpj:''})],[lead(),lead({id:'b'})]).atualizacoes.length,0);
+});
+function comDuplicata() {
+  const f=servidorFixture();
+  f.set(s=>{
+    s.leads[0].usuarioId='u';
+    s.leads.push(lead({id:'b',usuarioId:'u',telefone:'1234',observacoes:'Preservar no backup'}));
+    for(const tabela of ['atendimentos','negociacoes','contratos','historico']) s[tabela].push({id:tabela,usuarioId:'u',leadId:'b',conteudo:'original'});
+    s.importacao.fingerprint=f.service.fingerprintLeads(s.leads);
+    s.importacao.relatorio.atualizacoes=globalThis.structuredClone(core.conciliarDebitos([empresa({valorEmAberto:'250.00',quantidadeParcelas:3})],s.leads).atualizacoes);
+  });
+  return f;
+}
+test('unifica, mantém etapa e vínculos, não soma saldo e desfaz integralmente',async()=>{
+  const f=comDuplicata();
+  await f.service.executarImportacao('import','u','aplicar');
+  assert.equal(f.get().leads.length,1);assert.equal(f.get().leads[0].valorEmAberto,'250.00');assert.equal(f.get().leads[0].quantidadeParcelas,3);
+  assert.equal(f.get().leads[0].estagio,'em_negociacao');
+  for(const tabela of ['atendimentos','negociacoes','contratos','historico']) assert.equal(f.get()[tabela][0].leadId,'a');
+  await f.service.executarImportacao('import','u','aplicar');assert.equal(f.get().leads.length,1);
+  await f.service.executarImportacao('import','u','desfazer');
+  assert.equal(f.get().leads.length,2);assert.equal(f.get().leads.find(l=>l.id==='b').observacoes,'Preservar no backup');
+  assert.equal(f.get().leads[0].valorEmAberto,'100.00');
+  for(const tabela of ['atendimentos','negociacoes','contratos','historico']) assert.equal(f.get()[tabela][0].leadId,'b');
+});
+test('alteração de vínculo bloqueia reversão sem restaurar parcialmente duplicatas',async()=>{
+  const f=comDuplicata();await f.service.executarImportacao('import','u','aplicar');
+  f.set(s=>s.negociacoes[0].conteudo='alterado');
+  await assert.rejects(f.service.executarImportacao('import','u','desfazer'),/vínculo mudou/);
+  assert.equal(f.get().leads.length,1);assert.equal(f.get().leads[0].valorEmAberto,'250.00');assert.equal(f.get().importacao.desfeitoEm,null);
 });

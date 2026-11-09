@@ -1,3 +1,4 @@
+import { unificarCadastro, restaurarCadastro, type BackupDuplicado } from './crmDebitosUnificacao';
 import { createHash } from 'node:crypto';
 import { Prisma, type LeadCrm } from '@prisma/client';
 import { prisma } from './prisma';
@@ -27,7 +28,7 @@ export async function executarImportacao(id: string, usuarioId: string, acao: 'a
   return prisma.$transaction(async tx => {
     const importacao = await tx.importacaoDebitosCrm.findFirst({ where: { id, usuarioId } });
     if (!importacao) throw new ErroImportacao('Importação não encontrada.', 404);
-    const relatorio = importacao.relatorio as unknown as RelatorioDebitos;
+    const relatorio = importacao.relatorio as unknown as RelatorioDebitos & { backupsDuplicados?: BackupDuplicado[] };
     if (acao === 'aplicar') {
       if (importacao.desfeitoEm) throw new ErroImportacao('Importação já desfeita. Gere uma nova prévia.');
       if (importacao.aplicadoEm) return importacao; // Reenvio após perda de conexão não reaplica.
@@ -38,9 +39,22 @@ export async function executarImportacao(id: string, usuarioId: string, acao: 'a
       if (importacao.desfeitoEm) return importacao;
       if (!importacao.aplicadoEm) throw new ErroImportacao('Esta importação ainda não foi aplicada.');
     }
+    if (acao === 'desfazer') {
+      for (const backup of relatorio.backupsDuplicados ?? []) {
+        try { await restaurarCadastro(tx, usuarioId, backup); }
+        catch { throw new ErroImportacao('Não foi possível restaurar as duplicatas: um cadastro ou vínculo mudou. Nenhuma alteração foi salva.'); }
+      }
+    }
     for (const a of relatorio.atualizacoes) {
+      if (acao === 'aplicar') {
+        for (const duplicado of a.duplicados ?? []) {
+          const origem = await tx.leadCrm.findUniqueOrThrow({ where: { id: duplicado.id, usuarioId } });
+          if (origem.atualizadoEm.toISOString() !== duplicado.atualizadoEm || origem.estagio !== a.lead.estagio) throw new ErroImportacao('Uma duplicata mudou. Analise novamente.');
+          (relatorio.backupsDuplicados ??= []).push(await unificarCadastro(tx, usuarioId, origem, a.lead.id));
+        }
+      }
       const resultado = await tx.leadCrm.updateMany({
-        where: { id: a.lead.id, usuarioId, ...(acao === 'desfazer' ? { ...dadosDebito(a.depois) } : { atualizadoEm: new Date(a.lead.atualizadoEm) }) },
+        where: { id: a.lead.id, usuarioId, ...(acao === 'desfazer' ? { ...dadosDebito(a.depois), ...((a.duplicados?.length ?? 0) > 0 ? { atualizadoEm: new Date(a.atualizadoEmDepois ?? '') } : {}) } : { atualizadoEm: new Date(a.lead.atualizadoEm) }) },
         data: { ...dadosDebito(acao === 'aplicar' ? a.depois : somenteDebito(a.lead)), movimentadoEm: new Date() },
       });
       if (resultado.count !== 1) throw new ErroImportacao('Um cadastro foi alterado ou removido após a importação. Nenhuma alteração deste lote foi salva.');
@@ -62,7 +76,8 @@ async function prepararRestauracao(tx: Prisma.TransactionClient, id: string, usu
   if (!importacao) throw new ErroImportacao('Importação não encontrada.', 404);
   if (!importacao.aplicadoEm) throw new ErroImportacao('Esta atualização ainda não foi aplicada.');
   if (importacao.desfeitoEm) throw new ErroImportacao('Esta atualização já foi desfeita. Nenhum dado foi alterado.');
-  const relatorio = importacao.relatorio as unknown as RelatorioDebitos;
+  const relatorio = importacao.relatorio as unknown as RelatorioDebitos & { backupsDuplicados?: BackupDuplicado[] };
+  if (relatorio.backupsDuplicados?.length) throw new ErroImportacao('Este lote unificou cadastros. Use Desfazer atualização para restaurar também as duplicatas e seus vínculos.');
   if (!relatorio.atualizacoes.length) throw new ErroImportacao('Este lote não contém débitos para restaurar.');
   const ids = relatorio.atualizacoes.map(a => a.lead.id);
   if (new Set(ids).size !== ids.length) throw new ErroImportacao('O lote contém cadastros repetidos. A restauração precisa ser revisada.');

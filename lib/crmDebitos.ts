@@ -7,7 +7,7 @@ export type Debito = {
 };
 export type EmpresaDebito = { codigo: string; nome: string; cnpj: string } & Debito;
 export type LeadDebito = EmpresaDebito & { id: string; estagio: string; atualizadoEm: string };
-export type AtualizacaoDebito = { lead: LeadDebito; depois: Debito; criterio: string; atualizadoEmDepois?: string };
+export type AtualizacaoDebito = { lead: LeadDebito; depois: Debito; criterio: string; duplicados?: LeadDebito[]; atualizadoEmDepois?: string };
 export type RelatorioDebitos = {
   aba: string; linhas: number; empresas: number; estagios: string[];
   atualizacoes: AtualizacaoDebito[]; ausentes: LeadDebito[];
@@ -43,19 +43,31 @@ export function conciliarDebitos(empresas: EmpresaDebito[], leads: LeadDebito[])
     grupos.flat().forEach(l => presentes.add(l.id));
     const fortes = [...new Map([...grupos[0], ...grupos[1]].map(l => [l.id, l])).values()];
     const candidatos = fortes.length ? fortes : grupos[2];
-    const lead = candidatos.length === 1 ? candidatos[0] : undefined;
+    // Unifique apenas identidade forte inequívoca e a mesma etapa do funil.
+    const compativeis = candidatos.length > 1 && fortes.length > 0 &&
+      campos.slice(0, 2).every(([campo, normalizar]) =>
+        new Set([empresa, ...candidatos].map(e => normalizar(e[campo])).filter(Boolean)).size <= 1) &&
+      new Set(candidatos.map(l => l.estagio)).size === 1;
+    const ordenados = [...candidatos].sort((a, b) => b.atualizadoEm.localeCompare(a.atualizadoEm) || a.id.localeCompare(b.id));
+    const lead = candidatos.length === 1 || compativeis ? ordenados[0] : undefined;
     const contradicao = lead && campos.slice(0, 2).some(([campo, normalizar]) =>
       empresa[campo] && lead[campo] && normalizar(empresa[campo]) !== normalizar(lead[campo]));
     if (!lead || contradicao) {
-      pendencias.push({ empresa, motivo: candidatos.length === 0 ? 'Empresa não localizada no escopo selecionado.' : 'Identificadores conflitantes ou mais de um cadastro candidato.' });
+      pendencias.push({ empresa, motivo: candidatos.length === 0 ? 'Empresa não localizada no escopo selecionado.' : 'Identificadores conflitantes, correspondência apenas por nome ou duplicatas em etapas diferentes. Revise os cadastros e mantenha a etapa correta antes de analisar novamente.' });
       continue;
     }
-    atualizacoes.push({ lead, depois: somenteDebito(empresa), criterio: fortes.length ? 'Código / CNPJ ou CPF' : 'Razão social exata' });
+    const antiga = empresa.parcelaMaisAntiga ?? lead.parcelaMaisAntiga;
+    const recente = empresa.parcelaMaisRecente ?? lead.parcelaMaisRecente;
+    if (antiga && recente && antiga > recente) {
+      pendencias.push({ empresa, motivo: 'Os vencimentos informados conflitam com os preservados no cadastro. Informe ambos os vencimentos.' });
+      continue;
+    }
+    atualizacoes.push({ lead, duplicados: compativeis ? ordenados.slice(1) : [], depois: { ...somenteDebito(empresa), parcelaMaisAntiga: empresa.parcelaMaisAntiga ?? lead.parcelaMaisAntiga, parcelaMaisRecente: empresa.parcelaMaisRecente ?? lead.parcelaMaisRecente }, criterio: fortes.length ? 'Código / CNPJ ou CPF' : 'Razão social exata' });
   }
   const contagem = new Map<string, number>();
-  atualizacoes.forEach(a => contagem.set(a.lead.id, (contagem.get(a.lead.id) ?? 0) + 1));
+  atualizacoes.forEach(a => [a.lead, ...(a.duplicados ?? [])].forEach(l => contagem.set(l.id, (contagem.get(l.id) ?? 0) + 1)));
   const unicas = atualizacoes.filter(a => {
-    if (contagem.get(a.lead.id) === 1) return true;
+    if ([a.lead, ...(a.duplicados ?? [])].every(l => contagem.get(l.id) === 1)) return true;
     pendencias.push({ empresa: { ...a.lead, ...a.depois }, motivo: 'Mais de uma empresa da planilha corresponde ao mesmo cadastro.' });
     return false;
   });

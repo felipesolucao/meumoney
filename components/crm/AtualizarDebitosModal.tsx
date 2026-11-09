@@ -43,9 +43,9 @@ export default function AtualizarDebitosModal({ estagios, onFechar, onAtualizado
   }
   async function executar(acao: 'aplicar' | 'desfazer') {
     if (!registro) return;
-    if (acao === 'desfazer' && !window.confirm('Restaurar os quatro campos de débito aos valores anteriores desta importação?')) return;
+    if (acao === 'desfazer' && !window.confirm('Restaurar os débitos anteriores e recriar os cadastros duplicados removidos por esta atualização, com seus vínculos originais?')) return;
     const ok = await requisicao(`/api/crm/debitos/${registro.id}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ acao }) });
-    if (ok) { onAtualizado(); setMensagem(acao === 'aplicar' ? 'Débitos atualizados. As empresas ausentes continuam disponíveis para revisão.' : 'Valores anteriores restaurados.'); }
+    if (ok) { onAtualizado(); setMensagem(acao === 'aplicar' ? 'Débitos atualizados. As empresas ausentes continuam disponíveis para revisão.' : 'Débitos e cadastros anteriores restaurados.'); }
   }
   return <div className="crm-modal-overlay">
     <div className="crm-modal" role="dialog" aria-modal="true" aria-labelledby="debitos-titulo" style={{ width: 'min(1100px, 96vw)', maxWidth: 1100 }}>
@@ -62,7 +62,7 @@ export default function AtualizarDebitosModal({ estagios, onFechar, onAtualizado
           {new Date(h.criadoEm).toLocaleString('pt-BR')} · {h.arquivo} · {h.desfeitoEm ? 'Desfeita' : h.aplicadoEm ? 'Aplicada' : 'Prévia'}
         </option>)}</select>
         {!registro ? <>
-          <p>Importe a listagem completa de débitos em aberto. O sistema atualizará valor, quantidade de parcelas e vencimentos mais antigo e mais recente dos cadastros encontrados.</p>
+          <p>Importe a listagem completa de débitos em aberto. O sistema substituirá o valor em aberto e a quantidade de parcelas pelos totais da planilha, sem somar ao saldo anterior. Duplicatas com identificadores compatíveis e na mesma etapa serão unificadas no cadastro atualizado mais recentemente. Etapas diferentes exigem revisão.</p>
           <details style={{ margin: '16px 0' }}>
             <summary style={{ cursor: 'pointer' }}>Ver exemplo das colunas do Excel</summary>
             <p>Escolha um dos modelos abaixo. Copie o conteúdo para a célula A1 do Excel, substitua os dados fictícios e salve como .xlsx. Os títulos devem ficar na primeira linha.</p>
@@ -74,7 +74,7 @@ export default function AtualizarDebitosModal({ estagios, onFechar, onAtualizado
           </details>
           <label className="crm-label" htmlFor="debitos-arquivo">Planilha Excel (.xlsx, até 10 MB)</label>
           <input id="debitos-arquivo" type="file" accept=".xlsx" disabled={ocupado} onChange={e => { setArquivo(e.target.files?.[0] ?? null); setCompleta(false); }} />
-          <p className="crm-hint">Aceita as abas Detalhe e Resumo do seu modelo. Havendo detalhes, os valores são calculados pelas parcelas, sem somar novamente o resumo. Nenhum novo lead será criado.</p>
+          <p className="crm-hint">Resumo: Razão Social, Código ou CNPJ/CPF, Valor em Aberto e Quantidade de Parcelas. Vencimentos são opcionais; quando não informados, os atuais serão preservados. Linhas de resumo repetidas com o mesmo saldo contam uma única vez. Havendo detalhes, os valores são calculados pelas parcelas, sem somar novamente o resumo. Nenhum novo lead será criado.</p>
           <fieldset disabled={ocupado} style={{ margin: '16px 0', padding: 12 }}><legend>Grupos do funil a comparar e atualizar</legend>
             <label><input type="checkbox" checked={escopo.length === estagios.length} onChange={e => { setEscopo(e.target.checked ? estagios.map(g => g.id) : []); setCompleta(false); }} /> Todos os grupos</label>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 8 }}>{estagios.map(g => <label key={g.id}>
@@ -85,7 +85,7 @@ export default function AtualizarDebitosModal({ estagios, onFechar, onAtualizado
           <p className="crm-hint">Uma lista parcial gera ausências incorretas. Ausência não significa quitação e não remove nem movimenta empresas automaticamente.</p>
         </> : <>
           <p><strong>{registro.arquivo}</strong> · {registro.desfeitoEm ? 'Atualização desfeita' : registro.aplicadoEm ? 'Atualização aplicada' : 'Prévia — nenhuma alteração aplicada'}</p>
-          <p className="crm-hint">Grupos: {registro.relatorio.estagios.map(id => estagios.find(e => e.id === id)?.label ?? id).join(', ')}. Os demais dados e etapas dos cadastros são preservados.</p>
+          <p className="crm-hint">Grupos: {registro.relatorio.estagios.map(id => estagios.find(e => e.id === id)?.label ?? id).join(', ')}. A etapa e os dados do cadastro mantido são preservados. Atendimentos, anexos, negociações, contratos e histórico das duplicatas serão vinculados a ele. Os cadastros removidos ficam no backup da importação para reversão.</p>
           <DebitosRelatorio key={registro.id} relatorio={registro.relatorio} estagios={estagios} onRevisar={id => { if (!ocupado) onRevisar(id); }} />
         </>}
       </div>

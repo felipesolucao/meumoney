@@ -14,7 +14,7 @@ export default function DebitosRelatorio({ relatorio: r, estagios, onRevisar }: 
   const [aba, setAba] = useState<Aba>('atualizacoes');
   const [busca, setBusca] = useState('');
   const [pagina, setPagina] = useState(0);
-  const linhas = aba === 'atualizacoes' ? r.atualizacoes.map(a => ({ empresa: a.lead, depois: a.depois, motivo: a.criterio, id: a.lead.id, estagio: a.lead.estagio }))
+  const linhas = aba === 'atualizacoes' ? r.atualizacoes.map(a => ({ empresa: a.lead, depois: a.depois, motivo: a.criterio + ((a.duplicados?.length ?? 0) ? ` · Unificar ${a.duplicados?.length} duplicata(s): ${(a.duplicados ?? []).map(l => l.id).join(', ')}. Manter este cadastro e sua etapa.` : ''), id: a.lead.id, estagio: a.lead.estagio }))
     : aba === 'ausentes' ? r.ausentes.map(l => ({ empresa: l, depois: null, motivo: 'Verificar negociação ou quitação', id: l.id, estagio: l.estagio }))
     : r.pendencias.map(p => ({ ...p, depois: null, id: '', estagio: '' }));
   const filtradas = linhas.filter(l => [l.empresa.nome, l.empresa.codigo, l.empresa.cnpj].some(v => v.toLowerCase().includes(busca.toLowerCase())));

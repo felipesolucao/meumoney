@@ -66,7 +66,7 @@ export async function lerPlanilhaDebitos(buffer: Buffer) {
   const abas = workbook.worksheets.map(sheet => ({ sheet, mapa: colunas(sheet) }));
   const temIdentidade = (m: Map<Campo, number>) => m.has('nome') && (m.has('codigo') || m.has('cnpj'));
   const detalhes = abas.filter(a => temIdentidade(a.mapa) && a.mapa.has('vencimento') && a.mapa.has('valor'));
-  const resumos = abas.filter(a => temIdentidade(a.mapa) && ['total', 'quantidade', 'antiga', 'recente'].every(c => a.mapa.has(c as Campo)));
+  const resumos = abas.filter(a => temIdentidade(a.mapa) && ['total', 'quantidade'].every(c => a.mapa.has(c as Campo)));
   const candidatas = detalhes.length ? detalhes : resumos;
   if (candidatas.length !== 1) throw new Error('A planilha deve ter uma única aba de detalhes reconhecida, ou uma única aba de resumo. Use os cabeçalhos do modelo.');
   const { sheet, mapa } = candidatas[0];
@@ -86,7 +86,6 @@ export async function lerPlanilhaDebitos(buffer: Buffer) {
       const chave = codigo ? `cod:${normalizarCodigo(codigo)}` : `doc:${normalizarDocumento(cnpj)}`;
       const anterior = empresas.get(chave);
       if (anterior && (normalizarDocumento(anterior.cnpj) !== normalizarDocumento(cnpj) || normalizarNome(anterior.nome) !== normalizarNome(nome))) throw new Error('Código/documento repetido com identidades diferentes.');
-      if (anterior && !detalhada) throw new Error('Empresa repetida na aba de resumo.');
       if (detalhada) {
         const assinatura = JSON.stringify(row.values);
         if (assinaturas.has(assinatura)) throw new Error('Parcela duplicada: linha idêntica já encontrada.');
@@ -96,14 +95,19 @@ export async function lerPlanilhaDebitos(buffer: Buffer) {
       const valor = centavos(pega(detalhada ? 'valor' : 'total'));
       const quantidade = detalhada ? 1 : Number(pega('quantidade'));
       if (!Number.isSafeInteger(quantidade) || quantidade <= 0 || quantidade > 2147483647) throw new Error('Quantidade de parcelas inválida.');
-      const antiga = data(pega(detalhada ? 'vencimento' : 'antiga'), Boolean(workbook.properties.date1904));
-      const recente = data(pega(detalhada ? 'vencimento' : 'recente'), Boolean(workbook.properties.date1904));
-      if (antiga > recente) throw new Error('Vencimento mais antigo posterior ao mais recente.');
+      const antiga = !detalhada && !texto(pega('antiga')) ? null : data(pega(detalhada ? 'vencimento' : 'antiga'), Boolean(workbook.properties.date1904));
+      const recente = !detalhada && !texto(pega('recente')) ? null : data(pega(detalhada ? 'vencimento' : 'recente'), Boolean(workbook.properties.date1904));
+      if (antiga && recente && antiga > recente) throw new Error('Vencimento mais antigo posterior ao mais recente.');
+      if (anterior && !detalhada) {
+        if (centavos(anterior.valorEmAberto) !== valor || anterior.quantidadeParcelas !== quantidade || anterior.parcelaMaisAntiga !== antiga || anterior.parcelaMaisRecente !== recente) throw new Error('Empresa repetida no resumo com totais diferentes. Informe um único saldo consolidado por empresa.');
+        linhas++;
+        return;
+      }
       const soma = valor + (anterior ? centavos(anterior.valorEmAberto) : 0);
       if (soma > 999999999999) throw new Error('Total da empresa excede o limite.');
       empresas.set(chave, { codigo, nome, cnpj, valorEmAberto: (soma / 100).toFixed(2), quantidadeParcelas: (anterior?.quantidadeParcelas ?? 0) + quantidade,
-        parcelaMaisAntiga: anterior?.parcelaMaisAntiga && anterior.parcelaMaisAntiga < antiga ? anterior.parcelaMaisAntiga : antiga,
-        parcelaMaisRecente: anterior?.parcelaMaisRecente && anterior.parcelaMaisRecente > recente ? anterior.parcelaMaisRecente : recente });
+        parcelaMaisAntiga: anterior?.parcelaMaisAntiga && antiga && anterior.parcelaMaisAntiga < antiga ? anterior.parcelaMaisAntiga : antiga,
+        parcelaMaisRecente: anterior?.parcelaMaisRecente && recente && anterior.parcelaMaisRecente > recente ? anterior.parcelaMaisRecente : recente });
       linhas++;
     } catch (e) { throw new Error(`${sheet.name}, linha ${n}: ${e instanceof Error ? e.message : 'Dados inválidos.'}`); }
   });
