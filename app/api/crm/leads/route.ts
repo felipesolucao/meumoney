@@ -1,3 +1,4 @@
+import { excluirLeadsPreservandoNegociacoes } from "../../../../lib/crmExcluirLeads";
 // ============================================================================
 // API: /api/crm/leads
 // GET    -> lista todos os leads DO USUÁRIO LOGADO (para montar o quadro)
@@ -98,14 +99,12 @@ export async function DELETE(req: NextRequest) {
   const { ids, todos } = body as { ids?: unknown; todos?: unknown };
 
   if (todos === true) {
-    const resultado = await prisma.leadCrm.deleteMany({ where: { usuarioId: sessao.id } });
+    const resultado = await excluirLeadsPreservandoNegociacoes(sessao.id);
     return NextResponse.json({ excluidos: resultado.count });
   }
 
   if (Array.isArray(ids) && ids.length > 0) {
-    const resultado = await prisma.leadCrm.deleteMany({
-      where: { usuarioId: sessao.id, id: { in: ids.filter((id): id is string => typeof id === "string") } },
-    });
+    const resultado = await excluirLeadsPreservandoNegociacoes(sessao.id, ids.filter((id): id is string => typeof id === "string"));
     return NextResponse.json({ excluidos: resultado.count });
   }
 

@@ -1,3 +1,4 @@
+import { excluirLeadsPreservandoNegociacoes } from "../../../../../lib/crmExcluirLeads";
 // ============================================================================
 // API: /api/crm/leads/[id]
 // PATCH  -> edita os dados do lead E/OU move ele de coluna/posição (drag&drop)
@@ -89,6 +90,6 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
   const existente = await prisma.leadCrm.findFirst({ where: { id: params.id, usuarioId: sessao.id } });
   if (!existente) return NextResponse.json({ error: "Lead não encontrado." }, { status: 404 });
 
-  await prisma.leadCrm.delete({ where: { id: params.id } });
+  await excluirLeadsPreservandoNegociacoes(sessao.id, [params.id]);
   return NextResponse.json({ ok: true });
 }

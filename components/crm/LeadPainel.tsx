@@ -162,7 +162,7 @@ export default function LeadPainel({
 
   async function excluir() {
     if (!leadInicial) return;
-    if (!window.confirm(`Excluir o lead "${leadInicial.nome}"? Essa ação não pode ser desfeita.`)) return;
+    if (!window.confirm(`Excluir o lead "${leadInicial.nome}"? Negociações, contratos, parcelas e pagamentos serão mantidos, sem vínculo com os leads excluídos. Os atendimentos, anexos e o histórico de alterações dos leads serão apagados. Essa ação não pode ser desfeita.`)) return;
     setExcluindo(true);
     try {
       const resposta = await fetch(`/api/crm/leads/${leadInicial.id}`, { method: "DELETE" });

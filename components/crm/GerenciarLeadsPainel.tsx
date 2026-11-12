@@ -53,7 +53,7 @@ export default function GerenciarLeadsPainel({
 
   async function excluirSelecionados() {
     if (selecionados.size === 0) return;
-    if (!window.confirm(`Excluir ${selecionados.size} lead(s) selecionado(s)? Essa ação não pode ser desfeita.`)) return;
+    if (!window.confirm(`Excluir ${selecionados.size} lead(s) selecionado(s)? Negociações, contratos, parcelas e pagamentos serão mantidos, sem vínculo com os leads excluídos. Os atendimentos, anexos e o histórico de alterações dos leads serão apagados. Essa ação não pode ser desfeita.`)) return;
     const ids = Array.from(selecionados);
     setExcluindo(true);
     try {
@@ -75,7 +75,7 @@ export default function GerenciarLeadsPainel({
 
   async function excluirTodos() {
     if (leadsOrdenados.length === 0) return;
-    if (!window.confirm(`Excluir TODOS os ${leadsOrdenados.length} leads cadastrados? Essa ação não pode ser desfeita.`)) return;
+    if (!window.confirm(`Excluir TODOS os ${leadsOrdenados.length} leads cadastrados? Negociações, contratos, parcelas e pagamentos serão mantidos, sem vínculo com os leads excluídos. Os atendimentos, anexos e o histórico de alterações dos leads serão apagados. Essa ação não pode ser desfeita.`)) return;
     setExcluindo(true);
     try {
       const resposta = await fetch("/api/crm/leads", {
